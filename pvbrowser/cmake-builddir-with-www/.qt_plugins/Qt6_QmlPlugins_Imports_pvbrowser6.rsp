@@ -1,0 +1,11 @@
+-rootPath
+/home/lehrig/pvb6/pvbrowser
+-cmake-output
+-output-file
+/home/lehrig/pvb6/pvbrowser/cmake-builddir-with-www/.qt_plugins/Qt6_QmlPlugins_Imports_pvbrowser6.cmake
+-importPath
+/home/lehrig/pvb6/pvbrowser/cmake-builddir-with-www
+-importPath
+/usr/lib64/qt6/qml
+-qrcFiles
+/home/lehrig/pvb6/pvbrowser/cmake-builddir-with-www/.rcc/imageresources.qrc

@@ -1,0 +1,14 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/local/qwt-6.2.0/lib
+includedir=${prefix}/local/qwt-6.2.0/include
+
+
+Name: Qwt6
+Description: Qt Widgets for Technical Applications
+Version: 6.2.0
+Libs: -L${libdir} -lqwt 
+Libs.private: /usr/lib64/libQt6PrintSupport.so /usr/lib64/libQt6Widgets.so /usr/lib64/libQt6Svg.so -pthread /usr/lib64/libQt6Gui.so /usr/lib64/libGLX.so /usr/lib64/libOpenGL.so /usr/lib64/libQt6Concurrent.so /usr/lib64/libQt6Core.so -lpthread -lGLX -lOpenGL    
+Cflags: -I${includedir}
+Requires: Qt6Widgets Qt6Concurrent Qt6PrintSupport Qt6Svg
+

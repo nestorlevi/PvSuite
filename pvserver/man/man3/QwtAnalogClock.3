@@ -1,0 +1,172 @@
+.TH "QwtAnalogClock" 3 "Thu Sep 28 2023" "ProcessViewBrowser-ServerProgramming" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+QwtAnalogClock
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "int \fBqwtAnalogClockSetTime\fP (\fBPARAM\fP *p, int id, int hour, int minute, int second)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetMass\fP (\fBPARAM\fP *p, int id, float mass)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetReadOnly\fP (\fBPARAM\fP *p, int id, int rdonly)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetFrameShadow\fP (\fBPARAM\fP *p, int id, int shadow)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockShowBackground\fP (\fBPARAM\fP *p, int id, int show)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetLineWidth\fP (\fBPARAM\fP *p, int id, int width)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetMode\fP (\fBPARAM\fP *p, int id, int mode)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetWrapping\fP (\fBPARAM\fP *p, int id, int wrap)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetScale\fP (\fBPARAM\fP *p, int id, int maxMajIntv, int maxMinIntv, float step)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetScaleArc\fP (\fBPARAM\fP *p, int id, float min, float max)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetOrigin\fP (\fBPARAM\fP *p, int id, float o)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetNeedle\fP (\fBPARAM\fP *p, int id, int which, int r1=0, int g1=0, int b1=0, int r2=255, int g2=255, int b2=255, int r3=128, int g3=128, int b3=128)"
+.br
+.ti -1c
+.RI "int \fBqwtAnalogClockSetValue\fP (\fBPARAM\fP *p, int id, float value)"
+.br
+.in -1c
+.SH "Detailed Description"
+.PP 
+QwtAnalogClock Widget 
+.SH "Function Documentation"
+.PP 
+.SS "int qwtAnalogClockSetFrameShadow (\fBPARAM\fP * p, int id, int shadow)"
+
+.PP
+.nf
+
+\fBDialShadow\fP\&.
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetLineWidth (\fBPARAM\fP * p, int id, int width)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetMass (\fBPARAM\fP * p, int id, float mass)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetMode (\fBPARAM\fP * p, int id, int mode)"
+
+.PP
+.nf
+
+\fBDialMode\fP\&.
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetNeedle (\fBPARAM\fP * p, int id, int which, int r1 = \fC0\fP, int g1 = \fC0\fP, int b1 = \fC0\fP, int r2 = \fC255\fP, int g2 = \fC255\fP, int b2 = \fC255\fP, int r3 = \fC128\fP, int g3 = \fC128\fP, int b3 = \fC128\fP)"
+
+.PP
+.nf
+
+which = \fBCompassNeedle\fP\&.
+if(which==QwtCompassNeedle1)    QwtCompassNeedle1(r1,g1,b1);
+if(which==QwtCompassNeedle2)    QwtCompassNeedle2(r1,g1,b1, r2,g2,b2);
+if(which==QwtCompassNeedle3)    QwtCompassNeedle3(r1,g1,b1, r2,g2,b2);
+if(which==QwtCompassNeedle4)    QwtCompassNeedle4(r1,g1,b1, r2,g2,b2, r3,g3,b3);
+if(which==QwtCompassLineNeedle) QwtCompassLineNeedle(r1,g1,b1);
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetOrigin (\fBPARAM\fP * p, int id, float o)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetReadOnly (\fBPARAM\fP * p, int id, int rdonly)"
+
+.PP
+.nf
+
+rdonly = 0 | 1
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetScale (\fBPARAM\fP * p, int id, int maxMajIntv, int maxMinIntv, float step)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetScaleArc (\fBPARAM\fP * p, int id, float min, float max)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetTime (\fBPARAM\fP * p, int id, int hour, int minute, int second)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetValue (\fBPARAM\fP * p, int id, float value)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockSetWrapping (\fBPARAM\fP * p, int id, int wrap)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtAnalogClockShowBackground (\fBPARAM\fP * p, int id, int show)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for ProcessViewBrowser-ServerProgramming from the source code\&.

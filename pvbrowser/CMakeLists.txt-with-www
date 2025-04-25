@@ -1,0 +1,122 @@
+#QT += core gui printsupport multimedia uitools widgets xml svg network printsupport
+
+cmake_minimum_required(VERSION 3.16)
+
+project(pvbrowser6 VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg Xml Network WebEngineWidgets)
+#set(ANDROID_PACKAGE_SOURCE_DIR
+#    "/home/lehrig/Downloads/pvb6/Downloads/pvb6/build-pvbrowser-Android_Qt_6_6_2_Clang_arm64_v8a-Debug/android-build"
+#    CACHE INTERNAL "Android source dir for custom AndroidManifest.xml" FORCE)
+qt_standard_project_setup()
+
+qt_add_executable(pvbrowser6
+                main.cpp  
+                mainwindow.cpp  
+                dlgopt.cpp  
+                opt.cpp  
+                tcputil.cpp  
+                interpreter.cpp  
+                MyWidgets.cpp  
+		MyTextBrowser_with_www.cpp
+                QDrawWidget.cpp  
+                QImageWidget.cpp  
+                pvglwidget.cpp  
+                gldecode.cpp  
+                qwtplotwidget.cpp  
+                dlgtextbrowser.cpp
+                dlgmybrowser_with_www.cpp
+                mywebenginepage.cpp
+                pvbrowser.qrc
+                dlgmybrowser_ui_with_www.h
+                dlgopt.h
+                dlgtextbrowser.h
+                interpreter.h
+                mainwindow.h
+                MyTextBrowser_with_www.h
+                MyWidgets.h
+                opt.h
+                pvdefine.h
+                pvglwidget.h
+                pvserver.h
+                qdrawwidget.h
+                qimagewidget.h
+                qwtplotwidget.h
+                qwtwidgets.h
+                tcputil.h
+
+     dlgmybrowser_ui_with_www.h
+     pvglwidget.v5.h
+
+)
+
+qt_add_resources(pvbrowser6 imageresources
+    PREFIX "images"
+    FILES  images/option.png       
+      images/window.png       
+      images/reconnect.png       
+      images/storebmp.png       
+      images/logbmp.png       
+      images/logpvm.png       
+      images/print.png       
+      images/copy.png       
+      images/fullscreen.png       
+      images/exit.png       
+      images/app.png       
+      images/back.png       
+      images/gohome.png       
+      images/whatsthis.png       
+      images/newtab.png       
+      images/deletetab.png       
+      images/reload.png       
+      images/find.png       
+      images/view-refresh.png       
+      images/arrow-up.png         
+      images/arrow-down.png       
+)
+
+## set(CMAKE_AUTOMOC ON)
+## set(CMAKE_AUTORCC ON)
+
+if(NOT ANDROID)
+  target_include_directories(pvbrowser6 PRIVATE $(CMAKE_SOURCE_DIR) 
+          $ENV{PVB6DIR}/qwt/src
+          ## ../qwt/src
+	  ##  /home/lehrig/pvb6/qwt/src
+  )
+  target_link_libraries(pvbrowser6 PRIVATE Qt6::Core
+      Qt6::Gui
+      Qt6::Widgets
+      Qt6::PrintSupport
+      Qt6::Svg
+      Qt6::Xml
+      Qt6::Network
+      Qt6::WebEngineWidgets
+      $ENV{PVB6DIR}/qwt/lib/libqwt.a
+      ## /home/lehrig/pvb6/qwt/lib/libqwt.a
+      -ldl
+  )
+  target_link_options(pvbrowser6 PRIVATE -static-libgcc )
+
+  #add_compile_definitions(PVB_FOOTPRINT_BASIC NOMINMAX)
+  add_compile_definitions(QT_DEPRECATED_WARNINGS NOMINMAX)
+  #add_compile_definitions(USE_ANDROID NOMINMAX)
+  #add_compile_definitions(USE_MAEMO NOMINMAX)
+  #add_compile_definitions(NO_WEBKIT NOMINMAX)
+  add_compile_definitions(USE_GOOGLE_WEBKIT_FORK NOMINMAX)
+
+
+  set_target_properties(pvbrowser6 PROPERTIES
+    WIN32_EXECUTABLE ON
+    MACOSX_BUNDLE ON
+  )
+elseif(ANDROID)
+endif()	
+

@@ -1,0 +1,26 @@
+<RCC>
+  <qresource prefix="images">
+    <file alias="images/option.png">/home/lehrig/pvb6/pvbrowser/images/option.png</file>
+    <file alias="images/window.png">/home/lehrig/pvb6/pvbrowser/images/window.png</file>
+    <file alias="images/reconnect.png">/home/lehrig/pvb6/pvbrowser/images/reconnect.png</file>
+    <file alias="images/storebmp.png">/home/lehrig/pvb6/pvbrowser/images/storebmp.png</file>
+    <file alias="images/logbmp.png">/home/lehrig/pvb6/pvbrowser/images/logbmp.png</file>
+    <file alias="images/logpvm.png">/home/lehrig/pvb6/pvbrowser/images/logpvm.png</file>
+    <file alias="images/print.png">/home/lehrig/pvb6/pvbrowser/images/print.png</file>
+    <file alias="images/copy.png">/home/lehrig/pvb6/pvbrowser/images/copy.png</file>
+    <file alias="images/fullscreen.png">/home/lehrig/pvb6/pvbrowser/images/fullscreen.png</file>
+    <file alias="images/exit.png">/home/lehrig/pvb6/pvbrowser/images/exit.png</file>
+    <file alias="images/app.png">/home/lehrig/pvb6/pvbrowser/images/app.png</file>
+    <file alias="images/back.png">/home/lehrig/pvb6/pvbrowser/images/back.png</file>
+    <file alias="images/gohome.png">/home/lehrig/pvb6/pvbrowser/images/gohome.png</file>
+    <file alias="images/whatsthis.png">/home/lehrig/pvb6/pvbrowser/images/whatsthis.png</file>
+    <file alias="images/newtab.png">/home/lehrig/pvb6/pvbrowser/images/newtab.png</file>
+    <file alias="images/deletetab.png">/home/lehrig/pvb6/pvbrowser/images/deletetab.png</file>
+    <file alias="images/reload.png">/home/lehrig/pvb6/pvbrowser/images/reload.png</file>
+    <file alias="images/find.png">/home/lehrig/pvb6/pvbrowser/images/find.png</file>
+    <file alias="images/view-refresh.png">/home/lehrig/pvb6/pvbrowser/images/view-refresh.png</file>
+    <file alias="images/arrow-up.png">/home/lehrig/pvb6/pvbrowser/images/arrow-up.png</file>
+    <file alias="images/arrow-down.png">/home/lehrig/pvb6/pvbrowser/images/arrow-down.png</file>
+  </qresource>
+</RCC>
+

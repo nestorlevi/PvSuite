@@ -1,0 +1,170 @@
+.TH "QwtDial" 3 "Thu Sep 28 2023" "ProcessViewBrowser-ServerProgramming" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+QwtDial
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "int \fBqwtDialSetRange\fP (\fBPARAM\fP *p, int id, float vmin, float vmax, float step=0\&.0f)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetMass\fP (\fBPARAM\fP *p, int id, float mass)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetReadOnly\fP (\fBPARAM\fP *p, int id, int rdonly)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetFrameShadow\fP (\fBPARAM\fP *p, int id, int shadow)"
+.br
+.ti -1c
+.RI "int \fBqwtDialShowBackground\fP (\fBPARAM\fP *p, int id, int show)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetLineWidth\fP (\fBPARAM\fP *p, int id, int width)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetMode\fP (\fBPARAM\fP *p, int id, int mode)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetWrapping\fP (\fBPARAM\fP *p, int id, int wrap)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetScale\fP (\fBPARAM\fP *p, int id, int maxMajIntv, int maxMinIntv, float step)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetScaleArc\fP (\fBPARAM\fP *p, int id, float min, float max)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetOrigin\fP (\fBPARAM\fP *p, int id, float o)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetNeedle\fP (\fBPARAM\fP *p, int id, int which, int r1=0, int g1=0, int b1=0, int r2=255, int g2=255, int b2=255, int r3=128, int g3=128, int b3=128)"
+.br
+.ti -1c
+.RI "int \fBqwtDialSetValue\fP (\fBPARAM\fP *p, int id, float value)"
+.br
+.in -1c
+.SH "Detailed Description"
+.PP 
+QwtDial Widget 
+.SH "Function Documentation"
+.PP 
+.SS "int qwtDialSetFrameShadow (\fBPARAM\fP * p, int id, int shadow)"
+
+.PP
+.nf
+
+\fBDialShadow\fP\&.
+.fi
+.PP
+ 
+.SS "int qwtDialSetLineWidth (\fBPARAM\fP * p, int id, int width)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtDialSetMass (\fBPARAM\fP * p, int id, float mass)"
+
+.PP
+.nf
+
+obsolte, no longer used
+.fi
+.PP
+ 
+.SS "int qwtDialSetMode (\fBPARAM\fP * p, int id, int mode)"
+
+.PP
+.nf
+
+\fBDialMode\fP\&.
+.fi
+.PP
+ 
+.SS "int qwtDialSetNeedle (\fBPARAM\fP * p, int id, int which, int r1 = \fC0\fP, int g1 = \fC0\fP, int b1 = \fC0\fP, int r2 = \fC255\fP, int g2 = \fC255\fP, int b2 = \fC255\fP, int r3 = \fC128\fP, int g3 = \fC128\fP, int b3 = \fC128\fP)"
+
+.PP
+.nf
+
+which = \fBDialNeedle\fP\&.
+.fi
+.PP
+ 
+.SS "int qwtDialSetOrigin (\fBPARAM\fP * p, int id, float o)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtDialSetRange (\fBPARAM\fP * p, int id, float vmin, float vmax, float step = \fC0\&.0f\fP)"
+
+.PP
+.nf
+
+obsolete, no longer used
+.fi
+.PP
+ 
+.SS "int qwtDialSetReadOnly (\fBPARAM\fP * p, int id, int rdonly)"
+
+.PP
+.nf
+
+rdonly = 0 | 1
+.fi
+.PP
+ 
+.SS "int qwtDialSetScale (\fBPARAM\fP * p, int id, int maxMajIntv, int maxMinIntv, float step)"
+
+.PP
+.nf
+
+parameter step is no longer used
+.fi
+.PP
+ 
+.SS "int qwtDialSetScaleArc (\fBPARAM\fP * p, int id, float min, float max)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtDialSetValue (\fBPARAM\fP * p, int id, float value)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtDialSetWrapping (\fBPARAM\fP * p, int id, int wrap)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SS "int qwtDialShowBackground (\fBPARAM\fP * p, int id, int show)"
+
+.PP
+.nf
+
+.fi
+.PP
+ 
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for ProcessViewBrowser-ServerProgramming from the source code\&.
