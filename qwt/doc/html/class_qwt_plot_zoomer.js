@@ -2,7 +2,6 @@ var class_qwt_plot_zoomer =
 [
     [ "QwtPlotZoomer", "class_qwt_plot_zoomer.html#a1f77745e104b4a6300ebf1c6c3412b7e", null ],
     [ "QwtPlotZoomer", "class_qwt_plot_zoomer.html#abfb68c623cf2d6e92f4248186541fed7", null ],
-    [ "~QwtPlotZoomer", "class_qwt_plot_zoomer.html#a3af28fe93e0098ce8d09222a7976f254", null ],
     [ "accept", "class_qwt_plot_zoomer.html#abaf8d35d4e84cff6165cbebcdcf07787", null ],
     [ "begin", "class_qwt_plot_zoomer.html#a9de8c0837c7a65d5e9f4e25e904f9d82", null ],
     [ "end", "class_qwt_plot_zoomer.html#ada9b33b017533709f335a89e8595d8b4", null ],

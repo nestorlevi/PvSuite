@@ -69,6 +69,7 @@ var class_qwt_picker =
     [ "trackerPen", "class_qwt_picker.html#a671525e8375a044213a68605911012b7", null ],
     [ "trackerPosition", "class_qwt_picker.html#a71fa740827bb3c92fce7e294f91971d3", null ],
     [ "trackerRect", "class_qwt_picker.html#aef35036d329c3783815bad5658b47669", null ],
+    [ "trackerRect", "class_qwt_picker.html#a885721f2b70791616ec88219345e4edd", null ],
     [ "trackerText", "class_qwt_picker.html#ab8160fa4e1080ba62cce9692dda4e71c", null ],
     [ "transition", "class_qwt_picker.html#a90f9f3485f054c36c1835931e9a387dd", null ],
     [ "updateDisplay", "class_qwt_picker.html#a03aa9bf28f991473d564a57d1bf3bdcc", null ],

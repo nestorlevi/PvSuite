@@ -7,7 +7,6 @@ var class_qwt_plot_abstract_g_l_canvas =
     ] ],
     [ "QwtPlotAbstractGLCanvas", "class_qwt_plot_abstract_g_l_canvas.html#a01b77ab2810c87a13ee505ef098e0e50", null ],
     [ "~QwtPlotAbstractGLCanvas", "class_qwt_plot_abstract_g_l_canvas.html#ab915d560048c3ecf0be21d60436d039e", null ],
-    [ "clearBackingStore", "class_qwt_plot_abstract_g_l_canvas.html#a1ab92d50ceea2b16782e7c9c44df7810", null ],
     [ "draw", "class_qwt_plot_abstract_g_l_canvas.html#af741999be11efb4d966d3f8cbec098d0", null ],
     [ "frameRect", "class_qwt_plot_abstract_g_l_canvas.html#a09f31743e0718815a196b1f39089c23b", null ],
     [ "frameShadow", "class_qwt_plot_abstract_g_l_canvas.html#a4ab2617a928757e6bbc43dbbbde19799", null ],

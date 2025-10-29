@@ -23,9 +23,5 @@ var class_qwt_painter_command =
     [ "pixmapData", "class_qwt_painter_command.html#a8283879022dbb87496e8894da1694013", null ],
     [ "stateData", "class_qwt_painter_command.html#ae801f205610698ebc9f704cdcedafb68", null ],
     [ "stateData", "class_qwt_painter_command.html#afb99f1cae5d81177d8511f38c1390ed8", null ],
-    [ "type", "class_qwt_painter_command.html#a9a916635d802e0906ac60d17585257d1", null ],
-    [ "m_imageData", "class_qwt_painter_command.html#a477f147cc290b7e5b10ed20148664797", null ],
-    [ "m_path", "class_qwt_painter_command.html#a05adabd59f7ac862065de9d257a3edf3", null ],
-    [ "m_pixmapData", "class_qwt_painter_command.html#a4d563cb560ff151a99d63cbc50391907", null ],
-    [ "m_stateData", "class_qwt_painter_command.html#ad59c9d73e5f871056acf89821b65a93b", null ]
+    [ "type", "class_qwt_painter_command.html#a9a916635d802e0906ac60d17585257d1", null ]
 ];

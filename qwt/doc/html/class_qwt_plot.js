@@ -1,12 +1,5 @@
 var class_qwt_plot =
 [
-    [ "Axis", "class_qwt_plot.html#a81df699dcf9dde0752c0726b5f31e271", [
-      [ "yLeft", "class_qwt_plot.html#a81df699dcf9dde0752c0726b5f31e271a1bb1fbc11e31ebfa8bf72356f6837b17", null ],
-      [ "yRight", "class_qwt_plot.html#a81df699dcf9dde0752c0726b5f31e271a1de23b30c6b0c08aefe06d6265b65155", null ],
-      [ "xBottom", "class_qwt_plot.html#a81df699dcf9dde0752c0726b5f31e271ad5566960e78f2473c1a1e853def4c4ac", null ],
-      [ "xTop", "class_qwt_plot.html#a81df699dcf9dde0752c0726b5f31e271ae51eb7525eb3f9f806e659614018beb8", null ],
-      [ "axisCnt", "class_qwt_plot.html#a81df699dcf9dde0752c0726b5f31e271aea62036dfd48ee0f9450718592614892", null ]
-    ] ],
     [ "LegendPosition", "class_qwt_plot.html#a31aacb65b5c049dde8c34a0d8482661b", [
       [ "LeftLegend", "class_qwt_plot.html#a31aacb65b5c049dde8c34a0d8482661ba38b51536a196582bd1f7658c0828eb18", null ],
       [ "RightLegend", "class_qwt_plot.html#a31aacb65b5c049dde8c34a0d8482661ba5273f8002504c24f9dae6ce09b08f03c", null ],
@@ -19,7 +12,6 @@ var class_qwt_plot =
     [ "autoRefresh", "class_qwt_plot.html#aea78ab565d05b69b8730a4af2a11f07e", null ],
     [ "autoReplot", "class_qwt_plot.html#a3a639850b65bc4dbf22b3f3170d61804", null ],
     [ "axisAutoScale", "class_qwt_plot.html#a911dfc1a10cb06621802bc6e59cb430a", null ],
-    [ "axisEnabled", "class_qwt_plot.html#aa6d08ba153cb46662692611b5c38bbe0", null ],
     [ "axisFont", "class_qwt_plot.html#a1b841cc8c8f95e2dc293419a076b1e27", null ],
     [ "axisInterval", "class_qwt_plot.html#a96737783f24cfd3d24731f89892afc71", null ],
     [ "axisMaxMajor", "class_qwt_plot.html#afbab44bf9c3762959a8201ddde5c327a", null ],
@@ -39,7 +31,6 @@ var class_qwt_plot =
     [ "canvasMap", "class_qwt_plot.html#ac68a48e1fbd79355c82bbbf3a1e19e93", null ],
     [ "drawCanvas", "class_qwt_plot.html#add1b88d8312e2671652d23f8181f2433", null ],
     [ "drawItems", "class_qwt_plot.html#a45e0ed6595b0e04ab6ab4be1bd3aa571", null ],
-    [ "enableAxis", "class_qwt_plot.html#ae30c85fdb5af81f13b71cd9297e9c68d", null ],
     [ "event", "class_qwt_plot.html#a538a7e3ad269d8e598eb33a2438bf7c4", null ],
     [ "eventFilter", "class_qwt_plot.html#a08935e161ae0f3480da0f2e364f7d39c", null ],
     [ "footer", "class_qwt_plot.html#ac35c1409cba9a4b9ef71bcec7665609a", null ],
@@ -91,6 +82,5 @@ var class_qwt_plot =
     [ "updateCanvasMargins", "class_qwt_plot.html#aef8e679c64cf3158466ab33e7774f264", null ],
     [ "updateLayout", "class_qwt_plot.html#ad470068832406086d6823109d8d7f050", null ],
     [ "updateLegend", "class_qwt_plot.html#a9c4242c89decd06f3d35b66568ad69c9", null ],
-    [ "updateLegend", "class_qwt_plot.html#a9bb681bc692ed8f35c32174ffe98dca9", null ],
-    [ "QwtPlotItem", "class_qwt_plot.html#a055bada44394b2c38d0d907087a14fa3", null ]
+    [ "updateLegend", "class_qwt_plot.html#a9bb681bc692ed8f35c32174ffe98dca9", null ]
 ];

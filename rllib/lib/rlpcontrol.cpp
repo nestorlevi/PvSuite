@@ -58,7 +58,7 @@ rlPcontrol::rlPcontrol()
 #ifdef RLWIN32
   m_dwProcessId = -1;
   prio = 1; // normal user priority
-  if(rlSIGTERM == 0) rlSIGTERM = RegisterWindowMessage("rlSIGTERM");
+  if(rlSIGTERM == 0) rlSIGTERM = RegisterWindowMessageA("rlSIGTERM");
 #endif
 #ifdef RLUNIX
   prio = 0;
@@ -146,94 +146,96 @@ int rlPcontrol::rlstrlen(const char *str)
 
 int rlPcontrol::start()
 {
-  if(startup_command == NULL) return -1;
-  if(isAlive())               return -1;
-  process_time.getLocalTime();
+    if(startup_command == NULL) return -1;
+    if(isAlive())               return -1;
+    process_time.getLocalTime();
 
 #ifdef RLUNIX
-  if((m_pid = ::fork()) == 0)
-  {
-    rlexec(startup_command);
-    ::exit(0);
-  }
-  // printf("start pid=%ld\n",m_pid);
-  return 0;
+    if((m_pid = ::fork()) == 0)
+    {
+        rlexec(startup_command);
+        ::exit(0);
+    }
+    return 0;
 #endif
 
 #ifdef __VMS
-  int ret;
-  struct dsc$descriptor_s image,prcnam,input,output,error,*inputptr,*outputptr,*errorptr;
+    int ret;
+    struct dsc$descriptor_s image,prcnam,input,output,error,*inputptr,*outputptr,*errorptr;
 
-  image.dsc$w_length   = rlstrlen(startup_command);
-  image.dsc$b_dtype    = DSC$K_DTYPE_T;
-  image.dsc$b_class    = DSC$K_CLASS_S;
-  image.dsc$a_pointer  = startup_command;
+    image.dsc$w_length   = rlstrlen(startup_command);
+    image.dsc$b_dtype    = DSC$K_DTYPE_T;
+    image.dsc$b_class    = DSC$K_CLASS_S;
+    image.dsc$a_pointer  = startup_command;
 
-  prcnam.dsc$w_length  = rlstrlen(process_name);
-  prcnam.dsc$b_dtype   = DSC$K_DTYPE_T;
-  prcnam.dsc$b_class   = DSC$K_CLASS_S;
-  prcnam.dsc$a_pointer = process_name;
+    prcnam.dsc$w_length  = rlstrlen(process_name);
+    prcnam.dsc$b_dtype   = DSC$K_DTYPE_T;
+    prcnam.dsc$b_class   = DSC$K_CLASS_S;
+    prcnam.dsc$a_pointer = process_name;
 
-  input.dsc$w_length   = rlstrlen(m_input);
-  input.dsc$b_dtype    = DSC$K_DTYPE_T;
-  input.dsc$b_class    = DSC$K_CLASS_S;
-  input.dsc$a_pointer  = m_input;
+    input.dsc$w_length   = rlstrlen(m_input);
+    input.dsc$b_dtype    = DSC$K_DTYPE_T;
+    input.dsc$b_class    = DSC$K_CLASS_S;
+    input.dsc$a_pointer  = m_input;
 
-  output.dsc$w_length  = rlstrlen(m_output);
-  output.dsc$b_dtype   = DSC$K_DTYPE_T;
-  output.dsc$b_class   = DSC$K_CLASS_S;
-  output.dsc$a_pointer = m_output;
+    output.dsc$w_length  = rlstrlen(m_output);
+    output.dsc$b_dtype   = DSC$K_DTYPE_T;
+    output.dsc$b_class   = DSC$K_CLASS_S;
+    output.dsc$a_pointer = m_output;
 
-  error.dsc$w_length   = rlstrlen(m_error);
-  error.dsc$b_dtype    = DSC$K_DTYPE_T;
-  error.dsc$b_class    = DSC$K_CLASS_S;
-  error.dsc$a_pointer  = m_error;
+    error.dsc$w_length   = rlstrlen(m_error);
+    error.dsc$b_dtype    = DSC$K_DTYPE_T;
+    error.dsc$b_class    = DSC$K_CLASS_S;
+    error.dsc$a_pointer  = m_error;
 
-  inputptr = outputptr = errorptr = 0;
-  if( input.dsc$w_length > 0) inputptr  = &input;
-  if(output.dsc$w_length > 0) outputptr = &output;
-  if( error.dsc$w_length > 0) errorptr  = &error;
+    inputptr = outputptr = errorptr = 0;
+    if( input.dsc$w_length > 0) inputptr  = &input;
+    if(output.dsc$w_length > 0) outputptr = &output;
+    if( error.dsc$w_length > 0) errorptr  = &error;
 
-  if( inputptr != 0 &&  inputptr->dsc$a_pointer == NULL) inputptr  = 0;
-  if(outputptr != 0 && outputptr->dsc$a_pointer == NULL) outputptr = 0;
-  if( errorptr != 0 &&  errorptr->dsc$a_pointer == NULL) errorptr  = 0;
+    if( inputptr != 0 &&  inputptr->dsc$a_pointer == NULL) inputptr  = 0;
+    if(outputptr != 0 && outputptr->dsc$a_pointer == NULL) outputptr = 0;
+    if( errorptr != 0 &&  errorptr->dsc$a_pointer == NULL) errorptr  = 0;
 
-  /*
-    printf("sys$creprc(\n");
-    printf("  image=%s\n",image.dsc$a_pointer);
-    printf("  inputptr=%s\n" ,inputptr->dsc$a_pointer);
-    printf("  outputptr=%s\n",outputptr->dsc$a_pointer);
-    printf("  errorptr=%s\n" ,errorptr->dsc$a_pointer);
-    printf("  prcnam=%s\n",prcnam.dsc$a_pointer);
-    printf("  priority=%d\n",prio);
-    printf(")\n");
-  */
-  ret = sys$creprc(&m_pid,&image,inputptr,outputptr,errorptr,0,0,&prcnam,prio,0,0,0,0,0);
-  if(ret != SS$_NORMAL) return -1;
-  return 0;
+    ret = sys$creprc(&m_pid,&image,inputptr,outputptr,errorptr,0,0,&prcnam,prio,0,0,0,0,0);
+    if(ret != SS$_NORMAL) return -1;
+    return 0;
 #endif
 
 #ifdef RLWIN32
-  STARTUPINFO        si; //  = { sizeof(si)};
-  si.cb = sizeof(si);
-  PROCESS_INFORMATION pi;
-  DWORD dwCreationFlags;
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    DWORD dwCreationFlags;
+    wchar_t *wcommand = NULL;
 
-  if(m_pid != INVALID_HANDLE_VALUE) CloseHandle((HANDLE) m_pid);
-  dwCreationFlags = CREATE_NO_WINDOW;
-  if     (prio == 0) dwCreationFlags |= IDLE_PRIORITY_CLASS;
-  else if(prio == 1) dwCreationFlags |= NORMAL_PRIORITY_CLASS;
-  else if(prio == 2) dwCreationFlags |= HIGH_PRIORITY_CLASS;
-  else if(prio == 3) dwCreationFlags |= REALTIME_PRIORITY_CLASS;
-  int ret = (int) CreateProcess( NULL, startup_command
-                               , NULL, NULL
-                               , FALSE, dwCreationFlags
-                               , NULL, NULL
-                               , &si, &pi);
-  m_pid = pi.hProcess;
-  m_dwProcessId = pi.dwProcessId;
-  CloseHandle(pi.hThread);
-  return ret;
+    if(m_pid != INVALID_HANDLE_VALUE) CloseHandle((HANDLE) m_pid);
+
+    // Convert ANSI command to Unicode
+    int wlen = MultiByteToWideChar(CP_ACP, 0, startup_command, -1, NULL, 0);
+    if(wlen > 0)
+    {
+        wcommand = new wchar_t[wlen];
+        MultiByteToWideChar(CP_ACP, 0, startup_command, -1, wcommand, wlen);
+    }
+
+    dwCreationFlags = CREATE_NO_WINDOW;
+    if     (prio == 0) dwCreationFlags |= IDLE_PRIORITY_CLASS;
+    else if(prio == 1) dwCreationFlags |= NORMAL_PRIORITY_CLASS;
+    else if(prio == 2) dwCreationFlags |= HIGH_PRIORITY_CLASS;
+    else if(prio == 3) dwCreationFlags |= REALTIME_PRIORITY_CLASS;
+
+    int ret = (int) CreateProcessW( NULL, wcommand
+                                   , NULL, NULL
+                                   , FALSE, dwCreationFlags
+                                   , NULL, NULL
+                                   , &si, &pi);
+
+    if(wcommand) delete[] wcommand;
+
+    m_pid = pi.hProcess;
+    m_dwProcessId = pi.dwProcessId;
+    CloseHandle(pi.hThread);
+    return ret;
 #endif
 }
 

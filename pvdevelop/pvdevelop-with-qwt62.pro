@@ -4,13 +4,25 @@ QT     += printsupport uitools widgets svg
 QT     -= opengl
 
 CONFIG += warn_on release
+
+#Here Nestor: añadir la librería ws2_32 para windows
+win32 {
+    LIBS += -lws2_32
+}
    
 contains(QMAKE_CXX, g++) {
   QMAKE_LFLAGS += -static-libgcc
 }
 INCLUDEPATH  += ../pvbrowser
 INCLUDEPATH  += ../qwt/src
-LIBS         += ../qwt/lib/libqwt.a
+
+win32 {     #Nestor aquí
+    LIBS += $$PWD/../qwt/lib/libqwt.a
+} else:unix {
+    LIBS += -L$$PWD/../qwt/lib -lqwt
+    QMAKE_RPATHDIR += $$PWD/../qwt/lib
+}
+
 #LIBS         += /usr/lib64/libQt6UiTools.so
 DEFINES      += PVDEVELOP
 DEFINES      += NO_WEBKIT

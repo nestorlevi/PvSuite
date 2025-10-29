@@ -21,7 +21,7 @@
 
 #ifdef USE_OPEN_GL
 // murx.rl.was.here.oct.2023 #include <QOpenGLWidget>
-#include <QtOpenGLWidgets/qopenglwidget.h>
+#include <QOpenGLWidget>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
 #include <QStringList>

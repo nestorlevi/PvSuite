@@ -386,6 +386,9 @@ int main(int argc, char *argv[])
     Q_INIT_RESOURCE(pvdevelop);
 
     QApplication app(argc, argv);
+    //Nestor aquí, nuevo estilo multiplataforma
+    app.setStyle(QStyleFactory::create("Fusion"));
+
     setlocale(LC_NUMERIC, "C");
     perhapsDoAction();
     QIcon appIcon(":/images/app.png");

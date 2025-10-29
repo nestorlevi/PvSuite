@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['bar_20charts_2c_20histograms_4012',['Bar Charts, Histograms',['../barchartscreenshots.html',1,'']]]
+  ['0_0',['Qwt License, Version 1.0',['../qwtlicense.html',1,'']]]
 ];

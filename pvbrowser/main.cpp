@@ -24,6 +24,9 @@
 #include "mainwindow.h"
 #include "opt.h"
 #include "tcputil.h"
+#ifdef PVWIN32
+#include <windows.h>
+#endif
 #ifdef USE_WEBKIT
 #include <QWebEngine>
 #include <QWebView>
@@ -227,6 +230,10 @@ int main(int argc, char *argv[])
   wsa(); // init windows sockets
   //printf("within main: 2\n");
   QApplication app(argc, argv);
+
+  //Nestor aquí, nuevo estilo multiplataforma
+  app.setStyle(QStyleFactory::create("Fusion"));
+
   //printf("within main: 3\n");
   QPixmap pm(splash_xpm);
   QSplashScreen *splash = new QSplashScreen(pm);

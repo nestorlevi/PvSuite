@@ -21,17 +21,17 @@ CONFIG  += qt
 SOURCES +=../../sql/qtdatabase.cpp                   
 }
 
-
 INCLUDEPATH += ../lua-5.4.0/src/
-unix:LIBS          += ../lua-5.4.0/src/liblua.a
-win32:LIBS         += ../lua-5.4.0/src/release/liblua.a
 
-!macx {
-unix:LIBS          += ../../../pvserver/libpvsmt.so -lpthread
-unix:INCLUDEPATH   += ../../../pvserver
-unix:LIBS          += ../../../rllib/lib/librllib.so
-unix:INCLUDEPATH   += ../../../rllib/lib
-unix:LIBS          += -ldl
+!macx { #Nestor aquí
+    unix:LIBS          += -L$$PWD/../lua-5.4.0/src -llua
+    unix:LIBS          += -L$$PWD/../../../pvserver -lpvsmt -lpthread
+    unix:INCLUDEPATH   += $$PWD/../../../pvserver
+
+    unix:LIBS          += -L$$PWD/../../../rllib/lib -lrllib
+    unix:INCLUDEPATH   += $$PWD/../../../rllib/lib
+
+    unix:LIBS          += -ldl
 }
 
 macx:LIBS          += ../../../pvserver/libpvsmt.a /usr/lib/libpthread.dylib
@@ -41,10 +41,11 @@ macx:INCLUDEPATH   += ../../../rllib/lib
 
 win32-g++ {
 QMAKE_LFLAGS       += -static-libgcc
-win32:LIBS         += ../../../win-mingw/bin/librllib.a
-win32:LIBS         += ../../../win-mingw/bin/libserverlib.a -lws2_32 -ladvapi32
-win32:INCLUDEPATH  += ../../../rllib/lib
-win32:INCLUDEPATH  += ../../../pvserver
+win32:LIBS += $$PWD/../lua-5.4.0/src/liblua.a
+win32:LIBS += $$PWD/../../../rllib/lib/librllib.a
+win32:LIBS += $$PWD/../../../pvserver/libserverlib.a -lws2_32 -ladvapi32
+win32:INCLUDEPATH  += $$PWD/../../../rllib/lib
+win32:INCLUDEPATH  += $$PWD/../../../pvserver
 }
 
 #DEFINES += USE_INETD

@@ -17,6 +17,11 @@
 #ifndef _MY_QWT_WIDGETS_H_
 #define _MY_QWT_WIDGETS_H_
 
+#include <QEvent>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+#include <QEnterEvent>
+#endif
+
 #include "qwt_scale_widget.h"
 #include "qwt_scale_draw.h"
 #include "qwt_scale_div.h"
@@ -45,7 +50,15 @@ public:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -66,7 +79,11 @@ public:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -88,7 +105,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -107,7 +128,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -128,7 +153,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -161,7 +190,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -184,7 +217,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -203,7 +240,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };
@@ -222,7 +263,11 @@ public slots:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+            #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event);
+#else
+    void enterEvent(QEvent *event);
+#endif
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };

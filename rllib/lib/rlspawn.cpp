@@ -167,54 +167,91 @@ rlSpawn::~rlSpawn()
 
 int rlSpawn::spawn(const char *command)
 {
-#ifdef RLWIN32 
-  if(fromChildRD != NULL) CloseHandle(fromChildRD);
-  if(fromChildWR != NULL) CloseHandle(fromChildWR);
-  if(toChildRD   != NULL) CloseHandle(toChildRD);
-  if(toChildWR   != NULL) CloseHandle(toChildWR);
-  if(hThread     != NULL) CloseHandle(hThread);
-  if(hProcess    != NULL) CloseHandle(hProcess);
-  fromChildRD = NULL;
-  fromChildWR = NULL;
-  toChildRD   = NULL;
-  toChildWR   = NULL;
-  hThread     = NULL;
-  hProcess    = 0;
-
-  SECURITY_ATTRIBUTES saAttr;
-  saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-  saAttr.bInheritHandle = TRUE;
-  saAttr.lpSecurityDescriptor = NULL;
-
-  char cmd[strlen(command)+1];
-  strcpy(cmd,command);
-
-  if(!CreatePipe(&fromChildRD, &fromChildWR, &saAttr, 0))
-  {
-    printf("CreatePipe() - pipe for child process STDOUT failed\n");
-    return -1;
-  }
-  if(!SetHandleInformation(fromChildRD, HANDLE_FLAG_INHERIT, 0)) // Ensure the read handle to the pipe for STDOUT is not inherited
-  {
-    printf("SetHandleInformation() - pipe STDOUT read handle failed for inheritance\n");
-    CloseHandle(fromChildRD);
+#ifdef RLWIN32
+    if(fromChildRD != NULL) CloseHandle(fromChildRD);
+    if(fromChildWR != NULL) CloseHandle(fromChildWR);
+    if(toChildRD   != NULL) CloseHandle(toChildRD);
+    if(toChildWR   != NULL) CloseHandle(toChildWR);
+    if(hThread     != NULL) CloseHandle(hThread);
+    if(hProcess    != NULL) CloseHandle(hProcess);
     fromChildRD = NULL;
-    CloseHandle(fromChildWR);
     fromChildWR = NULL;
-    return -2;
-  }
-  if(!CreatePipe(&toChildRD, &toChildWR, &saAttr, 0))
-  {
-    printf("CreatePipe() - pipe for child process STDIN failed\n");
-    CloseHandle(fromChildRD);
-    fromChildRD = NULL;
-    CloseHandle(fromChildWR);
-    fromChildWR = NULL;
-    return -3;
-  }
-  if(!SetHandleInformation(toChildWR, HANDLE_FLAG_INHERIT, 0)) // Ensure the write handle to the pipe for STDIN is not inherited
-  {
-    printf("SetHandleInformation() - pipe STDIN write handle failed for inheritance\n");
+    toChildRD   = NULL;
+    toChildWR   = NULL;
+    hThread     = NULL;
+    hProcess    = 0;
+
+    SECURITY_ATTRIBUTES saAttr;
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = NULL;
+
+    // Convert command to wide char
+    wchar_t wcommand[MAX_PATH];
+    MultiByteToWideChar(CP_ACP, 0, command, -1, wcommand, MAX_PATH);
+
+    if(!CreatePipe(&fromChildRD, &fromChildWR, &saAttr, 0))
+    {
+        printf("CreatePipe() - pipe for child process STDOUT failed\n");
+        return -1;
+    }
+    if(!SetHandleInformation(fromChildRD, HANDLE_FLAG_INHERIT, 0))
+    {
+        printf("SetHandleInformation() - pipe STDOUT read handle failed for inheritance\n");
+        CloseHandle(fromChildRD);
+        fromChildRD = NULL;
+        CloseHandle(fromChildWR);
+        fromChildWR = NULL;
+        return -2;
+    }
+    if(!CreatePipe(&toChildRD, &toChildWR, &saAttr, 0))
+    {
+        printf("CreatePipe() - pipe for child process STDIN failed\n");
+        CloseHandle(fromChildRD);
+        fromChildRD = NULL;
+        CloseHandle(fromChildWR);
+        fromChildWR = NULL;
+        return -3;
+    }
+    if(!SetHandleInformation(toChildWR, HANDLE_FLAG_INHERIT, 0))
+    {
+        printf("SetHandleInformation() - pipe STDIN write handle failed for inheritance\n");
+        CloseHandle(fromChildRD);
+        fromChildRD = NULL;
+        CloseHandle(fromChildWR);
+        fromChildWR = NULL;
+        CloseHandle(toChildRD);
+        toChildRD = NULL;
+        CloseHandle(toChildWR);
+        toChildWR = NULL;
+        return -4;
+    }
+
+    STARTUPINFOW si;
+    memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si);
+    si.hStdError  = fromChildWR;
+    si.hStdOutput = fromChildWR;
+    si.hStdInput  = toChildRD;
+    si.dwFlags   |= STARTF_USESTDHANDLES;
+
+    PROCESS_INFORMATION pi;
+    memset(&pi, 0, sizeof(pi));
+
+    DWORD dwCreationFlags = 0;
+
+    int ret = (int) CreateProcessW( NULL, wcommand
+                                   , NULL, NULL
+                                   , TRUE, dwCreationFlags
+                                   , NULL, NULL
+                                   , &si, &pi);
+    if(ret)
+    {
+        hProcess = pi.hProcess;
+        hThread  = pi.hThread;
+        return 1;
+    }
+
     CloseHandle(fromChildRD);
     fromChildRD = NULL;
     CloseHandle(fromChildWR);
@@ -223,84 +260,48 @@ int rlSpawn::spawn(const char *command)
     toChildRD = NULL;
     CloseHandle(toChildWR);
     toChildWR = NULL;
-    return -4;
-  }  
+    return -1;
+#else
+    int to_child[2], from_child[2], ret;
 
-  STARTUPINFO si; //  = { sizeof(si)};
-  memset(&si,0,sizeof(si));
-  si.cb = sizeof(si);
-  si.hStdError  = fromChildWR;
-  si.hStdOutput = fromChildWR;
-  si.hStdInput  = toChildRD;
-  si.dwFlags   |= STARTF_USESTDHANDLES;
+    if(toChild   != NULL) ::fclose((FILE*) toChild);
+    if(fromChild != NULL) ::fclose((FILE*) fromChild);
+    toChild = fromChild = NULL;
 
-  PROCESS_INFORMATION pi;
-  memset(&pi,0,sizeof(pi));
+    ret = ::pipe(to_child);
+    if(ret == -1) return -1;
+    ret = ::pipe(from_child);
+    if(ret == -1) return -1;
 
-  DWORD dwCreationFlags = 0;
-
-  int ret = (int) CreateProcess( NULL, cmd
-                                , NULL, NULL
-                                , TRUE, dwCreationFlags
-                                , NULL, NULL
-                                , &si, &pi);
-  if(ret)
-  { // success
-    hProcess = pi.hProcess;
-    hThread  = pi.hThread;
-    return 1;
-  }
-  // fail
-  CloseHandle(fromChildRD);
-  fromChildRD = NULL;
-  CloseHandle(fromChildWR);
-  fromChildWR = NULL;
-  CloseHandle(toChildRD);
-  toChildRD = NULL;
-  CloseHandle(toChildWR);
-  toChildWR = NULL;
-  return -1;
-#else  
-  int to_child[2],from_child[2],ret;
-
-  if(toChild   != NULL) ::fclose((FILE*) toChild);
-  if(fromChild != NULL) ::fclose((FILE*) fromChild);
-  toChild = fromChild = NULL;
-
-  ret = ::pipe(to_child);
-  if(ret == -1) return -1;
-  ret = ::pipe(from_child);
-  if(ret == -1) return -1;
-
-  if((pid = ::fork()) == 0)
-  {
-    if(to_child[0] != 0) // stdin
+    if((pid = ::fork()) == 0)
     {
-      ::dup2(to_child[0],0);
-      ::close(to_child[0]);
+        if(to_child[0] != 0)
+        {
+            ::dup2(to_child[0], 0);
+            ::close(to_child[0]);
+        }
+        if(from_child[1] != 2)
+        {
+            ::dup2(from_child[1], 2);
+        }
+        if(from_child[1] != 1)
+        {
+            ::dup2(from_child[1], 1);
+            ::close(from_child[1]);
+        }
+        ::close(to_child[1]);
+        ::close(from_child[0]);
+        ::rlexec(command);
+        ::exit(0);
     }
-    if(from_child[1] != 2) // stderr
-    {
-      ::dup2(from_child[1] ,2);
-    }
-    if(from_child[1] != 1) // stdout
-    {
-      ::dup2(from_child[1],1);
-      ::close(from_child[1]);
-    }
-    ::close(to_child[1]);
-    ::close(from_child[0]);
-    ::rlexec(command);
-    ::exit(0);
-  }
 
-  ::close(to_child[0]);
-  ::close(from_child[1]);
-  toChild   = (void*) ::fdopen(to_child[1],"w");
-  if(toChild == NULL)   {                            return -1; }
-  fromChild = (void*) ::fdopen(from_child[0],"r");
-  if(fromChild == NULL) { ::fclose((FILE*) toChild); return -1; }
-  return pid;
+    ::close(to_child[0]);
+    ::close(from_child[1]);
+    toChild   = (void*) ::fdopen(to_child[1], "w");
+    if(toChild == NULL)   {                            return -1; }
+    fromChild = (void*) ::fdopen(from_child[0], "r");
+    if(fromChild == NULL) { ::fclose((FILE*) toChild); return -1; }
+    return pid;
 #endif
 }
 

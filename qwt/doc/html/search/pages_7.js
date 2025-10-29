@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['what_27s_20new_20in_20qwt_206_2e2_4020',['What&apos;s new in Qwt 6.2',['../qwtchangelog.html',1,'']]]
+  ['dials_20compasses_20knobs_20wheels_20sliders_20thermos_0',['Dials, Compasses, Knobs, Wheels, Sliders, Thermos',['../controlscreenshots.html',1,'']]]
 ];

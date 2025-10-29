@@ -239,13 +239,13 @@ int tcp_init()
 #endif
     if(opt.arg_debug)
     {
-      printf("bifrost = %ld\n", (long) bifrost);
-      printf("pvb_com_con        = %ld\n", (long) pvb_com_con);
-      printf("pvb_com_rec        = %ld\n", (long) pvb_com_rec);
-      printf("pvb_com_rec_binary = %ld\n", (long) pvb_com_rec_binary);
-      printf("pvb_com_send       = %ld\n", (long) pvb_com_send);
-      printf("pvb_com_close      = %ld\n", (long) pvb_com_close);
-      printf("pvb_com_plugin_on  = %ld\n", (long) pvb_com_plugin_on);
+      printf("bifrost = %ld\n", (intptr_t ) bifrost);
+      printf("pvb_com_con        = %ld\n", (intptr_t ) pvb_com_con);
+      printf("pvb_com_rec        = %ld\n", (intptr_t ) pvb_com_rec);
+      printf("pvb_com_rec_binary = %ld\n", (intptr_t ) pvb_com_rec_binary);
+      printf("pvb_com_send       = %ld\n", (intptr_t ) pvb_com_send);
+      printf("pvb_com_close      = %ld\n", (intptr_t ) pvb_com_close);
+      printf("pvb_com_plugin_on  = %ld\n", (intptr_t ) pvb_com_plugin_on);
     }  
   }
   else

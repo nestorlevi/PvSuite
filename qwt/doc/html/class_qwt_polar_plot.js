@@ -65,6 +65,5 @@ var class_qwt_polar_plot =
     [ "visibleInterval", "class_qwt_polar_plot.html#a1c5008902bf5a119719df008ac6b612d", null ],
     [ "zoom", "class_qwt_polar_plot.html#a89a033c97d6301c70a5df054b5d27de9", null ],
     [ "zoomFactor", "class_qwt_polar_plot.html#a89bee2cd103cf1fc2461b36b0e684fab", null ],
-    [ "zoomPos", "class_qwt_polar_plot.html#a3a08531627eb77aeb2b9bc251afd62b4", null ],
-    [ "QwtPolarItem", "class_qwt_polar_plot.html#a4e1135b696589dcc39bedb0b66820148", null ]
+    [ "zoomPos", "class_qwt_polar_plot.html#a3a08531627eb77aeb2b9bc251afd62b4", null ]
 ];

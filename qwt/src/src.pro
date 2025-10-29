@@ -19,28 +19,27 @@ QWT_OUT_ROOT = $${OUT_PWD}/..
 TEMPLATE          = lib
 TARGET            = $$qwtLibraryTarget(qwt)
 
-DESTDIR           = $${QWT_OUT_ROOT}/lib
+DESTDIR           = $${QWT_ROOT}/lib        #Here Nestor
 
-#//rlmurx-was-here
-#contains(QWT_CONFIG, QwtDll) {
-#
-#    CONFIG += dll
-#    win32|symbian: DEFINES += QT_DLL QWT_DLL QWT_MAKEDLL
-#
-#    unix:!macx {
-#        !isEmpty( QMAKE_LFLAGS_SONAME ) {
-#    
-#            # we increase the SONAME for every minor number
-#
-#            QWT_SONAME=libqwt.so.$${VER_MAJ}.$${VER_MIN}
-#            QMAKE_LFLAGS *= $${QMAKE_LFLAGS_SONAME}$${QWT_SONAME}
-#            QMAKE_LFLAGS_SONAME=
-#        }
-#    }
-#}
-#else {
+contains(QWT_CONFIG, QwtDll) {
+
+    CONFIG += dll
+    win32|symbian: DEFINES += QT_DLL QWT_DLL QWT_MAKEDLL
+
+    unix:!macx:!android {
+        !isEmpty( QMAKE_LFLAGS_SONAME ) {
+    
+            # we increase the SONAME for every minor number
+
+            QWT_SONAME=libqwt.so.$${VER_MAJ}.$${VER_MIN}
+            QMAKE_LFLAGS *= $${QMAKE_LFLAGS_SONAME}$${QWT_SONAME}
+            QMAKE_LFLAGS_SONAME=
+        }
+    }
+}
+else {
     CONFIG += staticlib
-#} 
+} 
 
 contains(QWT_CONFIG, QwtFramework) {
 
@@ -83,14 +82,14 @@ contains(QWT_CONFIG, QwtPkgConfig) {
     greaterThan(QT_MAJOR_VERSION, 4) {
 
         QMAKE_PKGCONFIG_FILE = Qt$${QT_MAJOR_VERSION}$${QMAKE_PKGCONFIG_NAME}
-        QMAKE_PKGCONFIG_REQUIRES = Qt6Widgets Qt6Concurrent Qt6PrintSupport
+        QMAKE_PKGCONFIG_REQUIRES = Qt5Widgets Qt5Concurrent Qt5PrintSupport
 
         contains(QWT_CONFIG, QwtSvg) {
-            QMAKE_PKGCONFIG_REQUIRES += Qt6Svg
+            QMAKE_PKGCONFIG_REQUIRES += Qt5Svg
         }
 
         contains(QWT_CONFIG, QwtOpenGL) {
-            QMAKE_PKGCONFIG_REQUIRES += Qt6OpenGL
+            QMAKE_PKGCONFIG_REQUIRES += Qt5OpenGL
         }
 
         QMAKE_DISTCLEAN += $${DESTDIR}/$${QMAKE_PKGCONFIG_DESTDIR}/$${QMAKE_PKGCONFIG_FILE}.pc

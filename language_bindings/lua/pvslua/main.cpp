@@ -7,6 +7,7 @@
 //***************************************************************************
 #include "pvapp.h"
 #include <unistd.h>
+#include <cstdint>  //Nestor aquí: Para uintptr_t
 
 // Include the Lua API header files
 #ifdef __cplusplus
@@ -89,7 +90,8 @@ int pvMain(PARAM *p)
 
   // call luaMain
   lua_getglobal(L, "luaMain");
-  lua_pushnumber(L, (long unsigned int) p);  // rlmurx15jan2025 vorher (long)
+  //lua_pushnumber(L, (long unsigned int) p);  // rlmurx15jan2025 vorher (long)
+  lua_pushnumber(L, (uintptr_t)p);  // Usa uintptr_t para conversión segura
 
   status = lua_pcall(L, 1, 1, 0); 
   if(status)

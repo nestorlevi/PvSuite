@@ -179,8 +179,14 @@ QWidget *MyRootWidget::getChild(int x, int y)
 
 void MyRootWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
-  int x = (int) event->position().x();
-  int y = (int) event->position().y();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) //Nestor aquí: Compatibilidad con QT6
+    int x = (int) event->position().x();
+    int y = (int) event->position().y();
+#else
+    int x = event->pos().x();
+    int y = event->pos().y();
+#endif
+
   if(opt_develop.arg_debug > 0) printf("DoubleClickEvent\n");
   //#####################################
   grabbed = 0;
@@ -302,12 +308,20 @@ void MyRootWidget::MoveKey(int key)
 
 void MyRootWidget::mouseMoveEvent(QMouseEvent *event)
 {
-  int x = (int) event->position().x();
-  int y = (int) event->position().y();
-  // murx.rl.was.here int gx = event->globalX();
-  // murx.rl.was.here int gy = event->globalY();
-  int gx = event->globalPosition().x();
-  int gy = event->globalPosition().y();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) //Nestor aquí: Compatibilidad con QT6
+    int x = (int) event->position().x();
+    int y = (int) event->position().y();
+
+    int gx = (int) event->globalPosition().x();
+    int gy = (int) event->globalPosition().y();
+#else
+    int x = event->pos().x();
+    int y = event->pos().y();
+
+    int gx = event->globalPos().x();
+    int gy = event->globalPos().y();
+#endif
+
   if(opt_develop.arg_debug > 0) printf("mouseMoveEvent x=%d y=%d\n",x,y);
   //#####################################
   if(aboveDesignArea(x,y,gx,gy))
@@ -530,12 +544,22 @@ void MyRootWidget::selectWidget(QWidget *child)
 
 void MyRootWidget::mousePressEvent(QMouseEvent *event)
 {
-  int x = (int) event->position().x();
-  int y = (int) event->position().y();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) //Nestor aquí: Compatibilidad con QT6
+    int x = (int) event->position().x();
+    int y = (int) event->position().y();
+
+    int gx = (int) event->globalPosition().x();
+    int gy = (int) event->globalPosition().y();
+#else
+    int x = event->pos().x();
+    int y = event->pos().y();
+
+    int gx = event->globalPos().x();
+    int gy = event->globalPos().y();
+#endif
   // int gx = event->globalX();
   // int gy = event->globalY();
-  int gx = (int) event->globalPosition().x();
-  int gy = (int) event->globalPosition().y();
+
   if(opt_develop.arg_debug > 0) printf("mousePressEvent x=%d y=%d\n",x,y);
   reparentDone = 0;
   //#####################################
@@ -924,10 +948,20 @@ void MyRootWidget::mousePressEvent(QMouseEvent *event)
 
 void MyRootWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-  int x = (int) event->position().x();
-  int y = (int) event->position().y();
-  int gx = (int) event->globalPosition().x();
-  int gy = (int) event->globalPosition().y();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) //Nestor aquí: Compatibilidad con QT6
+    int x = (int) event->position().x();
+    int y = (int) event->position().y();
+
+    int gx = (int) event->globalPosition().x();
+    int gy = (int) event->globalPosition().y();
+#else
+    int x = event->pos().x();
+    int y = event->pos().y();
+
+    int gx = event->globalPos().x();
+    int gy = event->globalPos().y();
+#endif
+
   if(opt_develop.arg_debug > 0) printf("mouseReleaseEvent x=%d y=%d\n",x,y);
   //#####################################
   if(aboveDesignArea(x,y,gx,gy))

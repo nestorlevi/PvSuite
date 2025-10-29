@@ -16,6 +16,9 @@
 #include "pvdefine.h"
 #include <QtGui>
 #include <stdio.h>
+#ifdef PVWIN32
+#include <winsock2.h>
+#endif
 #ifdef PVUNIX
 #include <sys/select.h>
 #endif
@@ -1331,7 +1334,7 @@ void MainWindow::slotReconnect()
       qbuf = QString::asprintf("xterm -e %s -L %d:%s:%d %s",opt.ssh,opt.sshport,ssh_host,ssh_port,ssh_user_host);
 #endif
 #ifdef PVWIN32
-      qbuf.sprintf("%s -ssh -L %d:%s:%d %s",opt.ssh,opt.sshport,ssh_host,ssh_port,ssh_user_host);
+      qbuf = QString::asprintf("%s -ssh -L %d:%s:%d %s",opt.ssh,opt.sshport,ssh_host,ssh_port,ssh_user_host);
 #endif
       if(opt.arg_debug) printf("mysystem(%s)\n",(const char *) qbuf.toUtf8());
       mysystem(qbuf.toUtf8());

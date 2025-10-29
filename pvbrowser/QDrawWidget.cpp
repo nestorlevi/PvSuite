@@ -968,8 +968,13 @@ void QDrawWidget::mouseMoveEvent(QMouseEvent *event)
 {
   char buf[100];
 
-  movedX = (int) event->position().x(); 
-  movedY = (int) event->position().y();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)            //Nestor aquí: compatibilidad con qt6
+    movedX = (int) event->position().x();
+    movedY = (int) event->position().y();
+#else
+    movedX = event->pos().x();
+    movedY = event->pos().y();
+#endif
   int buttons = event->buttons();
   if(buttons == Qt::LeftButton || buttons == Qt::RightButton || buttons == Qt::MiddleButton)
   {
@@ -992,8 +997,13 @@ void QDrawWidget::mousePressEvent(QMouseEvent *event)
   char buf[100];
   int  button,ibutton;
 
-  pressedX = (int) event->position().x(); 
-  pressedY = (int) event->position().y(); 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)            //Nestor aquí: compatibilidad con qt6
+    pressedX = (int) event->position().x();
+    pressedY = (int) event->position().y();
+#else
+    pressedX = event->pos().x();
+    pressedY = event->pos().y();
+#endif
   button   = event->button();
   QWidget::mousePressEvent(event);
   if(svgAnimator != NULL)
@@ -1016,8 +1026,13 @@ void QDrawWidget::mouseReleaseEvent(QMouseEvent *event)
 
   pressedX = -1;
   pressedY = -1;
-  movedX   = (int) event->position().x(); 
-  movedY   = (int) event->position().y(); 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)            //Nestor aquí: compatibilidad con qt6
+  movedX = (int) event->position().x();
+  movedY = (int) event->position().y();
+#else
+  movedX = event->pos().x();
+  movedY = event->pos().y();
+#endif
   if(svgAnimator != NULL)
   {
     button = event->button();

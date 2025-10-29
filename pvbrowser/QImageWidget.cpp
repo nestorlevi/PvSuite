@@ -85,7 +85,13 @@ char buf[80];
 
   if(e->button() == Qt::LeftButton)
   {
-    sprintf(buf,"QPushButton(%d) -xy=%d,%d\n",id, (int) e->position().x(), (int) e->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+    sprintf(buf, "QPushButton(%d) -xy=%d,%d\n", id,
+            (int) e->position().x(), (int) e->position().y());
+#else
+    sprintf(buf, "QPushButton(%d) -xy=%d,%d\n", id,
+            e->pos().x(), e->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
   }
   else if(e->button() == Qt::RightButton)
@@ -101,7 +107,13 @@ void QImageWidget::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QWidget::mouseReleaseEvent(event);
 }

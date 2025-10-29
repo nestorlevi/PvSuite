@@ -1,10 +1,9 @@
 var class_qwt_plot_open_g_l_canvas =
 [
     [ "QwtPlotOpenGLCanvas", "class_qwt_plot_open_g_l_canvas.html#abbe1cb1c204a56b63e404460df5b6526", null ],
-    [ "QwtPlotOpenGLCanvas", "class_qwt_plot_open_g_l_canvas.html#aaaaf96e7b6293f1dc83bb226d072436d", null ],
+    [ "QwtPlotOpenGLCanvas", "class_qwt_plot_open_g_l_canvas.html#a494d45347025126c94b64fa88a7ce864", null ],
     [ "~QwtPlotOpenGLCanvas", "class_qwt_plot_open_g_l_canvas.html#a6dd609d1df835e9e89a120d8bf10a727", null ],
     [ "borderPath", "class_qwt_plot_open_g_l_canvas.html#a96f65e1c784bdd43c1e0e3d66f670a1e", null ],
-    [ "clearBackingStore", "class_qwt_plot_open_g_l_canvas.html#a7e38c258d975c5cf226932a8fb50874a", null ],
     [ "event", "class_qwt_plot_open_g_l_canvas.html#ad0bed1c1c8bc57b16b830d325a943102", null ],
     [ "initializeGL", "class_qwt_plot_open_g_l_canvas.html#a5a6b508d7be45426667284fad37eeac3", null ],
     [ "invalidateBackingStore", "class_qwt_plot_open_g_l_canvas.html#af51f7f7ddee32b6067821e694c358faa", null ],

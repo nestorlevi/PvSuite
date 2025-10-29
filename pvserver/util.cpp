@@ -326,84 +326,84 @@ static const char *pvFilename(const char *path)
 static int pvUnlink(PARAM *p)
 {
 #ifdef PVUNIX
-  static DIR *dirp;
-  static struct dirent *dp;
+    static DIR *dirp;
+    static struct dirent *dp;
 
-  dirp = opendir(".");
-  if(dirp == NULL) return -1;
-  while((dp = readdir(dirp)) != NULL)
-  {
-    if(dp->d_name[0] == '.') ;
-    else if(strncmp(dp->d_name,p->file_prefix,5+6) == 0)
+    dirp = opendir(".");
+    if(dirp == NULL) return -1;
+    while((dp = readdir(dirp)) != NULL)
     {
-      //printf("unlink=%s\n",dp->d_name);
-      unlink(dp->d_name);
+        if(dp->d_name[0] == '.') continue;
+        if(strncmp(dp->d_name, p->file_prefix, strlen(p->file_prefix)) == 0)
+        {
+            //printf("unlink=%s\n", dp->d_name);
+            unlink(dp->d_name);
+        }
     }
-  }
-  closedir(dirp);
+    closedir(dirp);
 #endif
 
 #ifdef PVWIN32
-  static WIN32_FIND_DATA wfd;
-  static HANDLE hFindFile;
+    static WIN32_FIND_DATAW wfd;  // Cambiado a versión Wide (Unicode)
+    static HANDLE hFindFile;
+    wchar_t wprefix[MAX_PATH];
 
-  hFindFile = FindFirstFile(p->file_prefix,&wfd);
-  if(hFindFile == INVALID_HANDLE_VALUE) return 0;
-  //printf("unlink=%s\n",(const char *) &wfd.cFileName);
-  unlink((const char *) &wfd.cFileName);
-  while(1)
-  {
-    if(FindNextFile(hFindFile,&wfd) == TRUE) 
-    {
-      //printf("unlink=%s\n",(const char *) &wfd.cFileName);
-      unlink((const char *) &wfd.cFileName);
-    }
-    else                                   
-    { 
-      FindClose(hFindFile); 
-      break;
-    }
-  }
+    // Convertir file_prefix a UTF-16 (Windows Unicode)
+    MultiByteToWideChar(CP_UTF8, 0, p->file_prefix, -1, wprefix, MAX_PATH);
+
+    hFindFile = FindFirstFileW(wprefix, &wfd);
+    if(hFindFile == INVALID_HANDLE_VALUE) return 0;
+
+    do {
+        // Convertir de UTF-16 a UTF-8 para unlink (si es necesario)
+        char filename[MAX_PATH];
+        WideCharToMultiByte(CP_UTF8, 0, wfd.cFileName, -1, filename, MAX_PATH, NULL, NULL);
+        _unlink(filename);  // Usar _unlink() en Windows
+    } while(FindNextFileW(hFindFile, &wfd));
+
+    FindClose(hFindFile);
 #endif
-  
+
 #ifdef __VMS
-  int  ret,context;
-  char freturn[1024];
-  char wildcard[80];
-  struct dsc$descriptor_s dwildcard;
-  struct dsc$descriptor_s dfreturn;
-  char *cptr;
+    int  ret, context;
+    char freturn[1024];
+    char wildcard[80];
+    struct dsc$descriptor_s dwildcard;
+    struct dsc$descriptor_s dfreturn;
+    char *cptr;
 
-  context = 0;
-  while(1)
-  {
-    strcpy(wildcard,p->file_prefix);
-
-    dwildcard.dsc$w_length  = strlen(wildcard);
-    dwildcard.dsc$a_pointer = wildcard;
-    dwildcard.dsc$b_dtype   = DSC$K_DTYPE_T;
-    dwildcard.dsc$b_class   = DSC$K_CLASS_S;
-
-    dfreturn.dsc$w_length  = sizeof(freturn) - 1;
-    dfreturn.dsc$a_pointer = &freturn[0];
-    dfreturn.dsc$b_dtype   = DSC$K_DTYPE_T;
-    dfreturn.dsc$b_class   = DSC$K_CLASS_S;
-
-    ret = LIB$FIND_FILE(&dwildcard,&dfreturn,&context,0,0,0,0);
-    freturn[dfreturn.dsc$w_length] = '\0';
-    cptr = strstr(freturn," ");
-    if(cptr != NULL) *cptr = '\0';
-    if     (ret == RMS$_NMF)    break; // no more files found
-    else if(ret != RMS$_NORMAL) break;
-    else if(strstr(freturn,p->file_prefix) != NULL)
+    context = 0;
+    while(1)
     {
-      //printf("unlink=%s\n",freturn);
-      unlink(freturn);
+        strcpy(wildcard, p->file_prefix);
+
+        dwildcard.dsc$w_length  = strlen(wildcard);
+        dwildcard.dsc$a_pointer = wildcard;
+        dwildcard.dsc$b_dtype   = DSC$K_DTYPE_T;
+        dwildcard.dsc$b_class   = DSC$K_CLASS_S;
+
+        dfreturn.dsc$w_length  = sizeof(freturn) - 1;
+        dfreturn.dsc$a_pointer = &freturn[0];
+        dfreturn.dsc$b_dtype   = DSC$K_DTYPE_T;
+        dfreturn.dsc$b_class   = DSC$K_CLASS_S;
+
+        ret = LIB$FIND_FILE(&dwildcard, &dfreturn, &context, 0, 0, 0, 0);
+        if(ret == RMS$_NMF)    break; // no more files found
+        if(ret != RMS$_NORMAL) break;
+
+        freturn[dfreturn.dsc$w_length] = '\0';
+        cptr = strstr(freturn, " ");
+        if(cptr != NULL) *cptr = '\0';
+
+        if(strstr(freturn, p->file_prefix) != NULL)
+        {
+            //printf("unlink=%s\n", freturn);
+            unlink(freturn);
+        }
     }
-  }
 #endif
-  
-  return 0;
+
+    return 0;
 }
 
 static void pv_length_check(PARAM *p, const char *buf)
@@ -7866,29 +7866,55 @@ int getParentWidgetId(const char *text, int *parent)
 int pvsystem(const char *command)
 {
 #ifdef PVWIN32
-  int ret;
-  STARTUPINFO         si; // = { sizeof(si)};
-  si.cb = sizeof(si);
-  PROCESS_INFORMATION pi;
-  char cmd[4096];
+    int ret;
+    STARTUPINFOW si;          // Versión Wide (Unicode)
+    PROCESS_INFORMATION pi;
+    wchar_t wcmd[4096];
+    wchar_t wverb[16] = {0};  // Para verbo "start"
 
-  if(strncmp(command,"start",5) == 0 || strncmp(command,"START",5) == 0)
-  {
-    ExpandEnvironmentStrings(command,cmd,sizeof(cmd)-1);
-    ret = system(cmd);
-  }
-  else
-  {
-    ExpandEnvironmentStrings(command,cmd,sizeof(cmd)-1);
-    ret = (int) CreateProcess( NULL, cmd
-                             , NULL, NULL
-                             , FALSE, CREATE_NO_WINDOW
-                             , NULL, NULL
-                             , &si, &pi);
-  }
-  return ret;
+    // Convertir comando a UTF-16
+    MultiByteToWideChar(CP_UTF8, 0, command, -1, wcmd, 4096);
+
+    memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si);
+    memset(&pi, 0, sizeof(pi));
+
+    // Detectar si es un comando "start" (case insensitive)
+    if (wcsnicmp(wcmd, L"start", 5) == 0 || wcsnicmp(wcmd, L"START", 5) == 0)
+    {
+        // Expandir variables de entorno (versión Wide)
+        ExpandEnvironmentStringsW(wcmd, wcmd, 4096);
+
+        // Usar _wsystem para compatibilidad Unicode
+        ret = _wsystem(wcmd);
+    }
+    else
+    {
+        // Expandir variables de entorno (versión Wide)
+        ExpandEnvironmentStringsW(wcmd, wcmd, 4096);
+
+        // Crear proceso con Unicode
+        ret = (int) CreateProcessW(
+            NULL,               // No module name (use command line)
+            wcmd,              // Comando Unicode
+            NULL,              // Process handle not inheritable
+            NULL,              // Thread handle not inheritable
+            FALSE,             // Set handle inheritance to FALSE
+            CREATE_NO_WINDOW,   // Creation flags
+            NULL,              // Use parent's environment block
+            NULL,              // Use parent's starting directory
+            &si,               // Pointer to STARTUPINFO structure
+            &pi);              // Pointer to PROCESS_INFORMATION structure
+
+        if (ret != 0) {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+        }
+    }
+    return ret;
 #else
-  return system(command);
+    // Unix/VMS - UTF-8 nativo
+    return system(command);
 #endif
 }
 

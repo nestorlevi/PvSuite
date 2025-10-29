@@ -98,7 +98,12 @@ public:
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-            void enterEvent(QEnterEvent *event);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
+    void enterEvent(QEnterEvent *event) override;
+#else
+    void enterEvent(QEvent *event) override;
+#endif
+
     virtual void leaveEvent(QEvent *event);
     int *s,id;
 };

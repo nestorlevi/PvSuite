@@ -53,6 +53,7 @@
 #ifdef PVWIN32
 #include <io.h>
 #include <direct.h>
+#include <winsock2.h>
 #else
 #include <sys/types.h>
 #include <netinet/in.h>

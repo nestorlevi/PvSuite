@@ -8,7 +8,8 @@ var class_qwt_plot_interval_curve =
     ] ],
     [ "PaintAttribute", "class_qwt_plot_interval_curve.html#a3deaf543802d69a38961f9e944bfad95", [
       [ "ClipPolygons", "class_qwt_plot_interval_curve.html#a3deaf543802d69a38961f9e944bfad95aac1361651d57a0df1a079f30849e72a1", null ],
-      [ "ClipSymbol", "class_qwt_plot_interval_curve.html#a3deaf543802d69a38961f9e944bfad95a9b164d29534731bbd3d34717baf399ca", null ]
+      [ "ClipSymbol", "class_qwt_plot_interval_curve.html#a3deaf543802d69a38961f9e944bfad95a9b164d29534731bbd3d34717baf399ca", null ],
+      [ "TubeAsLines", "class_qwt_plot_interval_curve.html#a3deaf543802d69a38961f9e944bfad95afe88cae234f99cc055400ed78fed8526", null ]
     ] ],
     [ "QwtPlotIntervalCurve", "class_qwt_plot_interval_curve.html#a3cf38c3d362e214b1dabad469a04e289", null ],
     [ "QwtPlotIntervalCurve", "class_qwt_plot_interval_curve.html#ab7d0884ffb900fc453d621580f348c0e", null ],

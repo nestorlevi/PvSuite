@@ -5,6 +5,10 @@
 TEMPLATE = lib
 CONFIG  += warn_on release
 CONFIG  -= qt
+
+QWT_OUT_ROOT = $${PWD}/
+DESTDIR           = $${QWT_OUT_ROOT}      #Here Nestor
+
 !macx {
 unix:CXXFLAGS += -fPIC
 unix:QMAKE_LFLAGS_SHLIB += -lpthread -ldl
@@ -29,5 +33,12 @@ SOURCES += glencode.cpp      \
            util.cpp          \
            wthread.cpp
 
-LIBS    += -ldl -lpthread
-TARGET = pvsmt
+win32 {
+    CONFIG  += staticlib
+    LIBS += -lws2_32      # Añade Winsock2 para sockets
+    TARGET = serverlib
+}
+else {
+    LIBS += -lpthread -ldl
+    TARGET = pvsmt
+}

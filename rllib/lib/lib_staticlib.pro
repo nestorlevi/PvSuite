@@ -4,6 +4,11 @@ CONFIG  += warn_on release staticlib
 #CONFIG  += warn_on release
 CONFIG  -= qt
 CFLAGS   = -pipe -Wall -W -O0 -march=i586 -mcpu=i686 -fmessage-length=0 -DNO_DEBUG -fPIC
+
+QWT_OUT_ROOT = $${PWD}/
+DESTDIR           = $${QWT_OUT_ROOT}      #Here Nestor
+message("El valor de QWT_ROOT es: $${QWT_OUT_ROOT}")
+
 HEADERS  = rllib.h                   \
            rlspawn.h                 \
            rlwthread.h               \
@@ -105,7 +110,7 @@ SOURCES  = rlspawn.cpp                 \
            rljson.cpp
 Hilscher {
   HEADERS += rlcannode.h           \
-             rlcanopendaemon.h     \    
+             rlcanopendaemon.h     \
              rlcanopentypes.h      \
              rlcanopenstructs.h    \
              objdir.h              \
@@ -120,16 +125,17 @@ Hilscher {
   INCLUDEPATH = ../usr-inc
 }
 
-unix:OBJECTS += ../foreign/abel/lib/libabplc5.a
-unix:OBJECTS += ../foreign/cell/lib/libcell.a
-unix:OBJECTS += ../foreign/libnodave/openSocket.o
-unix:OBJECTS += ../foreign/libnodave/setport.o
-unix:OBJECTS += ../foreign/libnodave/nodave.o
+#nodave se incluye ya en las rllib y las otras no se usan
+#unix:OBJECTS += ../foreign/abel/lib/libabplc5.a
+#unix:OBJECTS += ../foreign/cell/lib/libcell.a
+#unix:OBJECTS += ../foreign/libnodave/openSocket.o
+#unix:OBJECTS += ../foreign/libnodave/setport.o
+#unix:OBJECTS += ../foreign/libnodave/nodave.o
 
 TARGET   = rllib
 
-unix:header.path = /usr/local/include/rllib 
-unix:header.files = *.h ../foreign/abel/lib/*.h ../foreign/cell/lib/*.h ../foreign/libnodave/*.h 
+unix:header.path = /usr/local/include/rllib
+unix:header.files = *.h ../foreign/abel/lib/*.h ../foreign/cell/lib/*.h ../foreign/libnodave/*.h
 unix:header.extra = mkdir -p /usr/local/include/rllib
 unix:target.path = /usr/lib
 unix:target.files = librllib.*

@@ -21,14 +21,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-//#ifdef PVWIN32
-//#include <Windows.h>
-//#include <processenv.h>
-//#include <direct.h>
-//#endif
-#ifdef WIN32
-#include <Windows.h>
-#include <processenv.h>
+#ifdef PVWIN32
+#include <windows.h>
 #include <direct.h>
 #endif
 #ifdef PVUNIX
@@ -42,56 +36,52 @@ static int tabstopFound = 0;
 
 int mysystem(const char *command)
 {
-  char cmd[4096];
+    char cmd[4096];
 #ifdef PVWIN32
-  int ret;
-  STARTUPINFOA         si = { sizeof(si)};
-  PROCESS_INFORMATION pi;
+    int ret;
+    STARTUPINFOA         si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
 
-  if(strncmp(command,"start",5) == 0 || strncmp(command,"START",5) == 0)
-  {
-    ExpandEnvironmentStringsA(command,cmd,sizeof(cmd)-1);
-    ret  = system(cmd);
-  }
-  else if(strncmp(command,"wait ",5) == 0)
-  {
-    ExpandEnvironmentStringsA(&command[5],cmd,sizeof(cmd)-1);
-    ret = (int) CreateProcessA( NULL, cmd
-                             , NULL, NULL
-                             , FALSE, CREATE_NO_WINDOW
-                             , NULL, NULL
-                             , &si, &pi);
-    int pid = (int) pi.hProcess;
-    long status;
-    while(1)
+    if (strncmp(command, "start", 5) == 0 || strncmp(command, "START", 5) == 0)
     {
-      if(GetExitCodeProcess((HANDLE) pid, (unsigned long *) &status) != 0) // success
-      {
-        if(status != STILL_ACTIVE) break;
-      }
-      else 
-      {
-        break;
-      }  
-      Sleep(500);
+        ExpandEnvironmentStringsA(command, cmd, sizeof(cmd) - 1);
+        ret = system(cmd);
     }
-  }
-  else
-  {
-    ExpandEnvironmentStringsA(command,cmd,sizeof(cmd)-1);
-    ret = (int) CreateProcessA( NULL, cmd
-                             , NULL, NULL
-                             , FALSE, CREATE_NO_WINDOW
-                             , NULL, NULL
-                             , &si, &pi);
-  }
-  return ret;
+    else if (strncmp(command, "wait ", 5) == 0)
+    {
+        ExpandEnvironmentStringsA(&command[5], cmd, sizeof(cmd) - 1);
+        ret = (int) CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+
+        // Here Nestor
+        intptr_t pid = (intptr_t) pi.hProcess; // Here Nestor
+
+        long status;
+        while (1)
+        {
+            if (GetExitCodeProcess((HANDLE) pid, (unsigned long *) &status) != 0) // success
+            {
+                if (status != STILL_ACTIVE) break;
+            }
+            else
+            {
+                break;
+            }
+            Sleep(500);
+        }
+    }
+    else
+    {
+        ExpandEnvironmentStringsA(command, cmd, sizeof(cmd) - 1);
+        ret = (int) CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    }
+    return ret;
 #else
-  strcpy(cmd,command);
-  strcat(cmd," &");
-  return system(cmd);
+    strcpy(cmd, command);
+    strcat(cmd, " &");
+    return system(cmd);
 #endif
 }
+
 
 static int actionDumpTranslations()
 {

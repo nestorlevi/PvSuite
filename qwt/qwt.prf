@@ -24,16 +24,14 @@ else {
 	DEFINES *= QWT_NO_SVG
 }
 
-#contains(QWT_CONFIG, QwtOpenGL) {
-#
-#    QT      *= opengl
-#}
-#else {
-#
-#    DEFINES *= QWT_NO_OPENGL
-#}
-# rl.murx nov 2024
-DEFINES *= QWT_NO_OPENGL
+contains(QWT_CONFIG, QwtOpenGL) {
+
+    QT      *= opengl
+}
+else {
+
+    DEFINES *= QWT_NO_OPENGL
+}
 
 
 contains(QWT_CONFIG, QwtFramework) {

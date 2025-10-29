@@ -5,6 +5,8 @@
 TEMPLATE = app
 CONFIG  += warn_on release console 
 CONFIG  -= qt
+QWT_ROOT = $${PWD}/..
+
 #mac2017 QMAKE_LFLAGS += -static-libgcc
 contains(QMAKE_CXX, g++) {
   !symbian:QMAKE_LFLAGS += -static-libgcc
@@ -16,7 +18,12 @@ INCLUDEPATH += ../lib
 SOURCES += rlhistory.cpp
 
 !macx {
-LIBS    += ../lib/librllib.so -lpthread
+    win32 {
+        LIBS += $${PWD}/../lib/librllib.a
+    }
+    else {
+        LIBS += ../lib/librllib.so -lpthread
+    }
 }
 #macx::LIBS    += ../lib/librllib.dylib
 macx::LIBS    += ../lib/librllib.a

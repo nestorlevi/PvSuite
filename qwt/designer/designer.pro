@@ -98,8 +98,7 @@ contains(QWT_CONFIG, QwtDesigner) {
         # compile the path for finding the Qwt library
         # into the plugin. Not supported on Windows !
 
-        # see: https://sourceforge.net/p/qwt/bugs/191/
-        # rlmurx-was-here QMAKE_RPATHDIR *= $${QWT_INSTALL_LIBS}
+        QMAKE_RPATHDIR *= $${QWT_INSTALL_LIBS}
         qwtAddLibrary($${QWT_OUT_ROOT}/lib, qwt)
 
         contains(QWT_CONFIG, QwtDll) {

@@ -1,4 +1,4 @@
-#######################################
+ #######################################
 # project file for pvbrowser          #
 # you can uncomment CONFIG += USE_VTK #
 #######################################
@@ -9,9 +9,10 @@ CONFIG       += warn_on release
 DEFINES      += PVB_FOOTPRINT_BASIC
 #DEFINES      += PVB_FOOTPRINT_OLD_VERSION_BEFORE_QWT62
 #mobile devices without opengl
-#QT          += opengl
+QT          += opengl
 # murx.rl.was.here QT           += printsupport multimedia uitools widgets xml svg network printsupport
 QT           += printsupport widgets xml svg network printsupport
+greaterThan(QT_MAJOR_VERSION, 5): QT += openglwidgets           #Nestor aquí
 
 linux-g++-gles2 {
   DEFINES    += USE_MAEMO
@@ -91,8 +92,13 @@ symbian {
 
 }
 else {
-### LIBS     += ../qwt/lib/libqwt.a
-LIBS         += ../build-qwt-Desktop_Qt_6_8_1_llvm_mingw_64_bit-Debug/lib/libqwt.a
+win32 {     #Nestor aquí
+    LIBS += $$PWD/../qwt/lib/libqwt.a
+} else:unix {
+    LIBS += -L$$PWD/../qwt/lib -lqwt
+    QMAKE_RPATHDIR += $$PWD/../qwt/lib
+}
+##LIBS         += ../build-qwt-Desktop_Qt_6_8_1_llvm_mingw_64_bit-Debug/lib/libqwt.a
 win32:LIBS   += -lWs2_32
 win32:LIBS   += -lOpengl32
 win32:QT     += openglwidgets

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['other_20plots_4016',['Other Plots',['../otherscreenshots.html',1,'']]]
+  ['applications_0',['Qwt - Qt Widgets for Technical Applications',['../index.html',1,'']]]
 ];

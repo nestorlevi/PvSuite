@@ -199,7 +199,7 @@ int rlMailbox::write(const void *buf, int len)
     HANDLE h;
     char   mbxname[1024];
     strcpy(mbxname,"\\\\.\\mailslot\\"); strcat(mbxname,name);
-    h = CreateFile(
+    h = CreateFileA(
               mbxname,                             // pointer to name of the file
               GENERIC_READ | GENERIC_WRITE,        // access (read-write) mode
               FILE_SHARE_READ | FILE_SHARE_WRITE,  // share mode
@@ -244,126 +244,114 @@ int rlMailbox::write(const void *buf, int len)
 
 int rlMailbox::read(void *buf, int maxlen, int wait)
 {
-  char *cbuf;
-  status = OK;
-  cbuf = (char *) buf;
+    char *cbuf = (char *)buf;
+    status = OK;
 
 #ifdef RLUNIX
-  int len;
-  unsigned char *message = new unsigned char [sizeof(long) + maxlen];
-  if(wait == WAIT ) len = msgrcv(chanid,(struct msgbuf *) message, maxlen,0,0);
-  else              len = msgrcv(chanid,(struct msgbuf *) message, maxlen,0,IPC_NOWAIT);
-  if(len < maxlen && len >= 0) 
-  {
-    memcpy(buf,&message[sizeof(long)],len);
-    cbuf[len] = '\0';
-  }
-  else
-  {
-    cbuf[0] = '\0';
-  }
-  delete [] message;
-  return len;
+    // Implementación para Unix/Linux
+    int len;
+    unsigned char *message = new unsigned char[sizeof(long) + maxlen];
+    if (wait == WAIT)
+        len = msgrcv(chanid, (struct msgbuf *)message, maxlen, 0, 0);
+    else
+        len = msgrcv(chanid, (struct msgbuf *)message, maxlen, 0, IPC_NOWAIT);
+
+    if (len < maxlen && len >= 0)
+    {
+        memcpy(buf, &message[sizeof(long)], len);
+        cbuf[len] = '\0';
+    }
+    else
+    {
+        cbuf[0] = '\0';
+    }
+    delete[] message;
+    return len;
 #endif
 
 #ifdef __VMS
-  int  ret,len;
-  IOSB iosb;
-  if(wait == NOWAIT)
-  {
-    ret = sys$qiow(0,
-                   (short) chanid,
-                   IO$_READVBLK | IO$M_NOW,       // I/O CODE
-                   &iosb,
-                   0,0,
-                   buf,
-                   maxlen,0,0,0,0);
-  }
-  else
-  {
-    ret = sys$qiow(0,
-                   (short) chanid,
-                   IO$_READVBLK,                  // I/O CODE
-                   &iosb,
-                   0,0,
-                   buf,
-                   maxlen,0,0,0,0);
-  }
-  len = (int) iosb.msg_len;
-  if(len < maxlen && len >= 0) cbuf[len] = '\0';
-  if     (ret == SS$_NORMAL && iosb.iostat == SS$_NORMAL)   return len;
-  else if(iosb.iostat == SS$_NORMAL)                        { status = -1; return MAILBOX_ERROR; }
-  else if(ret         == SS$_NORMAL)
-  {
-    if(wait == NOWAIT && iosb.iostat == SS$_ENDOFFILE)      { status = -2; return MAILBOX_ERROR; }
-    else                                                    { status = -3; return MAILBOX_ERROR; }
-  }
-                                                              status = -4; return MAILBOX_ERROR;
+    // Implementación para VMS
+    int ret, len;
+    IOSB iosb;
+    if (wait == NOWAIT)
+    {
+        ret = sys$qiow(0,
+                       (short)chanid,
+                       IO$_READVBLK | IO$M_NOWAIT,
+                       &iosb,
+                       0, 0,
+                       buf,
+                       maxlen, 0, 0, 0, 0);
+    }
+    else
+    {
+        ret = sys$qiow(0,
+                       (short)chanid,
+                       IO$_READVBLK,
+                       &iosb,
+                       0, 0,
+                       buf,
+                       maxlen, 0, 0, 0, 0);
+    }
+    len = (int)iosb.msg_len;
+    if (len < maxlen && len >= 0) cbuf[len] = '\0';
+    if (ret == SS$_NORMAL && iosb.iostat == SS$_NORMAL) return len;
+    else if (iosb.iostat == SS$_NORMAL) { status = -1; return MAILBOX_ERROR; }
+    else if (ret == SS$_NORMAL)
+    {
+        if (wait == NOWAIT && iosb.iostat == SS$_ENDOFFILE) { status = -2; return MAILBOX_ERROR; }
+        else { status = -3; return MAILBOX_ERROR; }
+    }
+    status = -4;
+    return MAILBOX_ERROR;
 #endif
 
 #ifdef RLWIN32
-  HANDLE h;
-  char   mbxname[1024];
-  unsigned long lenRead;
-  BOOL   bret,bret2;
+    // Implementación para Windows
+    HANDLE h;
+    wchar_t mbxname[1024];
+    DWORD lenRead;
+    BOOL bret;
 
-  int imurx = 0; // rlmurxjan2025
-#ifdef WIN32
-  if(chanid == NULL) imurx = -1;
-#else
-  imurx = chanid;
-#endif
+    if (chanid == NULL)
+    {
+        wcscpy(mbxname, L"\\\\.\\mailslot\\");
 
-  //if(chanid == -1)
-  if(imurx == -1)
-  {
-    strcpy(mbxname,"\\\\.\\mailslot\\"); strcat(mbxname,name);
-    h = CreateMailslot(
-                 mbxname,                // pointer to string for mailslot name
-                 MAX_MAILBOX,            // maximum message size
-                 MAILSLOT_WAIT_FOREVER,  // milliseconds before read time-out
-                 NULL);                  // pointer to security structure
-    if(h == INVALID_HANDLE_VALUE) { status = GetLastError(); return MAILBOX_ERROR; }
-#ifdef WIN32
-    chanid = h;
-#else
-    chanid = (int) h;
-#endif
+        // Convertir name (char*) a wchar_t* para concatenar
+        wchar_t wname[256];
+        MultiByteToWideChar(CP_ACP, 0, name, -1, wname, 256);
+        wcscat(mbxname, wname);
 
-    bret2 = SetMailslotInfo((HANDLE) chanid, MAILSLOT_WAIT_FOREVER);
-    if(bret2 == 0) { status = GetLastError();  return MAILBOX_ERROR; }
-  }
+        h = CreateMailslotW(mbxname, MAX_MAILBOX, MAILSLOT_WAIT_FOREVER, NULL);
+        if (h == INVALID_HANDLE_VALUE) {
+            status = GetLastError();
+            return MAILBOX_ERROR;
+        }
+        chanid = h;
+        bret = SetMailslotInfo(h, MAILSLOT_WAIT_FOREVER);
+        if (!bret) {
+            status = GetLastError();
+            return MAILBOX_ERROR;
+        }
+    }
 
-  if(wait == NOWAIT) // begin wait
-  {
+    if (wait == NOWAIT)
+    {
+        bret = SetMailslotInfo(chanid, 0);
+        if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
+        bret = ReadFile(chanid, buf, maxlen, &lenRead, NULL);
+        bret = SetMailslotInfo(chanid, MAILSLOT_WAIT_FOREVER);
+        if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
+        if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
+        if ((int)lenRead < maxlen && (int)lenRead >= 0) cbuf[lenRead] = '\0';
+        return lenRead;
+    }
+
     lenRead = 0;
-    bret2 = SetMailslotInfo((HANDLE) chanid, 0);
-    if(bret2 == 0) { status = GetLastError(); return MAILBOX_ERROR; }
-    bret = ReadFile(
-             (HANDLE) chanid,                        // handle of file to read
-             buf,                                    // pointer to buffer
-             maxlen,                                 // number of bytes to read
-             &lenRead,                               // pointer to number of bytes read
-             NULL                                    // pointer to structure for data
-                   );
-    bret2 = SetMailslotInfo((HANDLE) chanid, MAILSLOT_WAIT_FOREVER);
-    if(bret2 == 0) { status = GetLastError(); return MAILBOX_ERROR; }
-    if(bret == 0)  { status = GetLastError(); return MAILBOX_ERROR; }
-    if((int) lenRead < maxlen && (int) lenRead >= 0) cbuf[lenRead] = '\0';
+    bret = ReadFile(chanid, buf, maxlen, &lenRead, NULL);
+    if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
+    if ((int)lenRead < maxlen && (int)lenRead >= 0) cbuf[lenRead] = '\0';
     return lenRead;
-  } // end wait
-
-  lenRead = 0;
-  bret = ReadFile(
-           (HANDLE) chanid,                        // handle of file to read
-           buf,                                    // pointer to buffer
-           maxlen,                                 // number of bytes to read
-           &lenRead,                               // pointer to number of bytes read
-           NULL                                    // pointer to structure for data
-                 );
-  if(bret == 0) { status = GetLastError(); return MAILBOX_ERROR; }
-  if((int) lenRead < maxlen && (int) lenRead >= 0) cbuf[lenRead] = '\0';
-  return lenRead;
 #endif
 }
 

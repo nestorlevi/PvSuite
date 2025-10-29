@@ -172,7 +172,13 @@ void MyLabel::mousePressEvent(QMouseEvent *event)
   }
   else
   {
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)                     //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              (int) event->position().x(), (int) event->position().y());
+#else
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              event->pos().x(), event->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
     QLabel::mousePressEvent(event);
   }  
@@ -188,18 +194,28 @@ void MyLabel::mouseReleaseEvent(QMouseEvent *event)
   }
   else
   {
-    sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)         //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+              (int) event->position().x(), (int) event->position().y());
+#else
+      sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+              event->pos().x(), event->pos().y());
+#endif
     if(underMouse()) tcp_send(s,buf,strlen(buf));
   }  
   QLabel::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyLabel::enterEvent(QEnterEvent *event)
+#else
+void MyLabel::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QLabel::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QLabel::enterEvent(event);
 }
 
 void MyLabel::leaveEvent(QEvent *event)
@@ -314,7 +330,13 @@ void MyLineEdit::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)                     //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QLineEdit::mousePressEvent(event);
 }
@@ -325,7 +347,13 @@ void MyLineEdit::mouseReleaseEvent(QMouseEvent *event)
 
   if(event == NULL) return;
   //sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, event->x(), event->y());
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QLineEdit::mouseReleaseEvent(event);
 }
@@ -400,7 +428,14 @@ void MyComboBox::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)         //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
+
   tcp_send(s,buf,strlen(buf));
   QComboBox::mousePressEvent(event);
 }
@@ -410,7 +445,14 @@ void MyComboBox::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
+
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QComboBox::mouseReleaseEvent(event);
 }
@@ -462,7 +504,14 @@ void MySlider::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
+
   tcp_send(s,buf,strlen(buf));
   QSlider::mousePressEvent(event);
 }
@@ -472,7 +521,14 @@ void MySlider::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
+
   tcp_send(s,buf,strlen(buf));
   QSlider::mouseReleaseEvent(event);
 }
@@ -534,7 +590,13 @@ void MyCheckBox::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QCheckBox::mousePressEvent(event);
 }
@@ -544,7 +606,15 @@ void MyCheckBox::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
+
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QCheckBox::mouseReleaseEvent(event);
 }
@@ -593,7 +663,13 @@ void MyRadioButton::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QRadioButton::mousePressEvent(event);
 }
@@ -603,7 +679,13 @@ void MyRadioButton::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QRadioButton::mouseReleaseEvent(event);
 }
@@ -649,7 +731,14 @@ void MyButtonGroup::mousePressEvent(QMouseEvent *e)
   }
   else
   {
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) e->position().x(), (int) e->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              (int) e->position().x(), (int) e->position().y());
+#else
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              e->pos().x(), e->pos().y());
+#endif
+
     tcp_send(s,buf,strlen(buf));
   }
   //QGroupBox::mousePressEvent(event);
@@ -660,7 +749,13 @@ void MyButtonGroup::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   //QGroupBox::mouseReleaseEvent(event);
 }
@@ -713,7 +808,13 @@ void MyFrame::mousePressEvent(QMouseEvent *e)
   }
   else
   {
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) e->position().x(), (int) e->position().y());
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              (int) e->position().x(), (int) e->position().y());
+#else
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              e->pos().x(), e->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
   }
   //QFrame::mousePressEvent(event);
@@ -724,7 +825,13 @@ void MyFrame::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   //QFrame::mouseReleaseEvent(event);
 }
@@ -786,7 +893,13 @@ void MyQTabWidget::mousePressEvent(QMouseEvent *e)
   }
   else
   {
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) e->position().x(), (int) e->position().y());
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              (int) e->position().x(), (int) e->position().y());
+#else
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              e->pos().x(), e->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
   }
   //QTabWidget::mousePressEvent(event);
@@ -797,7 +910,13 @@ void MyQTabWidget::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   if(event == NULL) return;
   //QTabWidget::mouseReleaseEvent(event);
@@ -854,7 +973,13 @@ void MyQToolBox::mousePressEvent(QMouseEvent *e)
   }
   else
   {
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) e->position().x(), (int) e->position().y());
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              (int) e->position().x(), (int) e->position().y());
+#else
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              e->pos().x(), e->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
   }
   //QToolBox::mousePressEvent(event);
@@ -865,7 +990,13 @@ void MyQToolBox::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   //QToolBox::mouseReleaseEvent(event);
 }
@@ -913,7 +1044,13 @@ void MyGroupBox::mousePressEvent(QMouseEvent *e)
   }
   else
   {
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) e->position().x(), (int) e->position().y());
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              (int) e->position().x(), (int) e->position().y());
+#else
+      sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+              e->pos().x(), e->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
   }
   //QGroupBox::mousePressEvent(event);
@@ -924,7 +1061,13 @@ void MyGroupBox::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   //QGroupBox::mouseReleaseEvent(event);
 }
@@ -1064,7 +1207,13 @@ void MyListBox::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QListWidget::mousePressEvent(event);
 }
@@ -1074,7 +1223,13 @@ void MyListBox::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QListWidget::mouseReleaseEvent(event);
 }
@@ -1572,7 +1727,13 @@ void MySpinBox::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QSpinBox::mousePressEvent(event);
 }
@@ -1582,7 +1743,13 @@ void MySpinBox::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QSpinBox::mouseReleaseEvent(event);
 }
@@ -1639,7 +1806,13 @@ void MyDial::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QDial::mousePressEvent(event);
 }
@@ -1649,7 +1822,13 @@ void MyDial::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QDial::mouseReleaseEvent(event);
 }
@@ -1690,7 +1869,13 @@ void MyProgressBar::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QProgressBar::mousePressEvent(event);
 }
@@ -1700,7 +1885,13 @@ void MyProgressBar::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QProgressBar::mouseReleaseEvent(event);
 }
@@ -1794,7 +1985,13 @@ void MyMultiLineEdit::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QTextEdit::mousePressEvent(event);
 }
@@ -1804,7 +2001,13 @@ void MyMultiLineEdit::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QTextEdit::mouseReleaseEvent(event);
 }
@@ -1897,7 +2100,13 @@ void MyListView::mousePressEvent(QMouseEvent *event)
   else
   {
     char buf[80];
-    sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
     tcp_send(s,buf,strlen(buf));
   }
   QTreeWidget::mousePressEvent(event);
@@ -1908,7 +2117,13 @@ void MyListView::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QTreeWidget::mouseReleaseEvent(event);
 }
@@ -2492,7 +2707,13 @@ void MyIconView::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QListWidget::mousePressEvent(event);
 }
@@ -2502,7 +2723,13 @@ void MyIconView::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QListWidget::mouseReleaseEvent(event);
 }
@@ -2544,7 +2771,13 @@ void MyQwtScale::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtScaleWidget::mousePressEvent(event);
 }
@@ -2554,17 +2787,27 @@ void MyQwtScale::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtScaleWidget::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)    //Nestor aquí: compatibilidad con qt6
 void MyQwtScale::enterEvent(QEnterEvent *event)
+#else
+void MyQwtScale::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtScaleWidget::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtScaleWidget::enterEvent(event);
 }
 
 void MyQwtScale::leaveEvent(QEvent *event)
@@ -2664,7 +2907,13 @@ void MyQwtThermo::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtThermo::mousePressEvent(event);
 }
@@ -2674,17 +2923,27 @@ void MyQwtThermo::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtThermo::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtThermo::enterEvent(QEnterEvent *event)
+#else
+void MyQwtThermo::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtThermo::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtThermo::enterEvent(event);
 }
 
 void MyQwtThermo::leaveEvent(QEvent *event)
@@ -2766,7 +3025,13 @@ void MyQwtKnob::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtKnob::mousePressEvent(event);
 }
@@ -2776,17 +3041,27 @@ void MyQwtKnob::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtKnob::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtKnob::enterEvent(QEnterEvent *event)
+#else
+void MyQwtKnob::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtKnob::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtKnob::enterEvent(event);
 }
 
 void MyQwtKnob::leaveEvent(QEvent *event)
@@ -2823,7 +3098,13 @@ void MyQwtCounter::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtCounter::mousePressEvent(event);
 }
@@ -2833,17 +3114,27 @@ void MyQwtCounter::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtCounter::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtCounter::enterEvent(QEnterEvent *event)
+#else
+void MyQwtCounter::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtCounter::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtCounter::enterEvent(event);
 }
 
 void MyQwtCounter::leaveEvent(QEvent *event)
@@ -2917,7 +3208,13 @@ void MyQwtWheel::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtWheel::mousePressEvent(event);
 }
@@ -2927,17 +3224,27 @@ void MyQwtWheel::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtWheel::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtWheel::enterEvent(QEnterEvent *event)
+#else
+void MyQwtWheel::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtWheel::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtWheel::enterEvent(event);
 }
 
 void MyQwtWheel::leaveEvent(QEvent *event)
@@ -3098,7 +3405,13 @@ void MyQwtSlider::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtSlider::mousePressEvent(event);
 }
@@ -3108,17 +3421,27 @@ void MyQwtSlider::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtSlider::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtSlider::enterEvent(QEnterEvent *event)
+#else
+void MyQwtSlider::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtSlider::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtSlider::enterEvent(event);
 }
 
 void MyQwtSlider::leaveEvent(QEvent *event)
@@ -3232,7 +3555,13 @@ void MyQwtDial::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtDial::mousePressEvent(event);
 }
@@ -3242,17 +3571,27 @@ void MyQwtDial::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtDial::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtDial::enterEvent(QEnterEvent *event)
+#else
+void MyQwtDial::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtDial::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtDial::enterEvent(event);
 }
 
 void MyQwtDial::leaveEvent(QEvent *event)
@@ -3303,7 +3642,13 @@ void MyQwtCompass::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtCompass::mousePressEvent(event);
 }
@@ -3313,17 +3658,27 @@ void MyQwtCompass::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtCompass::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)    //Nestor aquí: compatibilidad con qt6
 void MyQwtCompass::enterEvent(QEnterEvent *event)
+#else
+void MyQwtCompass::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtCompass::enterEvent((QEnterEvent *) event);
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtCompass::enterEvent(event);
 }
 
 void MyQwtCompass::leaveEvent(QEvent *event)
@@ -3370,7 +3725,13 @@ void MyQwtAnalogClock::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QwtAnalogClock::mousePressEvent(event);
 }
@@ -3380,17 +3741,27 @@ void MyQwtAnalogClock::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QwtAnalogClock::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)     //Nestor aquí: compatibilidad con qt6
 void MyQwtAnalogClock::enterEvent(QEnterEvent *event)
+#else
+void MyQwtAnalogClock::enterEvent(QEvent *event)
+#endif
 {
-  char buf[100];
-  sprintf(buf, "mouseEnterLeave(%d,1)\n",id);
-  tcp_send(s,buf,strlen(buf));
-  QwtAnalogClock::enterEvent((QEnterEvent *) event); // murx.rl.was.here
+    char buf[100];
+    sprintf(buf, "mouseEnterLeave(%d,1)\n", id);
+    tcp_send(s, buf, strlen(buf));
+    QwtAnalogClock::enterEvent(event); // murx.rl.was.here
 }
 
 void MyQwtAnalogClock::leaveEvent(QEvent *event)
@@ -3431,7 +3802,13 @@ void MyQDateEdit::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QDateEdit::mousePressEvent(event);
 }
@@ -3441,7 +3818,13 @@ void MyQDateEdit::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QDateEdit::mouseReleaseEvent(event);
 }
@@ -3490,7 +3873,13 @@ void MyQTimeEdit::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QTimeEdit::mousePressEvent(event);
 }
@@ -3500,7 +3889,13 @@ void MyQTimeEdit::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QTimeEdit::mouseReleaseEvent(event);
 }
@@ -3563,7 +3958,13 @@ void MyQDateTimeEdit::mousePressEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonPressed(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   tcp_send(s,buf,strlen(buf));
   QDateTimeEdit::mousePressEvent(event);
 }
@@ -3573,7 +3974,13 @@ void MyQDateTimeEdit::mouseReleaseEvent(QMouseEvent *event)
   char buf[80];
 
   if(event == NULL) return;
-  sprintf(buf,"QPushButtonReleased(%d) -xy=%d,%d\n",id, (int) event->position().x(), (int) event->position().y());
+  #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          (int) event->position().x(), (int) event->position().y());
+#else
+  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+          event->pos().x(), event->pos().y());
+#endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
   QDateTimeEdit::mouseReleaseEvent(event);
 }

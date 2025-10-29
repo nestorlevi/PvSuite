@@ -20,4 +20,9 @@ INCLUDEPATH   += ../rllib/lib
 macx:DEFINES += RLMAC
 macx:DEFINES += RLUNIX
 
+#Here Nestor: añadir la librería ws2_32 para windows
+win32 {
+    LIBS += -lws2_32
+}
+
 TARGET = fake_qmake

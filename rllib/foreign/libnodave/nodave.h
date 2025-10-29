@@ -29,46 +29,37 @@ extern "C" {
 
 #ifndef __nodave
 #define __nodave
-
-#ifdef LINUX
+#ifdef __linux__
+#define LINUX
 #define DECL2
 #define EXPORTSPEC
 typedef struct {
     int rfd;
     int wfd;
 } _daveOSserialType;
+
 #include <stdlib.h>
-#else    
-#ifdef CYGWIN
-typedef struct {
-    int rfd;
-    int wfd;
-} _daveOSserialType;
-#include <stdlib.h>
-#else    
-#ifdef BCCWIN
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#elif defined(_WIN32)
+#define WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#define DECL2 WINAPI
-#define DECL2 
+#define DECL2
 #define EXPORTSPEC
-/*  
-  #ifdef DOEXPORT
-  #define EXPORTSPEC __declspec (dllexport)
-  #else
-  #define EXPORTSPEC __declspec (dllimport)
-  #endif
-*/  
 typedef struct {
     HANDLE rfd;
     HANDLE wfd;
 } _daveOSserialType;
+
 #else
-#error Fill in what you need for your OS or API.
-#endif
-#endif
+#error Platform not supported. Define __linux__ or _WIN32.
 #endif
 
 /*

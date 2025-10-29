@@ -1,106 +1,34 @@
 /*!
-\page qwtchangelog What's new in Qwt 6.2
+\page qwtchangelog What's new in Qwt 6.3
 
 \tableofcontents
 
-\section PLATFORM Qt >= 4.8
+\section PAINTER QwtPainter
 
-Support for Qt < Qt 4.8 has been dropped, support for Qt6 has been added.
-
-\section Class Includes
-
-Include files, that match the class names are available now. So
-it is possible to write "#include <QwtPlot>" now instead of "include qwt_plot.h"
-
-\section POLAR QwtPolar has become part of Qwt
-
-The QwtPolar project ( https://qwtpolar.sourceforge.io ) has been integrated
-into Qwt. 
-
-\section MATHML MathML Text Renderer has become its own project
-
-The code can be found at https://github.com/uwerat/qwt-mml-dev now and is intended
-to become a standalone lib.
-
-\section SPLINES Spline
-
-The broken implementation of QwtSpline has been replaced by a bunch of classes
-offering all sort of functionalities around splines.
-
-The most popular spline approximation/interpolation algos have been implemented:
-
-    - Basis
-    - Cardinal
-    - ParabolicBlending
-    - Akima
-    - The one used in a proprietory office package
-    - Cubic
-
-\section OPENGL Better OpenGL support
-
-QwtPlotOpenGLCanvas added to support rendering to a QOpenGLWidget
-
-\section ITEMS New plot items
-
-    - QwtPlotVectorField
-      A new type of plot item for vector fields
-
-    - QwtPlotGraphicItem
-      An item displaying a QwtGraphic image ( f.e used by QwtPlotSvgItem )
+QwtPainter::polylineSplitting has been reenabled. Unfortunately the Qt raster paint
+engine still has serious performance issues with rendering long polylines.
 
 \section CURVE QwtPlotCurve
 
-	- QwtPlotCurve::FilterPointsAggressive
-      A fast weeding algo for huge datasets with increasing x or y values
+	- QwtPlotCurve::adjacentPoint
+	  for monotonic curves: using a binary search algo
 
-	- QwtPlotCurve::closestPoint
-	  Is virtual now
+	- QwtPlotCurve::interpolatedValueAt
+	  for monotonic curves: using a binary search algo
 
-	- Line Clipping
-	  Includes the painter clip now
+\section SERIESDATA QwtSeriesData
 
-	- QwtValuePointData
-	  A new type of data added, where the x values are the index
+    - wrong inheritances fixed
+	- firstSample, lastSample added
 
-	- QwtPlotCurve::setSamples
-	  more type of setters
+\section INTERVALCURVE QwtPlotIntervalCurve
 
-\section SPECTROGRAM QwtPlotSpectrogram
+	QwtPlotIntervalCurve::TubeAsLines mode added. A performance optimization
+    for rendering huge datasets.
 
-	- QwtPlotSpectrogram::setColorTableSize
-      Using individual RGB tables
+\section ADJUSTMENTS Bugfixes/Adjustments
 
-	- QwtRasterData::setInterval/interval
-	  API cleanup
-
-	- QwtHueColorMap, QwtSaturationValueColorMap
-	  New type of color maps
-
-	- QwtMatrixRasterData::BicubicInterpolation
-	  Implementation of bicubic interpolation added
-
-	- Handling of NaN values
-      NaN values are interpreted as gaps, when QwtRasterData::WithoutGaps
-      is not set
-
-\section OTHERS Other changes
-
-    - QwtPlotRenderer
-      Using QPdfWriter instead of QPrinter, where possible
-
-	- Handling of Unknown Paint Engines
-      Not aligning unknown paint engines ( f.e EMF ), QwtNullPaintDevice is not using
-      QPaintEngine::User anymore
-
-	- QwtTransform::LogMin/LogMax
-	  LOG_MIN/LOG_MAX have been reomed ( values differ ! 
-
-	- qwt_compat.h
-	  Removed
-
-	- qwtFuzzyGreaterOrEqual/qwtFuzzyLessOrEqual
-	  Removed
-
-	- qwtGetMin/qwtGetMax
-	  Removed
+    Bugfixes/Adjustments - often needed because of new Qt developments
  */
+
+   

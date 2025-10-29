@@ -11,6 +11,10 @@ INCLUDEPATH   += .
 unix:DEFINES  += LUA_USE_LINUX
 win32:DEFINES += _WIN32
 
+QWT_OUT_ROOT = $${PWD}/
+DESTDIR           = $${QWT_OUT_ROOT}      #Here Nestor
+#message("El valor de QWT_ROOT es: $${QWT_OUT_ROOT}")
+
 # Input
 HEADERS += lapi.h \
            lauxlib.h \

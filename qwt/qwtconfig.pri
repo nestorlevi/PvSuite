@@ -8,7 +8,7 @@
 ################################################################
 
 QWT_VER_MAJ      = 6
-QWT_VER_MIN      = 2
+QWT_VER_MIN      = 3
 QWT_VER_PAT      = 0
 QWT_VERSION      = $${QWT_VER_MAJ}.$${QWT_VER_MIN}.$${QWT_VER_PAT}
 
@@ -100,14 +100,13 @@ QWT_CONFIG     += QwtWidgets
 # export a plot to a SVG document
 ######################################################################
 
-# murx.rl.was.here.oct.2023 QWT_CONFIG     += QwtSvg
 QWT_CONFIG     += QwtSvg
 
 ######################################################################
 # If you want to use a OpenGL plot canvas
 ######################################################################
 
-#rlmurx nov 2024 QWT_CONFIG     += QwtOpenGL
+QWT_CONFIG     += QwtOpenGL
 
 ######################################################################
 # If you want to build the Qwt designer plugin,

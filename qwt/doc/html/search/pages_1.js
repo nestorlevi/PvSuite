@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['curve_20plots_4013',['Curve Plots',['../curvescreenshots.html',1,'']]]
+  ['1_200_0',['Qwt License, Version 1.0',['../qwtlicense.html',1,'']]]
 ];

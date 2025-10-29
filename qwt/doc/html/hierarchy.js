@@ -111,25 +111,25 @@ var hierarchy =
       ] ]
     ] ],
     [ "QwtAbstractSeriesStore", "class_qwt_abstract_series_store.html", [
-      [ "QwtSeriesStore< QwtIntervalSample >", "class_qwt_series_store.html", [
-        [ "QwtPlotHistogram", "class_qwt_plot_histogram.html", null ],
-        [ "QwtPlotIntervalCurve", "class_qwt_plot_interval_curve.html", null ]
-      ] ],
-      [ "QwtSeriesStore< QwtVectorFieldSample >", "class_qwt_series_store.html", [
-        [ "QwtPlotVectorField", "class_qwt_plot_vector_field.html", null ]
-      ] ],
-      [ "QwtSeriesStore< QwtOHLCSample >", "class_qwt_series_store.html", [
-        [ "QwtPlotTradingCurve", "class_qwt_plot_trading_curve.html", null ]
-      ] ],
       [ "QwtSeriesStore< QPointF >", "class_qwt_series_store.html", [
         [ "QwtPlotBarChart", "class_qwt_plot_bar_chart.html", null ],
         [ "QwtPlotCurve", "class_qwt_plot_curve.html", null ]
       ] ],
-      [ "QwtSeriesStore< QwtPoint3D >", "class_qwt_series_store.html", [
-        [ "QwtPlotSpectroCurve", "class_qwt_plot_spectro_curve.html", null ]
+      [ "QwtSeriesStore< QwtIntervalSample >", "class_qwt_series_store.html", [
+        [ "QwtPlotHistogram", "class_qwt_plot_histogram.html", null ],
+        [ "QwtPlotIntervalCurve", "class_qwt_plot_interval_curve.html", null ]
       ] ],
       [ "QwtSeriesStore< QwtSetSample >", "class_qwt_series_store.html", [
         [ "QwtPlotMultiBarChart", "class_qwt_plot_multi_bar_chart.html", null ]
+      ] ],
+      [ "QwtSeriesStore< QwtPoint3D >", "class_qwt_series_store.html", [
+        [ "QwtPlotSpectroCurve", "class_qwt_plot_spectro_curve.html", null ]
+      ] ],
+      [ "QwtSeriesStore< QwtOHLCSample >", "class_qwt_series_store.html", [
+        [ "QwtPlotTradingCurve", "class_qwt_plot_trading_curve.html", null ]
+      ] ],
+      [ "QwtSeriesStore< QwtVectorFieldSample >", "class_qwt_series_store.html", [
+        [ "QwtPlotVectorField", "class_qwt_plot_vector_field.html", null ]
       ] ],
       [ "QwtPlotSeriesItem", "class_qwt_plot_series_item.html", [
         [ "QwtPlotAbstractBarChart", "class_qwt_plot_abstract_bar_chart.html", [
@@ -240,35 +240,21 @@ var hierarchy =
     ] ],
     [ "QwtScaleMap", "class_qwt_scale_map.html", null ],
     [ "QwtSeriesData< T >", "class_qwt_series_data.html", [
-      [ "QwtArraySeriesData< QwtIntervalSample >", "class_qwt_array_series_data.html", [
-        [ "QwtIntervalSeriesData", "class_qwt_interval_series_data.html", null ]
-      ] ],
-      [ "QwtArraySeriesData< QwtVectorFieldSample >", "class_qwt_array_series_data.html", [
-        [ "QwtVectorFieldData", "class_qwt_vector_field_data.html", null ]
-      ] ],
-      [ "QwtArraySeriesData< QwtOHLCSample >", "class_qwt_array_series_data.html", [
-        [ "QwtTradingChartData", "class_qwt_trading_chart_data.html", null ]
-      ] ],
-      [ "QwtArraySeriesData< QwtSetSample >", "class_qwt_array_series_data.html", [
-        [ "QwtSetSeriesData", "class_qwt_set_series_data.html", null ]
-      ] ],
-      [ "QwtArraySeriesData< QwtPoint3D >", "class_qwt_array_series_data.html", [
-        [ "QwtPoint3DSeriesData", "class_qwt_point3_d_series_data.html", null ]
-      ] ],
       [ "QwtArraySeriesData< T >", "class_qwt_array_series_data.html", null ]
     ] ],
     [ "QwtSeriesData< QPointF >", "class_qwt_series_data.html", [
-      [ "QwtArraySeriesData< QPointF >", "class_qwt_array_series_data.html", [
-        [ "QwtPointSeriesData", "class_qwt_point_series_data.html", [
-          [ "QwtCPointerData< T >", "class_qwt_c_pointer_data.html", null ],
-          [ "QwtCPointerValueData< T >", "class_qwt_c_pointer_value_data.html", null ],
-          [ "QwtPointArrayData< T >", "class_qwt_point_array_data.html", null ],
-          [ "QwtSyntheticPointData", "class_qwt_synthetic_point_data.html", null ],
-          [ "QwtValuePointData< T >", "class_qwt_value_point_data.html", null ]
-        ] ]
-      ] ]
+      [ "QwtCPointerData< T >", "class_qwt_c_pointer_data.html", null ],
+      [ "QwtCPointerValueData< T >", "class_qwt_c_pointer_value_data.html", null ],
+      [ "QwtPointArrayData< T >", "class_qwt_point_array_data.html", null ],
+      [ "QwtSyntheticPointData", "class_qwt_synthetic_point_data.html", null ],
+      [ "QwtValuePointData< T >", "class_qwt_value_point_data.html", null ]
     ] ],
+    [ "QwtSeriesData< QwtIntervalSample >", "class_qwt_series_data.html", null ],
+    [ "QwtSeriesData< QwtOHLCSample >", "class_qwt_series_data.html", null ],
+    [ "QwtSeriesData< QwtPoint3D >", "class_qwt_series_data.html", null ],
     [ "QwtSeriesData< QwtPointPolar >", "class_qwt_series_data.html", null ],
+    [ "QwtSeriesData< QwtSetSample >", "class_qwt_series_data.html", null ],
+    [ "QwtSeriesData< QwtVectorFieldSample >", "class_qwt_series_data.html", null ],
     [ "QwtSetSample", "class_qwt_set_sample.html", null ],
     [ "QwtSpline", "class_qwt_spline.html", [
       [ "QwtSplineBasis", "class_qwt_spline_basis.html", null ],

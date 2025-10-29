@@ -13,6 +13,8 @@ unix:QMAKE_LFLAGS += -pthread -lpthread
 macx:DEFINES      += unix
 macx:DEFINES      += PVMAC
 
+DESTDIR           = $${QWT_OUT_ROOT}      #Here Nestor
+
 HEADERS  = rllib.h                     \
            rlspawn.h                   \
            rlwthread.h                 \
