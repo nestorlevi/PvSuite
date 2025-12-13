@@ -23,6 +23,8 @@ Compilar/generate_installer.bat
 *.LIB
 .qmake.stash
 moc_*.h
+.~lock.*.odt#
+
 
 browserplugin/murx/
 

@@ -18,10 +18,16 @@
 #ifndef PVGLWIDGET_H
 #define PVGLWIDGET_H
 #define PVGLWIDGET_H_V5
+#include <QtGlobal>
 
 #ifdef USE_OPEN_GL
 // murx.rl.was.here.oct.2023 #include <QOpenGLWidget>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QtOpenGLWidgets/QOpenGLWidget>
+#else
 #include <QOpenGLWidget>
+#endif
+
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
 #include <QStringList>

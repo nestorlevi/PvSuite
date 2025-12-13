@@ -11,13 +11,13 @@ DEFINES      += PVB_FOOTPRINT_BASIC
 #mobile devices without opengl
 QT          += opengl
 # murx.rl.was.here QT           += printsupport multimedia uitools widgets xml svg network printsupport
-QT           += printsupport widgets xml svg network printsupport
+QT           += printsupport widgets xml svg network printsupport multimedia
 greaterThan(QT_MAJOR_VERSION, 5): QT += openglwidgets           #Nestor aquí
 
 linux-g++-gles2 {
   DEFINES    += USE_MAEMO
   QT         -= opengl
-}  
+}
 symbian:CONFIG += USE_SYMBIAN
 USE_SYMBIAN {
   DEFINES    += USE_SYMBIAN
@@ -101,7 +101,7 @@ win32 {     #Nestor aquí
 ##LIBS         += ../build-qwt-Desktop_Qt_6_8_1_llvm_mingw_64_bit-Debug/lib/libqwt.a
 win32:LIBS   += -lWs2_32
 win32:LIBS   += -lOpengl32
-win32:QT     += openglwidgets
+#win32:QT     += openglwidgets
 }
 
 ### begin USE_VTK #############################################

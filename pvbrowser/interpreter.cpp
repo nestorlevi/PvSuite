@@ -38,6 +38,7 @@
 #if QT_VERSION < 0x050000
 #include <qsound.h>
 #else
+#include <QSoundEffect>     //Nestor was here
 // murx.rl.was.here.oct.2023 #include <QSound>
 #endif
 #include <QKeyEvent>
@@ -2497,6 +2498,10 @@ void Interpreter::interpretp(const char *command)
 #else    
     printf("QSound::play(\"%s\")\n",(const char *) text.toUtf8());
     // murx.rl.was QSound::play(text);
+    static QSoundEffect s;                      //Nestor was here
+    s.setSource(QUrl::fromLocalFile(text));
+    s.setVolume(1.0);
+    s.play();
 #endif
 #endif
   }
