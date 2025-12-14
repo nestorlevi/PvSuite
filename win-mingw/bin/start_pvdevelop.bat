@@ -21,8 +21,8 @@
  rem   Please adjust environment variables within %PVBDIR%\win-mingw\bin\start_pvdevelop.bat                                  
  REM   set   QTDIR=c:\Qt\4.8.2
  REM   set   MINGWDIR=c:\mingw
- set   QTDIR=C:\Qt\Qt5.4.2\5.4\mingw491_32
- set   MINGWDIR=C:\Qt\Qt5.4.2\Tools\mingw491_32
+ set   QTDIR=C:\Qt\6.9.2\mingw_64
+ set   MINGWDIR=C:\Qt\Tools\mingw1310_64
  set   PYDIR=C:\Python25
  rem
  rem   ############################################################################# 
@@ -41,6 +41,6 @@
  echo  Please verify if the above environment variables are correct on your system.
  echo  If not please adjust by editing file 
  echo    %PVBDIR%\win-mingw\bin\start_pvdevelop.bat
- start pvdevelop                                                                     
+ start pvdevelop6                                                                     
  :end                                                                                
  pause                                                                               

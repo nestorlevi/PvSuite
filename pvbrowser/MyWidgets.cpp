@@ -376,16 +376,20 @@ void MyLineEdit::leaveEvent(QEvent *event)
 
 ////////////////////////////////////////////////////////////////////////////////
 MyComboBox::MyComboBox(int *sock, int ident, QWidget * parent, const char * name)
-           :QComboBox(parent)
+    : QComboBox(parent)
 {
-  s = sock;
-  id = ident;
-  row = col = -1;
-  //setCompleter(0);
-  if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(activated(const QString &)), SLOT(slotActivated(const QString &)));
-}
+    s = sock;
+    id = ident;
+    row = col = -1;
+    //setCompleter(0);
+    if(name != NULL) setObjectName(name);
 
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)    //Nestor was here
+    connect(this, SIGNAL(activated(const QString &)), this, SLOT(slotActivated(const QString &)));
+#else
+    connect(this, &QComboBox::textActivated, this, &MyComboBox::slotActivated);
+#endif
+}
 MyComboBox::~MyComboBox()
 {
 }
@@ -826,10 +830,10 @@ void MyFrame::mouseReleaseEvent(QMouseEvent *event)
 
   if(event == NULL) return;
   #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)             //Nestor aquí: compatibilidad con qt6
-  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
           (int) event->position().x(), (int) event->position().y());
 #else
-  sprintf(buf, "QPushButtonPressed(%d) -xy=%d,%d\n", id,
+  sprintf(buf, "QPushButtonReleased(%d) -xy=%d,%d\n", id,
           event->pos().x(), event->pos().y());
 #endif
   if(underMouse()) tcp_send(s,buf,strlen(buf));
@@ -1251,33 +1255,42 @@ void MyListBox::leaveEvent(QEvent *event)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-MyTable::MyTable(int *sock, int ident, int numRows, int numColumns, QWidget *parent, const char *name)
-        :QTableWidget(numRows,numColumns,parent)
+MyTable::MyTable(int *sock, int ident, int numRows, int numColumns,
+                 QWidget *parent, const char *name)
+    : QTableWidget(numRows, numColumns, parent)
 {
-  s = sock;
-  id = ident;
-  wrap = 1;
-  autoresize = 0;
-  is_editable = 1;
-#if QT_VERSION >= 0x040300                  
-  setWordWrap(true);
+    s = sock;
+    id = ident;
+    wrap = 1;
+    autoresize = 0;
+    is_editable = 1;
+#if QT_VERSION >= 0x040300
+    setWordWrap(true);
 #endif
-  button = read_only = updates = 0;
-  if(name != NULL) setObjectName(name);
-#ifdef USE_MAEMO  
-  QPalette palette;
-  QColor   color(128,128,128);
-  palette.setColor(QPalette::Text, color);
-  //palette.setColor(QPalette::WindowText, color);
-  //palette.setColor(QPalette::ButtonText, color);
-  setPalette(palette);
+    button = read_only = updates = 0;
+    if(name != NULL) setObjectName(name);
+
+#ifdef USE_MAEMO
+    QPalette palette;
+    QColor   color(128,128,128);
+    palette.setColor(QPalette::Text, color);
+    //palette.setColor(QPalette::WindowText, color);
+    //palette.setColor(QPalette::ButtonText, color);
+    setPalette(palette);
 #endif
-  connect(horizontalHeader(), SIGNAL(sectionClicked(int)), SLOT(slotColClicked(int)));
-  connect(verticalHeader()  , SIGNAL(sectionClicked(int)), SLOT(slotRowClicked(int)));
-  connect(this, SIGNAL(cellClicked(int,int)), SLOT(slotClicked(int,int)));
-  connect(this, SIGNAL(currentCellChanged(int,int,int,int)), SLOT(slotCurrentChanged(int,int,int,int)));
-  connect(this, SIGNAL(cellChanged(int,int)), SLOT(slotValueChanged(int,int)));
-  connect(this, SIGNAL(activated(QModelIndex)), SLOT(slotActivated(QModelIndex)));
+
+    connect(horizontalHeader(), SIGNAL(sectionClicked(int)), SLOT(slotColClicked(int)));
+    connect(verticalHeader(),   SIGNAL(sectionClicked(int)), SLOT(slotRowClicked(int)));
+    connect(this, SIGNAL(cellClicked(int,int)), SLOT(slotClicked(int,int)));
+    connect(this, SIGNAL(currentCellChanged(int,int,int,int)), SLOT(slotCurrentChanged(int,int,int,int)));
+    connect(this, SIGNAL(cellChanged(int,int)), SLOT(slotValueChanged(int,int)));
+
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)    //Nestor was here
+    connect(this, SIGNAL(activated(QModelIndex)), SLOT(slotActivated(QModelIndex)));
+#else
+    // Qt6: usar clicked(QModelIndex) para clic simple
+    connect(this, &QTableWidget::clicked, this, &MyTable::slotActivated);
+#endif
 }
 
 MyTable::~MyTable()

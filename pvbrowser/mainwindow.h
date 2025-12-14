@@ -22,7 +22,7 @@
 //#else
 //  #define VERSION "5.15.3 - qt5"
 //#endif
-#define VERSION "6.0.1 - qt6"
+#define VERSION "6.0.1f - qt6"
 
 #if defined PVB_FOOTPRINT_BASIC
 #define WEBVERSION " Small Footprint without Webkit or Blink"
