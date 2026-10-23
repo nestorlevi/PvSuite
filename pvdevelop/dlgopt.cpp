@@ -25,8 +25,8 @@ DlgOpt::DlgOpt(QWidget *parent) : QDialog(parent)
 
   filename = "";
 
-  QObject::connect(QPushButton_ok,    SIGNAL(clicked()),this,SLOT(okClicked()));
-  QObject::connect(QPushButton_cancel,SIGNAL(clicked()),this,SLOT(reject()));
+  QObject::connect(QPushButton_ok,    &QPushButton::clicked, this, &DlgOpt::okClicked); // Nestor was here
+  QObject::connect(QPushButton_cancel,&QPushButton::clicked, this, &DlgOpt::reject);
   edit1->setLineWrapMode(QTextEdit::NoWrap);
 
   /* add layout begin */

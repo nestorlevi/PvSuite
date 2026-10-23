@@ -33,6 +33,10 @@ void uncommentModbus();
 void uncommentSiemenstcp();
 void uncommentPpi();
 int  writeStartscript(const char *dir, const char *name);
+int  buildJobs();                              // Nestor: procesadores para make -j
+void perhapsAddMsvcScope(const char *name);
+int  proNeedsMinGWLibDir(const char *name);    // Nestor: Windows: el .pro enlaza win-mingw/bin/lib*.a sin PVB_MINGWLIB
+int  adaptProMinGWLibDir(const char *name);    // la agrega (1 = adaptado, 0 = no hacia falta, -1 = error)
 int  export_ui(int imask);
 
 typedef struct _FileLines_

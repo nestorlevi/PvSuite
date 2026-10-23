@@ -18,6 +18,9 @@
 #include <QString>
 #include <QStatusBar>
 #include <QStack>
+#include <QPointer>
+#include <QList>
+#include <QRubberBand>
 #include <qwidget.h>
 #include "dlginsertwidget.h"
 
@@ -33,6 +36,8 @@ class QScrollArea;
 class MyRootWidget : public QWidget
 {
   public:
+    void copyWidget();    // Nestor: tambien desde los iconos Copiar y Pegar
+    void pasteWidget();
     MyRootWidget(MyRootWidget *parent);
     ~MyRootWidget();
     void setScroll(QScrollArea *_scroll);
@@ -44,6 +49,9 @@ class MyRootWidget : public QWidget
     void ReleaseMouse();
     void EditLayout();
     void MoveKey(int key);
+    // Nestor: alinear y espaciar la selección múltiple (barra Align de la ventana principal)
+    enum AlignMode { AlignLeftEdges, AlignRightEdges, AlignTopEdges, AlignBottomEdges, SpaceHorizontally, SpaceVertically, AlignHCenters, AlignVCenters };
+    void alignSelection(int mode);
     void stackClear();
     QWidget *pop(QWidget *current);
     QMainWindow  *mainWindow;
@@ -52,16 +60,27 @@ class MyRootWidget : public QWidget
     void mouseMoveEvent(QMouseEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
+    bool eventFilter(QObject *obj, QEvent *event);
     QWidget *getChild(int x, int y);
     void showWidgets(QObject *item);
     void restoreColors(QWidget *item);
-    void copyAttributes(QWidget *source, QWidget *destination);
     int  aboveDesignArea(int x, int y, int gx, int gy);
     void printStatusMessage(QWidget *child);
     void setCursor(Qt::CursorShape cursor);
     void push(QWidget *current);
     void perhapsDeselectOldWidget();
+    void clearSelectionFrame(QWidget *w);
+    void clearSelectionFrames();
+    void setSelectionFrame(QWidget *w, bool primary);
+    void refreshSelectionFrames();
+    void clearSelection();
     void selectWidget(QWidget *child);
+    void toggleSelection(QWidget *child);
+    bool isSelected(QWidget *w);
+    QList<QWidget *> selectedWidgets();
+    void startRubberBand(QWidget *container, int x, int y);
+    void finishRubberBand();
+    void moveKeyWidget(QWidget *child, int key);
     Qt::CursorShape currentCursor;
     QScrollArea *scroll;
     int xOld,yOld,buttonDown,xChild0,yChild0,wChild0,hChild0,grabbed,tabbing,copying, inMiddle,parentLevel,reparentDone;
@@ -71,6 +90,14 @@ class MyRootWidget : public QWidget
     QString lastTab;
     dlgInsertWidget insert;
     QStack<OldState> stack;
+    QList<QPointer<QWidget> > copiedParents; // padres de los widgets copiados (se pega en el mismo contenedor)
+    QList<QPointer<QWidget> > selection;     // selección múltiple; selection[0] es la referencia para alinear
+    QList<QPoint> groupStart;                // posiciones al empezar a arrastrar la selección
+    bool groupPushed = false;                // ya se guardó el arrastre del grupo para deshacer
+    QRubberBand *rubberBand = nullptr;       // rectángulo de selección
+    QPoint rubberOrigin;
+    QPointer<QWidget> rubberContainer;       // contenedor donde empezó el rectángulo
+    int pasteCount = 0;              // pegados desde la última copia, para desplazar cada copia
 };
 
 class Designer

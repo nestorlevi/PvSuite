@@ -17,8 +17,11 @@
 #include "../pvbrowser/pvdefine.h"
 #include "../pvbrowser/opt.h"
 #include <QApplication>
+#include "../pvbrowser/pvblanguage.h"
+#include "../rllib/lib/rltagdef.h"
 #include <QIcon>
 #include <QDir>
+#include <QFile>
 
 #include "mainwindow.h"
 #include "opt.h"
@@ -154,7 +157,9 @@ void  perhapsDoAction()
   }
   else if(strcmp(opt_develop.arg_action,"make") == 0)
   {
-    action("make");
+    // Nestor: en Windows action() lee el nombre de "make=<proyecto>" (con "make" solo quedaba sin inicializar)
+    sprintf(buf,"make=%s",opt_develop.arg_project);
+    action(buf);
   }
   else if(strcmp(opt_develop.arg_action,"makeModbus") == 0)
   {
@@ -212,6 +217,18 @@ void  perhapsDoAction()
     ymax = 1024;
     sscanf(opt_develop.arg_action,"writeDimension:%d:%d",&xmax,&ymax);
     sprintf(buf,"%s.pvproject",opt_develop.arg_project);
+    QByteArray keep; // Nestor: las demas lineas del .pvproject (script=, mingw=, qtmingw=...)
+    QFile old(QString::fromLocal8Bit(buf));
+    if(old.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+      while(!old.atEnd())
+      {
+        const QByteArray line = old.readLine();
+        if(line.trimmed().isEmpty() || line.startsWith("target=") || line.startsWith("xmax=") || line.startsWith("ymax=")) continue;
+        keep += line.endsWith('\n') ? line : line + "\n";
+      }
+      old.close();
+    }
     fout = fopen(buf,"w");
     if(fout == NULL)
     {
@@ -221,28 +238,7 @@ void  perhapsDoAction()
     fprintf(fout,"target=%s\n",opt_develop.arg_project);
     fprintf(fout,"xmax=%d\n",xmax);
     fprintf(fout,"ymax=%d\n",ymax);
-
-    // add additional language here
-    if(opt_develop.script == PV_PYTHON)
-    {
-      fprintf(fout,"script=Python\n");
-    }
-    if(opt_develop.script == PV_PERL)
-    {
-      fprintf(fout,"script=PERL\n");
-    }
-    if(opt_develop.script == PV_PHP)
-    {
-      fprintf(fout,"script=PHP\n");
-    }
-    if(opt_develop.script == PV_TCL)
-    {
-      fprintf(fout,"script=Tcl\n");
-    }
-    if(opt_develop.script == PV_LUA)
-    {
-      fprintf(fout,"script=Lua\n");
-    }
+    if(!keep.isEmpty()) fwrite(keep.constData(), 1, keep.size(), fout);
     fclose(fout);
   }
   else if(strncmp(opt_develop.arg_action,"importUi:",9) == 0)
@@ -388,6 +384,8 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     //Nestor aquí, nuevo estilo multiplataforma
     app.setStyle(QStyleFactory::create("Fusion"));
+    pvbInstallTranslators(app, "pvdevelop"); // Nestor: idioma (menu Idioma o el del sistema)
+    rlTagTranslate = [](const char *text) { return QCoreApplication::translate("rlTagList", text).toStdString(); };
 
     setlocale(LC_NUMERIC, "C");
     perhapsDoAction();

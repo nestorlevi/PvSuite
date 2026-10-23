@@ -38,6 +38,8 @@ public slots:
     void slotOk();
     void slotCancel();
     void findMax(QObject *w, int *max);
+    void slotSelectImageFile();   // Nestor: botón "..." para elegir el archivo
+    void slotSelectDrawFile();
 private:
     Ui_DialogInsertWidget *form;
 };

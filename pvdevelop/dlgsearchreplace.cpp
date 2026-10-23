@@ -26,8 +26,8 @@ dlgsearchreplace::dlgsearchreplace()
   uidlg->setupUi(this);
   editor = NULL;
   found = 0;
-  connect(uidlg->replaceButton, SIGNAL(clicked()),this,SLOT(slotReplace()));
-  connect(uidlg->findNextButton,SIGNAL(clicked()),this,SLOT(slotFindNext()));
+  connect(uidlg->replaceButton, &QPushButton::clicked, this, &dlgsearchreplace::slotReplace); // Nestor was here
+  connect(uidlg->findNextButton, &QPushButton::clicked, this, &dlgsearchreplace::slotFindNext);
 /*
     QLabel *labelFind;
     QLabel *labelReplace;
@@ -70,7 +70,7 @@ void dlgsearchreplace::slotFindNext()
 
   if(found == 0)
   {
-    int ret = QMessageBox::question(0,"pvdevelop: find","Goto top of file ?",QMessageBox::No,QMessageBox::Yes);
+    int ret = QMessageBox::question(0,tr("pvdevelop: find"),tr("Goto top of file ?"),QMessageBox::No,QMessageBox::Yes);
     if(ret == QMessageBox::Yes)
     {
       QTextCursor cursor;

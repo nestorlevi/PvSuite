@@ -18,6 +18,14 @@
 #include "dlginsertwidget.h"
 #include "MyWidgets.h"
 #include "interpreter.h"
+#include "dlgbind.h"
+#include "pvbindgen.h"   // pvbSplitPairs
+#include <QStyle>
+#include "pvimages.h"
+#include <QMessageBox>
+#include "opt.h"
+extern OPT_DEVELOP opt_develop;
+
 
 dlgProperty::dlgProperty(QWidget *_widget)
 {
@@ -26,10 +34,11 @@ dlgProperty::dlgProperty(QWidget *_widget)
   form->setupUi(this);
   widget = _widget;
   modified = ret = 0;
+  bindChanged = false;
   QString type(widget->statusTip());
 
   QString st = widget->statusTip();
-  form->labelType->setText(st.section(':',0));
+  form->labelType->setText(st.section(':',0).replace(',', ", "));   // con espacios para que corte la linea
   form->spinBoxX->setValue(widget->x());
   form->spinBoxY->setValue(widget->y());
   form->spinBoxW->setValue(widget->width());
@@ -42,6 +51,7 @@ dlgProperty::dlgProperty(QWidget *_widget)
   form->lineEditObjectName->setText(widget->objectName());
   buf = widget->whatsThis();
   form->lineEditWhatsThis->setText(buf);
+  if(type.startsWith("TQImage")) pvbAddImageButton(form->lineEditWhatsThis, false);   // Nestor: de cualquier carpeta (copia a Image/)
   buf = widget->toolTip();
   form->lineEditToolTip->setText(buf);
 
@@ -254,9 +264,44 @@ dlgProperty::dlgProperty(QWidget *_widget)
     form->comboBoxMultiSection->hide();
   }
 
-  QObject::connect(form->okButton,     SIGNAL(clicked()),SLOT(slotOk()));
-  QObject::connect(form->cancelButton, SIGNAL(clicked()),SLOT(slotCancel()));
-  QObject::connect(form->updateButton, SIGNAL(clicked()),SLOT(slotUpdate()));
+  QObject::connect(form->okButton,     &QPushButton::clicked, this, &dlgProperty::slotOk); // Nestor was here
+  QObject::connect(form->cancelButton, &QPushButton::clicked, this, &dlgProperty::slotCancel);
+  QObject::connect(form->updateButton, &QPushButton::clicked, this, &dlgProperty::slotUpdate);
+
+  // Nestor: accion y animacion con tags de los daemons (genera maskN_pvb.h al guardar)
+  bindTip = form->bindButton->toolTip();
+  showBinding(pvbBinding(widget));
+  QObject::connect(form->bindButton, &QPushButton::clicked, this, &dlgProperty::slotBind);
+}
+
+// marca el boton Tags... cuando el widget tiene acciones o animaciones (y las muestra en el tooltip)
+void dlgProperty::showBinding(const QString &pairs)
+{
+  QPushButton *b = form->bindButton;
+  if(pairs.isEmpty())
+  {
+    b->setIcon(QIcon());
+    b->setStyleSheet(QString());
+    b->setToolTip(bindTip);
+    return;
+  }
+  b->setIcon(style()->standardIcon(QStyle::SP_DialogApplyButton));
+  b->setStyleSheet("font-weight: bold");
+  QStringList p = pvbSplitPairs(pairs), lines;
+  for(int k=0; k+1<p.size(); k+=2) lines << p[k] + " = " + p[k+1];
+  b->setToolTip(bindTip + "\n\n" + lines.join("\n"));
+}
+
+void dlgProperty::slotBind()
+{
+  QString cur = pvbBinding(widget);
+  if(bindChanged) pvbSetBinding(widget, bindPending);   // el dialogo parte de lo ya elegido
+  DlgBind dlg(widget, this);
+  pvbSetBinding(widget, cur);
+  if(dlg.exec() != QDialog::Accepted) return;
+  bindPending = dlg.binding();
+  bindChanged = true;
+  showBinding(bindPending);
 }
 
 dlgProperty::~dlgProperty()
@@ -286,6 +331,7 @@ void dlgProperty::slotUpdate()
 {
   QString buf;
   modified = 1;
+  if(bindChanged) pvbSetBinding(widget, bindPending);
   QString type(widget->statusTip());
   widget->setObjectName(form->lineEditObjectName->text());
   buf = form->lineEditWhatsThis->text();
@@ -359,6 +405,7 @@ void dlgProperty::slotUpdate()
     //widget->unsetPalette();
     QPalette palette;
     widget->setPalette(palette);
+    if(widget->statusTip().contains("background:")) widget->setStyleSheet(QString());   // Nestor: el color que tenia
     QString st = widget->statusTip();
     st.remove("background:");
     widget->setStatusTip(st);

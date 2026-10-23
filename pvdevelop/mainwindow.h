@@ -27,6 +27,8 @@ class QTextEdit;
 class QScrollArea;
 class QListWidgetItem;
 class dlgTextBrowser;
+class QDockWidget;
+class BuildConsole;
 
 class MainWindow : public QMainWindow
 {
@@ -37,6 +39,7 @@ public:
 
 protected:
   void closeEvent(QCloseEvent *event);
+  bool eventFilter(QObject *o, QEvent *e) override;   // Nestor: tamanio de la consola de compilacion
 
 private slots:
   void slotFileOpt();
@@ -55,6 +58,9 @@ private slots:
   void slotMake();
   void slotStartServer();
   void slotStartPvbrowser();
+  void slotCompilerDialog();      // Nestor: ventana "Compilador"
+  void slotQuickBuildSettings();  // Nestor: barra "Compilacion"
+  void slotProjectMinGW(int index); // Nestor: version de MinGW del proyecto
   void slotRllibUncommentRllib();
   void slotRllibUncommentModbus();
   void slotRllibUncommentSiemenstcp();
@@ -76,10 +82,24 @@ private slots:
   void slotSpinBoxMask(int i);
   void slotInsertFunction();
   void slotWidgetname(QListWidgetItem *item);
+  void slotMaskList(QListWidgetItem *item);   // Nestor: pantalla elegida en la barra del editor
   void slotSearch();
   void slotReplace();
 
 private:
+  // Nestor: consola de compilacion (abajo), marcas de error en el editor e historiador al ejecutar
+  void createBuildConsole();
+  void buildProject(bool startServer);
+  void startServerProcess(const QString &project);
+  static QString serverExePath(const QString &project);
+  void applyErrorMarks();
+  void openLocation(const QString &file, int line, int column);
+  QDockWidget  *buildDock;
+  BuildConsole *buildConsole;
+  bool buildDockRestoring = false;   // Nestor: no guardar el tamanio mientras se restaura
+  void restoreBuildDockSize();
+  QToolBar *projectToolBar;          // Nestor: procesos, bloques, recursos, usuarios y simulacion
+  static QIcon toolIcon(int kind);
   void createActions();
   void createMenus();
   void createToolBars();
@@ -114,6 +134,18 @@ private:
   QToolBar *fileToolBar;
   QToolBar *editToolBar;
   QToolBar *viewToolBar;
+  QToolBar *alignToolBar;   // Nestor: alinear/espaciar widgets en el diseñador
+  QAction *alignLeftAct, *alignRightAct, *alignTopAct, *alignBottomAct, *spaceHorAct, *spaceVerAct;
+  QAction *alignHCenterAct, *alignVCenterAct;
+  void setDesignerMode(bool designerMode); // Nestor: barras segun la vista (Designer / editor)
+  void syncMaskList();                      // Nestor: lista de pantallas y nombre en el editor
+  QString maskTitle(int mask);              // "Alarmas (mask3)" o "mask3"
+  QToolBar  *buildToolBar;   // Nestor: compilador y procesadores
+  class QComboBox *comboCompiler;
+  class QComboBox *comboMingw;   // Nestor: version de MinGW del proyecto (se guarda en el .pvproject)
+  QAction   *compilerAct;
+  void syncBuildToolBar();
+  void offerMinGWLibDir(const QString &project); // Nestor: MinGW 8.1: adaptar el .pro (una sola vez)
   QAction *optAct;
   QAction *newAct;
   QAction *openAct;
@@ -124,6 +156,7 @@ private:
   QAction *cutAct;
   QAction *copyAct;
   QAction *pasteAct;
+  QMetaObject::Connection designerCopy, designerPaste;   // Nestor: copiar y pegar widgets en el Designer
   QAction *searchAct;
   QAction *replaceAct;
   QAction *viewEditorAct;
@@ -144,6 +177,7 @@ private:
   QAction *daemonModbusAct;
   QAction *daemonSiemenstcpAct;
   QAction *daemonPpiAct;
+  QAction *tagMonitorAct;     // Nestor: monitor de tags (depurar)
   QAction *linuxWriteStartscriptAct;
   QAction *aboutManualAct;
   QAction *aboutAct;
@@ -157,6 +191,7 @@ private:
   dlgTextBrowser *dlgtextbrowser;
   dlgsearchreplace searchreplace;
   int imask;
+  QString blockFile;                     // Nestor: el bloque que esta en el Designer (vacio: maskN)
   QMap<QString, int> filePos;
 };
 

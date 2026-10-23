@@ -25,8 +25,8 @@ dlgPasteWidget::dlgPasteWidget()
 {
   form = new Ui_DialogPasteWidget;
   form->setupUi(this);
-  QObject::connect(form->pushButtonCancel,SIGNAL(clicked()),this,SLOT(reject()));
-  QObject::connect(form->pushButtonInsert,SIGNAL(clicked()),this,SLOT(accept()));
+  QObject::connect(form->pushButtonCancel, &QPushButton::clicked, this, &dlgPasteWidget::reject); // Nestor was here
+  QObject::connect(form->pushButtonInsert, &QPushButton::clicked, this, &dlgPasteWidget::accept);
   form->radioButtonName->setChecked(true);
 }
 

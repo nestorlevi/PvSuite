@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DlgBind</class>
+ <widget class="QDialog" name="DlgBind">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>760</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string notr="true">DlgBind</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="labelNoTags">
+     <property name="styleSheet">
+      <string notr="true">color: #b00000</string>
+     </property>
+     <property name="text">
+      <string>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA) para que se genere su .tagmap</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTabWidget" name="tabs">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tabAction">
+      <attribute name="title">
+       <string>Accion</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="layoutAction">
+       <item>
+        <widget class="QGroupBox" name="groupEvents">
+         <property name="title">
+          <string>Al usar el widget</string>
+         </property>
+         <layout class="QGridLayout" name="gridEvents">
+          <item row="0" column="1">
+           <widget class="QLabel" name="labelKind">
+            <property name="text">
+             <string>Accion</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="labelTag">
+            <property name="text">
+             <string>Tag</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3" colspan="2">
+           <widget class="QLabel" name="labelValue">
+            <property name="text">
+             <string>Valor / pantalla</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelClick">
+            <property name="text">
+             <string>Al hacer clic:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="kindClick"/>
+          </item>
+          <item row="1" column="2">
+           <widget class="QComboBox" name="tagClick">
+            <property name="minimumSize">
+             <size>
+              <width>220</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLineEdit" name="valueClick">
+            <property name="maximumSize">
+             <size>
+              <width>120</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="4">
+           <widget class="QSpinBox" name="maskClick">
+            <property name="prefix">
+             <string>mascara </string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelPress">
+            <property name="text">
+             <string>Al presionar:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="kindPress"/>
+          </item>
+          <item row="2" column="2">
+           <widget class="QComboBox" name="tagPress">
+            <property name="minimumSize">
+             <size>
+              <width>220</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3">
+           <widget class="QLineEdit" name="valuePress">
+            <property name="maximumSize">
+             <size>
+              <width>120</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="4">
+           <widget class="QSpinBox" name="maskPress">
+            <property name="prefix">
+             <string>mascara </string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="labelRelease">
+            <property name="text">
+             <string>Al soltar:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QComboBox" name="kindRelease"/>
+          </item>
+          <item row="3" column="2">
+           <widget class="QComboBox" name="tagRelease">
+            <property name="minimumSize">
+             <size>
+              <width>220</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="3">
+           <widget class="QLineEdit" name="valueRelease">
+            <property name="maximumSize">
+             <size>
+              <width>120</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="4">
+           <widget class="QSpinBox" name="maskRelease">
+            <property name="prefix">
+             <string>mascara </string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2">
+           <widget class="QPushButton" name="buttonMomentary">
+            <property name="toolTip">
+             <string>1 al presionar y 0 al soltar, en el tag de "Al presionar" (o el de "Al hacer clic")</string>
+            </property>
+            <property name="text">
+             <string>Pulsador momentaneo</string>
+            </property>
+            <property name="autoDefault">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="5">
+           <spacer name="spacerEvents">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupOptions">
+         <property name="title">
+          <string>Opciones</string>
+         </property>
+         <layout class="QGridLayout" name="gridOptions">
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelEnter">
+            <property name="text">
+             <string>Escribir lo ingresado en:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1" colspan="3">
+           <widget class="QComboBox" name="enterTag">
+            <property name="toolTip">
+             <string>LineEdit: el numero escrito (Enter); Slider, Dial, SpinBox: su valor; CheckBox: 1 / 0</string>
+            </property>
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelLimits">
+            <property name="text">
+             <string>Limites (sumar, restar, ingresado):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="editMin">
+            <property name="placeholderText">
+             <string>sin minimo</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLineEdit" name="editMax">
+            <property name="placeholderText">
+             <string>sin maximo</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelConfirm">
+            <property name="text">
+             <string>Confirmar antes (clic):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1" colspan="3">
+           <widget class="QLineEdit" name="editConfirm">
+            <property name="placeholderText">
+             <string>vacio = sin confirmar (p. ej. Arrancar el motor 1?)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="labelCond">
+            <property name="text">
+             <string>Solo si:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QComboBox" name="condTag">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2">
+           <widget class="QComboBox" name="condOp">
+            <item>
+             <property name="text">
+              <string notr="true">==</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string notr="true">!=</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string notr="true">&gt;</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string notr="true">&gt;=</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string notr="true">&lt;</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string notr="true">&lt;=</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="3" column="3">
+           <widget class="QLineEdit" name="condValue">
+            <property name="maximumSize">
+             <size>
+              <width>80</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1" colspan="3">
+           <widget class="QLineEdit" name="condMsg">
+            <property name="placeholderText">
+             <string>mensaje si no se cumple</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelCode">
+         <property name="styleSheet">
+          <string notr="true">color: gray</string>
+         </property>
+         <property name="text">
+          <string>Si hace falta mas, el slot del widget sigue disponible: el codigo propio va antes (puede impedir la accion) o despues de la linea pvbActions.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="spacerAction">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabAnimation">
+      <attribute name="title">
+       <string>Animacion</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridAnimation" rowstretch="0,0,0,0,0,0,0,1" columnstretch="0,1,1,0">
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelText">
+         <property name="text">
+          <string>Texto:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="textTag">
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2" colspan="2">
+        <widget class="QLineEdit" name="editFmt">
+         <property name="toolTip">
+          <string>Formato printf (%.1f C, %d, %.2f bar) o textos por valor: Parado|Marcha|Falla</string>
+         </property>
+         <property name="placeholderText">
+          <string notr="true">%.1f C</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="labelValueAnim">
+         <property name="text">
+          <string>Valor:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="valueTag">
+         <property name="toolTip">
+          <string>ProgressBar, Slider, Dial, SpinBox, LCDNumber, CheckBox, RadioButton</string>
+         </property>
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="labelColor">
+         <property name="text">
+          <string>Color:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QComboBox" name="colorTag">
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLineEdit" name="editColors">
+         <property name="toolTip">
+          <string>valor=color separados por ;  (&gt;80, &gt;=80, &lt;10, &lt;=10, !=0, else; color vacio = el original)</string>
+         </property>
+         <property name="placeholderText">
+          <string notr="true">0=#808080;1=#00C000;&gt;80=#FF0000;else=</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QComboBox" name="colorPart">
+         <item>
+          <property name="text">
+           <string>Fondo</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Texto</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="labelBlink">
+         <property name="text">
+          <string>Parpadeo:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QComboBox" name="blinkTag">
+         <property name="toolTip">
+          <string>Parpadea mientras se cumple la condicion: PLC1:Alarma, !PLC1:Marcha, PLC1:Temp &gt; 80 o PLC1:Estado.3 (bit 3)</string>
+         </property>
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="labelVisible">
+         <property name="text">
+          <string>Visible:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QComboBox" name="visibleTag">
+         <property name="toolTip">
+          <string>Visible mientras se cumple la condicion: PLC1:Marcha, PLC1:Estado == 2, PLC1:Temp &gt; 80 o PLC1:Estado.3 (bit 3)</string>
+         </property>
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="2">
+        <widget class="QCheckBox" name="checkInvert">
+         <property name="text">
+          <string>invertir (visible cuando vale 0)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="4">
+        <widget class="QCheckBox" name="checkQuality">
+         <property name="text">
+          <string>Gris si el dato es malo (no se pudo leer o el daemon no funciona)</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="4">
+        <widget class="QGroupBox" name="groupImage">
+         <property name="title">
+          <string>Imagen</string>
+         </property>
+         <layout class="QGridLayout" name="gridImage" columnstretch="0,1,1,0">
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelImages">
+            <property name="text">
+             <string>Imagen segun valor:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="imageTag">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2" colspan="2">
+           <widget class="QLineEdit" name="editImages">
+            <property name="toolTip">
+             <string>Un archivo por valor (0, 1, 2...) separados por |; el ultimo sirve para los valores mayores</string>
+            </property>
+            <property name="placeholderText">
+             <string notr="true">parado.png|marcha.png|falla.png</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelAnim">
+            <property name="text">
+             <string>Animar mientras:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="animTag">
+            <property name="toolTip">
+             <string>Mientras se cumple la condicion, pvbrowser muestra los cuadros uno tras otro. Condicion: PLC1:Marcha (distinto de 0), !PLC1:Marcha, PLC1:Estado == 2, PLC1:Temp &gt; 80 o PLC1:Estado.3 (bit 3 de un entero)</string>
+            </property>
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLineEdit" name="editFrames">
+            <property name="toolTip">
+             <string>Cuadros de la animacion separados por | (un .gif animado se anima solo, sin esto)</string>
+            </property>
+            <property name="placeholderText">
+             <string notr="true">bomba1.png|bomba2.png|bomba3.png</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QSpinBox" name="spinPeriod">
+            <property name="suffix">
+             <string notr="true"> ms</string>
+            </property>
+            <property name="minimum">
+             <number>50</number>
+            </property>
+            <property name="maximum">
+             <number>10000</number>
+            </property>
+            <property name="singleStep">
+             <number>50</number>
+            </property>
+            <property name="value">
+             <number>300</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="4">
+           <widget class="QLabel" name="labelImageHelp">
+            <property name="styleSheet">
+             <string notr="true">color: gray</string>
+            </property>
+            <property name="text">
+             <string>Las imagenes se buscan en la carpeta del proyecto; para que vayan dentro del pvserver: Accion &gt; Recursos del proyecto.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <spacer name="spacerAnimation">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>DlgBind</receiver>
+   <slot>accept()</slot>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>DlgBind</receiver>
+   <slot>reject()</slot>
+  </connection>
+ </connections>
+</ui>

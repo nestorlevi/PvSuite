@@ -22,6 +22,10 @@
 #include "qwtwidgets.h"
 #include "opt.h"
 #include <qlcdnumber.h>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QDir>
+#include "pvimages.h"   // Nestor: pvbPickImages
 
 extern OPT_DEVELOP opt_develop;
 
@@ -65,8 +69,10 @@ dlgInsertWidget::dlgInsertWidget()
   ret = 1;
   myrootwidget = NULL;
 
-  QObject::connect(form->okButton,     SIGNAL(clicked()),SLOT(slotOk()));
-  QObject::connect(form->cancelButton, SIGNAL(clicked()),SLOT(slotCancel()));
+  QObject::connect(form->okButton, &QPushButton::clicked, this, &dlgInsertWidget::slotOk); // Nestor was here
+  QObject::connect(form->cancelButton, &QPushButton::clicked, this, &dlgInsertWidget::slotCancel);
+  QObject::connect(form->toolButtonImageFileName, &QToolButton::clicked, this, &dlgInsertWidget::slotSelectImageFile);
+  QObject::connect(form->toolButtonDrawFileName,  &QToolButton::clicked, this, &dlgInsertWidget::slotSelectDrawFile);
 }
 
 dlgInsertWidget::~dlgInsertWidget()
@@ -553,4 +559,36 @@ void dlgInsertWidget::slotCancel()
 {
   ret = 0;
   reject();
+}
+
+// Nestor: elegir el archivo con el diálogo estándar del sistema.
+// pvdevelop trabaja en el directorio del proyecto y el pvserver busca los archivos ahí,
+// por eso se guarda la ruta relativa al proyecto cuando el archivo está dentro de él.
+// Siempre con '/', que también sirve en Windows y no se rompe dentro de "..." en el código generado.
+static void selectFile(QWidget *parent, QLineEdit *lineEdit, QRadioButton *radio,
+                       const QString &title, const QString &filter)
+{
+  QString start = lineEdit->text().isEmpty() ? QDir::currentPath() : QFileInfo(lineEdit->text()).absolutePath();
+  QString file = QFileDialog::getOpenFileName(parent, title, start, filter);
+  if(file.isEmpty()) return;
+
+  QString rel = QDir::current().relativeFilePath(file);
+  if(!rel.startsWith("..") && !QDir::isAbsolutePath(rel)) file = rel;
+  lineEdit->setText(QDir::fromNativeSeparators(file));
+  radio->setChecked(true);
+}
+
+void dlgInsertWidget::slotSelectImageFile()
+{
+  // Nestor: de cualquier carpeta; si esta fuera del proyecto se ofrece copiarla a Image/
+  QStringList f = pvbPickImages(this, form->lineEditImageFileName->text(), false);
+  if(f.isEmpty()) return;
+  form->lineEditImageFileName->setText(f.first());
+  form->wImage->setChecked(true);
+}
+
+void dlgInsertWidget::slotSelectDrawFile()
+{
+  selectFile(this, form->lineEditDrawFileName, form->wDraw, "pvdevelop: select SVG",
+             "SVG (*.svg);;All files (*)");
 }

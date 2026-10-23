@@ -24,7 +24,19 @@
 #include "../pvbrowser/pvdefine.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+std::string gdaemonCString(const char *s); // gmodbus.cpp: texto como literal de C (escapa las barras y comillas)
+void gdaemonNormPath(char *path);           // gmodbus.cpp: de una barra invertida doble queda una
 #include <string.h>
+#include <QFile>
+
+// Nestor: nombre de archivo (UTF-8) para fopen: en Windows fopen usa la pagina de codigos ANSI
+static const char *nativeName(const char *utf8)
+{
+  static QByteArray buf;
+  buf = QFile::encodeName(QString::fromUtf8(utf8));
+  return buf.constData();
+}
 
 static char line[256*256];
 static char target[4096];
@@ -45,7 +57,7 @@ static void init(const char *name)
   int dbnum,start,len,cyclecnt;
   char *cptr;
   FILE *fp,*fout;
-  fp = fopen(name,"r");
+  fp = fopen(nativeName(name),"r");
   if(fp == NULL)
   {
     printf("could not open %s\n",name);
@@ -63,11 +75,11 @@ static void init(const char *name)
   {
     if(strncmp("target=",line,7) == 0)
     {
-      sscanf(line,"target=%s",target);
+      sscanf(line,"target=%1023s",target);
     }
     else if(strncmp("tty=",line,4) == 0)
     {
-      sscanf(line,"tty=%s",tty);
+      sscanf(line,"tty=%1023s",tty);
     }
     else if(strncmp("baudrate=",line,9) == 0)
     {
@@ -75,7 +87,7 @@ static void init(const char *name)
     }
     else if(strncmp("dave_speed=",line,11) == 0)
     {
-      sscanf(line,"dave_speed=%s",dave_speed);
+      sscanf(line,"dave_speed=%1023s",dave_speed);
     }
     else if(strncmp("idletime=",line,9) == 0)
     {
@@ -83,11 +95,13 @@ static void init(const char *name)
     }
     else if(strncmp("mailbox=",line,8) == 0)
     {
-      sscanf(line,"mailbox=%s",mailbox);
+      sscanf(line,"mailbox=%1023s",mailbox);
+      gdaemonNormPath(mailbox);
     }
     else if(strncmp("shared_memory=",line,14) == 0)
     {
-      sscanf(line,"shared_memory=%s",shared_memory);
+      sscanf(line,"shared_memory=%1023s",shared_memory);
+      gdaemonNormPath(shared_memory);
     }
     else if(strncmp("eventlog",line,8) == 0)
     {
@@ -96,7 +110,7 @@ static void init(const char *name)
       cptr = strstr(line,"host=");
       if(cptr != NULL)
       {
-        strcpy(eventhost,&cptr[5]);
+        snprintf(eventhost,sizeof(eventhost),"%s",&cptr[5]);
         cptr = strstr(eventhost," ");
         if(cptr != NULL) *cptr = '\0';
       }
@@ -113,7 +127,7 @@ static void init(const char *name)
   printf("dave_speed=%s\n",dave_speed);  
   if(eventport != -1) printf("eventlog host=%s port=%d\n",eventhost,eventport);
 
-  fp = fopen(name,"r");
+  fp = fopen(nativeName(name),"r");
   if(fp == NULL)
   {
     printf("could not open %s\n",name);
@@ -129,8 +143,8 @@ static void init(const char *name)
     exit(-1);
   }
   fprintf(fout,"// PPI Signal assignment of %s\n",target);
-  fprintf(fout,"#define %s_SHARED_MEMORY \"%s\"\n",target,shared_memory);
-  fprintf(fout,"#define %s_MAILBOX \"%s\"\n",target,mailbox);
+  fprintf(fout,"#define %s_SHARED_MEMORY \"%s\"\n",target,gdaemonCString(shared_memory).c_str());
+  fprintf(fout,"#define %s_MAILBOX \"%s\"\n",target,gdaemonCString(mailbox).c_str());
 
   cyclecnt = 1;
   base = 0;
@@ -208,10 +222,10 @@ static void generate(const char *name)
   fprintf(fout,"%s","};\n");
   fprintf(fout,"%s","\n");
   fprintf(fout,"#define IDLETIME %d\n",idletime);
-  fprintf(fout,"#define SERIAL_DEVICE \"%s\"\n",tty);
+  fprintf(fout,"#define SERIAL_DEVICE \"%s\"\n",gdaemonCString(tty).c_str());
   fprintf(fout,"#define BAUDRATE \"%d\"\n",baudrate);
-  fprintf(fout,"rlSharedMemory shm(\"%s\",%d);\n",shared_memory,shared_memory_size);
-  fprintf(fout,"rlMailbox      mbx(\"%s\");\n",mailbox);
+  fprintf(fout,"rlSharedMemory shm(\"%s\",%d);\n",gdaemonCString(shared_memory).c_str(),shared_memory_size);
+  fprintf(fout,"rlMailbox      mbx(\"%s\");\n",gdaemonCString(mailbox).c_str());
   fprintf(fout,"%s","rlThread       thread;\n");
   fprintf(fout,"%s","rlThread       watchdog;\n");
   fprintf(fout,"%s","\n");
@@ -303,7 +317,12 @@ static void generate(const char *name)
   fprintf(fout,"%s","  if(ac > 0) av0 = av[0];\n");
   fprintf(fout,"%s","  fds.rfd=setPort(SERIAL_DEVICE,BAUDRATE,'E');\n");
   fprintf(fout,"%s","  fds.wfd=fds.rfd;\n");
-  fprintf(fout,"%s","  if(fds.rfd>0)\n"); 
+  // Nestor: en Windows rfd es un HANDLE (puntero): GCC actual no acepta "HANDLE > 0"
+  fprintf(fout,"%s","#ifdef _WIN32\n");
+  fprintf(fout,"%s","  if(fds.rfd != INVALID_HANDLE_VALUE && fds.rfd != NULL)\n");
+  fprintf(fout,"%s","#else\n");
+  fprintf(fout,"%s","  if(fds.rfd>0)\n");
+  fprintf(fout,"%s","#endif\n");
   fprintf(fout,"%s","  {\n"); 
   fprintf(fout,"    printf(\"ppidaemon starting\\n\");\n");
   if(eventport != -1)
@@ -321,7 +340,7 @@ static void generate(const char *name)
   fprintf(fout,"%s","      //    ppiCycle(offset, dc, area, dbnum, start, len);\n");
   
   // write cycles
-  fp = fopen(name,"r");
+  fp = fopen(nativeName(name),"r");
   if(fp == NULL)
   {
     printf("could not open %s\n",name);

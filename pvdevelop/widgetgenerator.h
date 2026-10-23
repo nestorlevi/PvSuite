@@ -16,6 +16,8 @@
 #ifndef WIDGET_GENERATOR_H
 #define WIDGET_GENERATOR_H
 #include <stdio.h>
+#include <QString>
+#include <QList>
 class QWidget;
 class Designer;
 
@@ -28,5 +30,13 @@ int generatePerl(int imask, QWidget *root);
 int generateTcl(int imask, QWidget *root);
 int generateLua(int imask, QWidget *root);
 int drawDrawWidgets(QWidget *root);
+
+// Nestor: copiar/pegar widgets (con su contenido) en el diseñador
+QString  copyWidgetsToText(QWidget *root, const QList<QWidget *> &selected);
+bool     isWidgetClipboardText(const QString &text);
+QList<QWidget *> pasteWidgetsFromText(QWidget *root, const QString &text,
+                                      const QList<QWidget *> &allowedParents, int firstObjNumber,
+                                      const QString &forcedParent = QString(),   // Nestor: bloques: el contenedor de la copia
+                                      const QString &namePrefix = QString(), bool exactNames = false);   // nombres = namePrefix + original
 
 #endif

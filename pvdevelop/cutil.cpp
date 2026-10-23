@@ -16,6 +16,10 @@
 #include "../pvbrowser/pvdefine.h"
 #include <QDateTime>
 #include <QStringList>
+#include <QProcess>
+#include <QFile>
+#include <QRegularExpression>
+#include <QDebug>
 #include "opt.h"
 #include "cutil.h"
 #include <stdio.h>
@@ -34,13 +38,122 @@ extern OPT_DEVELOP opt_develop;
 extern QStringList tablist;
 static int tabstopFound = 0;
 
+#ifdef PVUNIX
+// Nestor: procesadores para "make -jN" (ventana / barra "Compilador"; CompilerConfig::applyEnvironment)
+// En Windows los .bat usan la variable PVB_JOBS directamente.
+int buildJobs()
+{
+  const char *jobs = getenv("PVB_JOBS");
+  int n = (jobs != NULL) ? atoi(jobs) : 0;
+  return (n > 0) ? n : 1;
+}
+#endif
+
+// Nestor: bloque del .pro para compilar el pvserver con Visual Studio
+// (start_pvdevelop.bat: set PVB_COMPILER=msvc). Lo usan los proyectos nuevos y perhapsAddMsvcScope().
+static void writeMsvcScope(FILE *fout)
+{
+  fprintf(fout,"win32-msvc* {\n");
+  fprintf(fout,"LIBS              += $(PVBDIR)/win-mingw/bin/serverlib.lib\n");
+  fprintf(fout,"LIBS              += $(PVBDIR)/win-mingw/bin/rllib.lib\n");
+  fprintf(fout,"LIBS              += -lws2_32 -ladvapi32 -luser32\n");
+  fprintf(fout,"INCLUDEPATH       += $(PVBDIR)/pvserver\n");
+  fprintf(fout,"INCLUDEPATH       += $(PVBDIR)/rllib/lib\n");
+  fprintf(fout,"}\n");
+}
+
+// Nestor: carpeta de las bibliotecas de MinGW (libserverlib.a, librllib.a, librlhist.a) segun la version de
+// GCC del proyecto: GCC 8 (MinGW 8.1 + Qt 5.15) usa las de win-mingw/bin/mingw81_64; las demas, las de
+// win-mingw/bin (GCC de la suite). fake_qmake tambien entiende estas dos lineas.
+static const char minGWLibDir[] =
+  "PVB_MINGWLIB      = $(PVBDIR)/win-mingw/bin\n"
+  "equals(QMAKE_GCC_MAJOR_VERSION, 8):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_64\n";
+
+#ifndef PVUNIX
+static QRegularExpression minGWLibRegex()
+{
+  // $(PVBDIR)/win-mingw/bin/libserverlib.a (tambien con \ o $$(PVBDIR))
+  return QRegularExpression("\\$\\$?\\(PVBDIR\\)[/\\\\]win-mingw[/\\\\]bin[/\\\\](lib(serverlib|rllib|rlhist)\\.a)");
+}
+
+int proNeedsMinGWLibDir(const char *name)
+{
+  char fname[1024];
+  if(opt_develop.script == PV_LUA || strlen(name) > sizeof(fname) - 8) return 0;
+  snprintf(fname, sizeof(fname), "%s.pro", name);
+  QFile pro(fname);
+  if(!pro.open(QIODevice::ReadOnly | QIODevice::Text)) return 0;
+  const QString content = QString::fromUtf8(pro.readAll());
+  if(content.contains("PVB_MINGWLIB")) return 0;
+  for(const QString &l : content.split('\n'))
+  {
+    if(!l.trimmed().startsWith('#') && minGWLibRegex().match(l).hasMatch()) return 1;
+  }
+  return 0;
+}
+
+int adaptProMinGWLibDir(const char *name)
+{
+  char fname[1024];
+  if(!proNeedsMinGWLibDir(name)) return 0;
+  snprintf(fname, sizeof(fname), "%s.pro", name);
+  QFile pro(fname);
+  if(!pro.open(QIODevice::ReadOnly)) return -1;
+  QByteArray content = pro.readAll();
+  pro.close();
+  const bool crlf = content.contains("\r\n");
+  QStringList lines = QString::fromUtf8(content).remove('\r').split('\n');
+  int first = -1;
+  for(int i=0; i<lines.size(); i++)
+  {
+    if(lines[i].trimmed().startsWith('#')) continue;
+    QString l = lines[i];
+    l.replace(minGWLibRegex(), "$$PVB_MINGWLIB/\\1");
+    if(l != lines[i] && first < 0) first = i;
+    lines[i] = l;
+  }
+  if(first < 0) return 0;
+  QStringList add = QString(minGWLibDir).trimmed().split('\n');
+  add.prepend("# agregado por pvdevelop: con MinGW 8.1 (GCC 8, Qt 5.15) se enlazan las bibliotecas de win-mingw/bin/mingw81_64");
+  for(int i=add.size()-1; i>=0; i--) lines.insert(first, add[i]);
+  QString out = lines.join(crlf ? "\r\n" : "\n");
+  if(!pro.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -1;
+  pro.write(out.toUtf8());
+  pro.close();
+  printf("pvdevelop: %s elige las bibliotecas de MinGW por la version de GCC (PVB_MINGWLIB)\n", fname);
+  return 1;
+}
+
+// Nestor: los proyectos creados antes solo tienen el bloque win32-g++ (MinGW).
+// Antes de compilar se agrega el bloque win32-msvc* al final del .pro si falta.
+void perhapsAddMsvcScope(const char *name)
+{
+  char fname[1024];
+  if(opt_develop.script == PV_LUA || strlen(name) > sizeof(fname) - 8) return;
+  snprintf(fname, sizeof(fname), "%s.pro", name);
+  QFile pro(fname);
+  if(!pro.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+  const QByteArray content = pro.readAll();
+  pro.close();
+  if(content.contains("win32-msvc")) return;
+
+  FILE *fout = fopen(fname, "a");
+  if(fout == NULL) return;
+  if(!content.endsWith("\n")) fprintf(fout, "\n");
+  fprintf(fout, "\n# agregado por pvdevelop: compilar con Visual Studio (PVB_COMPILER=msvc en start_pvdevelop.bat)\n");
+  writeMsvcScope(fout);
+  fclose(fout);
+  printf("pvdevelop: se agrego el bloque win32-msvc* a %s\n", fname);
+}
+#endif
+
 int mysystem(const char *command)
 {
     char cmd[4096];
 #ifdef PVWIN32
     int ret;
     STARTUPINFOA         si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
+    PROCESS_INFORMATION pi = {};
 
     if (strncmp(command, "start", 5) == 0 || strncmp(command, "START", 5) == 0)
     {
@@ -51,28 +164,19 @@ int mysystem(const char *command)
     {
         ExpandEnvironmentStringsA(&command[5], cmd, sizeof(cmd) - 1);
         ret = (int) CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
-
-        // Here Nestor
-        intptr_t pid = (intptr_t) pi.hProcess; // Here Nestor
-
-        long status;
-        while (1)
+        // Nestor: si no arranco no hay proceso que esperar (pi quedaba sin inicializar)
+        if (ret)
         {
-            if (GetExitCodeProcess((HANDLE) pid, (unsigned long *) &status) != 0) // success
-            {
-                if (status != STILL_ACTIVE) break;
-            }
-            else
-            {
-                break;
-            }
-            Sleep(500);
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
         }
     }
     else
     {
         ExpandEnvironmentStringsA(command, cmd, sizeof(cmd) - 1);
         ret = (int) CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+        if (ret) { CloseHandle(pi.hThread); CloseHandle(pi.hProcess); }   // Nestor: no se esperan: se cierran los handles
     }
     return ret;
 #else
@@ -203,26 +307,33 @@ int action(const char *command)
     sscanf(command,"make=%s",project);
     if(opt_develop.arg_action[0] != '\0') 
     {
-      sprintf(cmd,"fake_qmake %s %s.pro;make", opt_develop.fake_qmake, project);
+      sprintf(cmd,"fake_qmake %s %s.pro;make -j%d", opt_develop.fake_qmake, project, buildJobs());
       if(opt_develop.arg_debug) printf("cmd1=%s\n",cmd);
       ret = system(cmd);
     }  
     else
     {
-      sprintf(cmd,"xterm -e \"fake_qmake %s %s.pro;make;echo ready;read\"", opt_develop.fake_qmake, project);
+      sprintf(cmd,"xterm -e \"fake_qmake %s %s.pro;make -j%d;echo ready;read\"", opt_develop.fake_qmake, project, buildJobs());
       if(opt_develop.arg_debug) printf("cmd2=%s\n",cmd);
       mysystem(cmd);
       //mysystem("xterm -e \"make;echo ready;read\"");
     }  
 #else
     sscanf(command,"make=%s",name);
-    sprintf(cmd,"start pvb_make.bat %s", name);
-    ret = system(cmd);
+    perhapsAddMsvcScope(name);
+    //sprintf(cmd,"start pvb_make.bat %s", name);
+    //ret = system(cmd);
+
+    bool ok = QProcess::startDetached("cmd.exe", QStringList() << "/C" << "start" << "pvb_make.bat" << name); //Nestor here. Optimización para W11 (/C: el cmd intermedio se cierra tras el start)
+    ret = ok ? 0 : -1;
 #endif
   }
   else if(strncmp(command,"startserver=",12) == 0)
   {
     sscanf(command,"startserver=%d:%s",&checked, name);
+#ifndef PVUNIX
+    perhapsAddMsvcScope(name);
+#endif
     if(checked == 1)
     {
 #ifdef PVUNIX
@@ -233,24 +344,29 @@ int action(const char *command)
       else
       {
 #ifdef PVMAC
-        sprintf(cmd,"xterm -e \"make;su -c ./%s.app/Contents/MacOS/%s\"", name, name);
+        sprintf(cmd,"xterm -e \"make -j%d;su -c ./%s.app/Contents/MacOS/%s\"", buildJobs(), name, name);
 #else
-        sprintf(cmd,"xterm -e \"make;su -c ./%s\"", name);
+        sprintf(cmd,"xterm -e \"make -j%d;su -c ./%s\"", buildJobs(), name);
 #endif
       }
       if(opt_develop.arg_debug) printf("cmd=%s\n",cmd);
       mysystem(cmd);
 #else
+      QStringList args;     //Nestor here. Optimización para W11
       if(opt_develop.script == PV_LUA)
       {
-        sprintf(cmd,"start pvslua.exe");
+        //sprintf(cmd,"start pvslua.exe");
+        args << "/C" << "start" << "pvslua.exe";
       }
       else
       {
-        sprintf(cmd,"start pvb_server.bat %s", name);
+        //sprintf(cmd,"start pvb_server.bat %s", name);
+        args << "/C" << "start" << "pvb_server.bat" << name;
       }
-      if(opt_develop.arg_debug) printf("cmd=%s\n",cmd);
-      ret = system(cmd);
+      if(opt_develop.arg_debug) qDebug()<<"args="<<args;
+      //ret = system(cmd);
+      bool ok = QProcess::startDetached("cmd.exe", args);
+      ret = ok ? 0 : -1;
 #endif
     }
     else
@@ -263,9 +379,9 @@ int action(const char *command)
       else
       {
 #ifdef PVMAC
-        sprintf(cmd,"xterm -e \"make;./%s.app/Contents/MacOS/%s\"", name, name);
+        sprintf(cmd,"xterm -e \"make -j%d;./%s.app/Contents/MacOS/%s\"", buildJobs(), name, name);
 #else
-        sprintf(cmd,"xterm -e \"make;./%s\"", name);
+        sprintf(cmd,"xterm -e \"make -j%d;./%s\"", buildJobs(), name);
 #endif
       }
       if(opt_develop.arg_debug) printf("cmd=%s\n",cmd);
@@ -284,38 +400,28 @@ int action(const char *command)
 #endif
     }
   }
-  else if(strncmp(command,"startserver=",12) == 0)
-  {
-    sscanf(command,"startserver=%d:%s",&checked,name);
-#ifdef PVUNIX
-#ifdef PVMAC
-    if(checked == 0)
-    {
-      sprintf(cmd,"xterm -e \"make;./%s.app/Contents/MacOS/%s;read\"", name, name);
-    }
-    else
-    {
-      sprintf(cmd,"xterm -e \"make;sudo ./%s.app/Contents/MacOS/%s\"", name, name);
-    }
-#else
-    if(checked == 0)
-    {
-      sprintf(cmd,"xterm -e \"make;./%s\"", name);
-    }
-    else
-    {
-      sprintf(cmd,"xterm -e \"make;su -c ./%s\"", name);
-    }
-#endif    
-    mysystem(cmd);
-#else
-    sprintf(cmd,"start pvb_startserver.bat %s", name);
-    ret = system(cmd);
-#endif
-  }
   else if(strcmp(command,"pvbrowser") == 0)
   {
+#ifdef PVWIN32
+    // Nestor: el instalador deja pvbrowser en %SUITEDIR%\win-msvc\bin, con su propio Qt
+    // (de otro compilador que pvdevelop: pvbrowser con WebEngine es MSVC)
+    const char *suitedir = getenv("SUITEDIR");
+    char exe[4096] = "";
+    if(suitedir != NULL && strlen(suitedir) < sizeof(exe) - 40)
+      sprintf(exe, "%s\\win-msvc\\bin\\pvbrowser.exe", suitedir);
+    if(exe[0] != '\0' && QFile::exists(QString::fromLocal8Bit(exe)))
+    {
+      char cmd[4200];
+      sprintf(cmd, "\"%s\"", exe);
+      mysystem(cmd);
+    }
+    else
+    {
+      mysystem("pvbrowser");
+    }
+#else
     mysystem("pvbrowser");
+#endif
   }
   else if(strcmp(command,"dumpTranslations") == 0)
   {
@@ -393,8 +499,8 @@ void generateInitialProject(const char *name)
     return;
   }
   fprintf(fout,"target=%s\n", name);
-  fprintf(fout,"xmax=1280\n");
-  fprintf(fout,"ymax=1024\n");
+  fprintf(fout,"xmax=1920\n");      // Nestor: hoja 16:9
+  fprintf(fout,"ymax=1080\n");
   fclose(fout);
 
   strcpy(fname,name); strcat(fname,".pro");
@@ -446,13 +552,16 @@ void generateInitialProject(const char *name)
   fprintf(fout,"# you will have to adjust existing pro files\n");
   fprintf(fout,"#\n");
   fprintf(fout,"win32-g++ {\n");
+  fprintf(fout,"%s", minGWLibDir);
   fprintf(fout,"QMAKE_LFLAGS      += -static-libgcc\n");
-  fprintf(fout,"win32:LIBS        += $(PVBDIR)/win-mingw/bin/libserverlib.a \n");
-  fprintf(fout,"win32:LIBS        += $(PVBDIR)/win-mingw/bin/librllib.a\n");
+  fprintf(fout,"win32:LIBS        += $$PVB_MINGWLIB/libserverlib.a\n");
+  fprintf(fout,"win32:LIBS        += $$PVB_MINGWLIB/librllib.a\n");
   fprintf(fout,"win32:LIBS        += -lws2_32 -ladvapi32 -lpthread\n");
   fprintf(fout,"win32:INCLUDEPATH += $(PVBDIR)/pvserver\n");
   fprintf(fout,"win32:INCLUDEPATH += $(PVBDIR)/rllib/lib\n");
   fprintf(fout,"}\n");
+  fprintf(fout,"\n");
+  writeMsvcScope(fout);
   fprintf(fout,"\n");
   fprintf(fout,"#DEFINES += USE_INETD\n");
   fprintf(fout,"TARGET = %s\n", name);
@@ -485,7 +594,7 @@ void generateInitialProject(const char *name)
   fprintf(fout,"\n");
   fprintf(fout,"  pvSendVersion(p);\n");
   fprintf(fout,"  pvSetCaption(p,\"%s\");\n", name);
-  fprintf(fout,"  pvResize(p,0,1280,1024);\n");
+  fprintf(fout,"  pvResize(p,0,1920,1080);\n");
   fprintf(fout,"  //pvScreenHint(p,1024,768); // this may be used to automatically set the zoomfactor\n");
   fprintf(fout,"  ret = 1;\n");
   fprintf(fout,"  pvGetInitialMask(p);\n");
@@ -571,6 +680,8 @@ void generateInitialProject(const char *name)
   fprintf(fout,"#endif\n");
   fclose(fout);
 
+  opt_develop.xmax = 1920;   // Nestor: lo que se acaba de escribir en el .pvproject (para la mascara 1)
+  opt_develop.ymax = 1080;
   generateInitialMask(1);
 
   generateInitialSlots(1);
@@ -828,6 +939,10 @@ void generateInitialSlots(int imask)
   fprintf(fout,"//extern rlSiemensTCPClient siemensTCP;\n");
   fprintf(fout,"//extern rlPPIClient        ppi;\n");
   fprintf(fout,"\n");
+  // Nestor: DATA en un namespace anonimo, propio de cada mascara. Todas las mascaras
+  // definen un tipo DATA distinto; si se le agregan funciones miembro, el enlazador
+  // puede quedarse con las de otra mascara (MSVC lo hace) y el pvserver se cae.
+  fprintf(fout,"namespace { // DATA propia de esta mascara (puede tener funciones miembro)\n");
   fprintf(fout,"typedef struct // (todo: define your data structure here)\n");
   fprintf(fout,"{\n");
   if(opt_develop.script == PV_PYTHON)
@@ -836,6 +951,7 @@ void generateInitialSlots(int imask)
   }
   fprintf(fout,"}\n");
   fprintf(fout,"DATA;\n");
+  fprintf(fout,"} // namespace\n");
   fprintf(fout,"\n");
   fprintf(fout,"static int slotInit(PARAM *p, DATA *d)\n");
   fprintf(fout,"{\n");

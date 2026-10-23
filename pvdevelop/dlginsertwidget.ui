@@ -708,9 +708,25 @@
      <rect>
       <x>310</x>
       <y>390</y>
-      <width>331</width>
+      <width>296</width>
       <height>26</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QToolButton" name="toolButtonImageFileName">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>390</y>
+      <width>31</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>Select image file</string>
+    </property>
+    <property name="text">
+     <string>...</string>
     </property>
    </widget>
    <widget class="QRadioButton" name="wDraw">
@@ -731,9 +747,25 @@
      <rect>
       <x>310</x>
       <y>430</y>
-      <width>331</width>
+      <width>296</width>
       <height>26</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QToolButton" name="toolButtonDrawFileName">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>430</y>
+      <width>31</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>Select SVG file</string>
+    </property>
+    <property name="text">
+     <string>...</string>
     </property>
    </widget>
    <widget class="QRadioButton" name="wQwtSlider">

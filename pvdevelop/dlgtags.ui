@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DlgTags</class>
+ <widget class="QDialog" name="DlgTags">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>680</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>pvdevelop: tags</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QTabWidget" name="tabs">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tabTags">
+      <attribute name="title">
+       <string>Variables</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="layoutTags">
+       <item>
+        <widget class="QGroupBox" name="groupSettings">
+         <property name="title">
+          <string>Ajustes</string>
+         </property>
+         <layout class="QGridLayout" name="gridSettings">
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelNotation">
+            <property name="text">
+             <string>Notación de direcciones:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="comboNotation">
+            <property name="toolTip">
+             <string>Cómo se escriben las direcciones. Al cambiarla se convierten las direcciones de la tabla.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="labelOrder">
+            <property name="text">
+             <string>Orden de 32 bits:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QComboBox" name="comboOrder">
+            <property name="toolTip">
+             <string>Orden de las palabras de los valores de 32 bits (dint, udint, real) que manda el PLC.
+Cada variable puede cambiarlo en la columna Orden.</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>ABCD (big endian)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>CDAB (palabras invertidas)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>BADC (bytes invertidos)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>DCBA (little endian)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="0" column="4">
+           <widget class="QLabel" name="labelBitWrite">
+            <property name="text">
+             <string>Escritura de bits:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="5">
+           <widget class="QComboBox" name="comboBitWrite">
+            <property name="toolTip">
+             <string>Cómo se escribe un bit de un holding register (p. ej. 40300.15).
+Leer-modificar-escribir: el daemon lee el registro, cambia el bit y lo escribe (sirve con cualquier PLC).
+Función 22: el PLC cambia el bit (Mask Write Register); no todos los PLC la tienen.</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>Leer-modificar-escribir</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Función 22 (Mask Write)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelGap">
+            <property name="text">
+             <string>Hueco máximo a leer:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinGap">
+            <property name="toolTip">
+             <string>Registros (bytes en S7) libres entre dos variables que se leen igual para unirlas en un solo pedido.
+auto: 8 registros, 64 coils o 16 bytes.</string>
+            </property>
+            <property name="specialValueText">
+             <string>auto</string>
+            </property>
+            <property name="minimum">
+             <number>-1</number>
+            </property>
+            <property name="maximum">
+             <number>2000</number>
+            </property>
+            <property name="value">
+             <number>-1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="labelBlock">
+            <property name="text">
+             <string>Bloque máximo:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QSpinBox" name="spinBlock">
+            <property name="toolTip">
+             <string>Tamaño máximo de un pedido (registros, coils o bytes).
+auto: 125 registros, 2000 coils (máximo de Modbus) o 200 bytes (S7).</string>
+            </property>
+            <property name="specialValueText">
+             <string>auto</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>2000</number>
+            </property>
+            <property name="value">
+             <number>0</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelStore">
+            <property name="text">
+             <string>Guardar las variables en:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QRadioButton" name="radioMk">
+            <property name="text">
+             <string>el archivo del daemon</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QRadioButton" name="radioCsv">
+            <property name="text">
+             <string>un archivo CSV:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3" colspan="2">
+           <widget class="QLineEdit" name="editCsv">
+            <property name="toolTip">
+             <string>Archivo .csv (relativo a la carpeta del proyecto). Se puede editar con Excel o LibreOffice.
+Columnas: name;address;type;count;stride;rw;slave;scan;scale;offset;order;description
+Las estructuras quedan siempre en el archivo del daemon.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="5">
+           <widget class="QPushButton" name="buttonCsv">
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="table">
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+         </property>
+         <column>
+          <property name="text">
+           <string>Nombre</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Dirección</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Tipo</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Cantidad</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Paso</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>RW</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Esclavo</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Scan (ms)</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Escala</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Offset</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Orden</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Descripción</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelStatus">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="layoutButtons">
+         <item>
+          <widget class="QPushButton" name="buttonAdd">
+           <property name="text">
+            <string>Agregar</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonDuplicate">
+           <property name="toolTip">
+            <string>Copia la fila con la dirección siguiente</string>
+           </property>
+           <property name="text">
+            <string>Duplicar</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonRemove">
+           <property name="text">
+            <string>Eliminar</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonImport">
+           <property name="text">
+            <string>Importar CSV...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonExport">
+           <property name="text">
+            <string>Exportar CSV...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonCheck">
+           <property name="toolTip">
+            <string>Revisa las variables y muestra cómo quedan los bloques de lectura</string>
+           </property>
+           <property name="text">
+            <string>Verificar</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerTags">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabStructs">
+      <attribute name="title">
+       <string>Estructuras</string>
+      </attribute>
+      <layout class="QHBoxLayout" name="layoutStructs">
+       <item>
+        <layout class="QVBoxLayout" name="layoutStructList">
+         <item>
+          <widget class="QLabel" name="labelStructs">
+           <property name="text">
+            <string>Estructuras:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QListWidget" name="listStructs">
+           <property name="maximumSize">
+            <size>
+             <width>260</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="layoutStructButtons">
+           <item>
+            <widget class="QPushButton" name="buttonStructNew">
+             <property name="text">
+              <string>Nueva</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="buttonStructRename">
+             <property name="text">
+              <string>Renombrar</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="buttonStructRemove">
+             <property name="text">
+              <string>Eliminar</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="layoutMembers">
+         <item>
+          <layout class="QHBoxLayout" name="layoutStructDesc">
+           <item>
+            <widget class="QLabel" name="labelStructDesc">
+             <property name="text">
+              <string>Descripción:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="editStructDesc"/>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkStructShared">
+             <property name="text">
+              <string>Compartida con los otros daemons del proyecto</string>
+             </property>
+             <property name="toolTip">
+              <string>Se guarda en el archivo de estructuras del proyecto (.mkstruct) y la pueden usar todos los daemons (Modbus, Siemens, OPC UA). Con las posiciones (columna En) vacias sirve para cualquier protocolo.</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QTableWidget" name="tableMembers">
+           <property name="alternatingRowColors">
+            <bool>true</bool>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+           </property>
+           <column>
+            <property name="text">
+             <string>Miembro</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Posición</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Tipo</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Cantidad</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>RW</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Escala</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Offset</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Orden</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Descripción</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="layoutMemberButtons">
+           <item>
+            <widget class="QPushButton" name="buttonMemberAdd">
+             <property name="text">
+              <string>Agregar miembro</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="buttonMemberRemove">
+             <property name="text">
+              <string>Eliminar miembro</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="buttonMemberUp">
+             <property name="text">
+              <string>Subir</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="buttonMemberDown">
+             <property name="text">
+              <string>Bajar</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="spacerMembers">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="labelStructHelp">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

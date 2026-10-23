@@ -54,6 +54,26 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButtonTags">
+       <property name="text">
+        <string>Tags...</string>
+       </property>
+       <property name="toolTip">
+        <string>Editor de tags: variables con nombre, su dirección y tipo (se leen agrupadas en bloques)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButtonDaemonCode">
+       <property name="text">
+        <string>Generar código del daemon</string>
+       </property>
+       <property name="toolTip">
+        <string>Copia el código de rlopcuadaemon (y open62541) a la carpeta opcuadaemon del proyecto para modificarlo y compilarlo</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QLabel" name="labelFile">
        <property name="text">
         <string>TextLabel</string>

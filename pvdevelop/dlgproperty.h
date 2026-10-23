@@ -32,8 +32,14 @@ public slots:
     void slotOk();
     void slotCancel();
     void slotUpdate();
+    void slotBind();
+public:
 private:
     QWidget *widget;
+    QString bindPending;   // Nestor: Tags... (se aplica con Aceptar / Actualizar)
+    bool bindChanged;
+    QString bindTip;
+    void showBinding(const QString &pairs);
     int ret;
     Ui_DialogProperty *form;
 };

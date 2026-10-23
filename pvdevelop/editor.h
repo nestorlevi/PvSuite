@@ -34,6 +34,7 @@ class QWidget;
 class QListWidget;
 class QRadioButton;
 class QComboBox;
+class CodeCompleter;
 
 class Editor : public QObject
 {
@@ -45,6 +46,7 @@ class Editor : public QObject
     int setSyntax(int language);
     QWidget *root;
     QTextEdit *edit;
+    CodeCompleter *completer;   // Nestor: texto predictivo
     QCheckBox* checkBoxSuServer;
     QRadioButton* radioHeader;
     QRadioButton* radioMain;
@@ -56,12 +58,15 @@ class Editor : public QObject
     QComboBox* comboBoxEvent;
     QPushButton* pushButtonInsertFunction;
     QListWidget* widgetname;
+    QListWidget* masklist;   // Nestor: pantallas (dato: el numero)
+    QLabel* maskName;        // Nestor: nombre de la pantalla elegida
+    QToolBox* t;             // Pantallas / Widget Names
   private:
     //QSyntaxHighlighter *highlighter;
     syntax *highlighter;
     QHBoxLayout* viewLayout;
     QVBoxLayout* widgetLayout;
-    QToolBox* t;
+    QWidget* left;
     QWidget* page1;
     QLabel* textLabel1;
     QGroupBox* buttonGroup1;

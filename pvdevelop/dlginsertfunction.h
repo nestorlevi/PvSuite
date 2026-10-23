@@ -32,6 +32,7 @@ public:
 private:
     QTreeWidgetItem *top(const char *text);
     QTreeWidgetItem *sub(QTreeWidgetItem *root, const char *text);
+    void addProjectFunctions();   // Nestor: tags, historiador, planillas
     Ui_Dialog *form;
 };
 #endif

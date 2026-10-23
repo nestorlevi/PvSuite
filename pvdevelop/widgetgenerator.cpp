@@ -24,6 +24,10 @@
 // murx.rl.was.here #include <QtUiTools>
 #include <QtUiTools/quiloader.h>
 #include <QFontInfo>
+#include <QTemporaryFile>
+#include <QRegularExpression>
+#include <QMap>
+#include <QSet>
 #include "dlginsertwidget.h"
 #include "dlgeditlayout.h"
 #include "widgetgenerator.h"
@@ -343,94 +347,57 @@ static int generateWidgetEnum(FILE *fout, QWidget *root, int type=isEnum)
   return 0;
 }
 
+// Nestor: texto del widget como literal de C (sin la comilla de afuera): escapa '"', '\n', '\r' y las '\'
+// sueltas (las secuencias como \n o \t escritas en el Designer se respetan). Hasta 1022 bytes, como lee
+// getWidgetsFromMask (lineas de 1024), sin cortar un caracter UTF-8 ni una secuencia de escape.
+static QByteArray escapedText(const QString &text)
+{
+  const QByteArray in = text.toUtf8();
+  QByteArray out;
+  bool cut = false;
+  for(int i = 0; i < in.size(); i++)
+  {
+    const char c = in[i];
+    QByteArray piece(1, c);
+    if     (c == '\"') piece = "\\\"";
+    else if(c == '\n') piece = "\\n";
+    else if(c == '\r') piece = "\\r";
+    else if(c == '\\')
+    {
+      const char n = (i + 1 < in.size()) ? in[i+1] : '\0';
+      if(n != '\0' && strchr("ntr\\\"'?abfv01234567x", n) != NULL) { piece.append(n); i++; }
+      else piece = "\\\\";
+    }
+    if(out.size() + piece.size() > 1022) { cut = true; break; }
+    out += piece;
+  }
+  if(cut)
+  {
+    int lead = out.size();
+    while(lead > 0 && (out[lead-1] & 0xC0) == 0x80) lead--;   // bytes de continuacion
+    if(lead > 0 && (out[lead-1] & 0x80))
+    {
+      const unsigned char b = (unsigned char) out[lead-1];
+      const int need = (b >= 0xF0) ? 4 : (b >= 0xE0) ? 3 : (b >= 0xC0) ? 2 : 1;
+      if(out.size() - (lead - 1) < need) out.truncate(lead - 1);
+    }
+  }
+  return out;
+}
+
 static const char *quote0(QString &text)
 {
-  const char *cptr;
-  static char buf[1024];
-  int i;
-
-  int  datasize = strlen(text.toUtf8());
-#ifdef WIN32
-  char data[4096]; //rlmurx2025
-#else
-  char data[datasize+1];
-#endif
-  strncpy(data,text.toUtf8().data(),datasize);
-  data[datasize] = '\0';
-  cptr = data;
-
-  i = 0; // convert to utf8 and quote '"' and '\n'
-  //cptr = text.toUtf8().data();
-  while(*cptr != '\0' && i < (int) (sizeof(buf)-2))
-  {
-    if     (*cptr == '\"')
-    {
-      buf[i++] = '\\';
-      buf[i++] = *cptr;
-    }  
-    else if(*cptr == '\n') 
-    {
-      buf[i++] = '\\';
-      buf[i++] = 'n';
-    }
-    else
-    {
-      buf[i++] = *cptr;
-    }
-    cptr++;
-  }
-  buf[i] = '\0';
-  return buf;
+  static QByteArray buf;
+  buf = escapedText(text);
+  return buf.constData();
 }
 
 static const char *quote(QString &text)
 {
-  const char *cptr;
-  static char buf[1024],buf2[1048];
-  int i;
-
-  int  datasize = strlen(text.toUtf8());
-#ifdef WIN32
-  char data[4096]; //rlmurx2025
-#else
-  char data[datasize+1];
-#endif
-  strncpy(data,text.toUtf8().data(),datasize);
-  data[datasize] = '\0';
-  cptr = data;
-
-  i = 0; // convert to utf8 and quote '"' and '\n'
-  //cptr = text.toUtf8().data();
-  while(*cptr != '\0' && i < (int) (sizeof(buf)-2))
-  {
-    if     (*cptr == '\"')
-    {
-      buf[i++] = '\\';
-      buf[i++] = *cptr;
-    }  
-    else if(*cptr == '\n') 
-    {
-      buf[i++] = '\\';
-      buf[i++] = 'n';
-    }
-    else
-    {
-      buf[i++] = *cptr;
-    }
-    cptr++;
-  }
-  buf[i] = '\0';
-  if(opt_develop.script == 0)
-  {
-    // is C/C++
-    strcpy(buf2,"pvtr(\""); strcat(buf2,buf); strcat(buf2,"\")");
-  }
-  else
-  {
-    // is a scripting language
-    strcpy(buf2,"\""); strcat(buf2,buf); strcat(buf2,"\"");
-  }  
-  return buf2;
+  static QByteArray buf;
+  if(opt_develop.script == 0) buf = "pvtr(\"" + escapedText(text) + "\")";   // C/C++
+  else                        buf = "\"" + escapedText(text) + "\"";          // lenguaje de script
+  return buf.constData();
 }
 
 static int generateDefineMaskWidget(FILE *fout, QWidget *widget, const char *tabparentname)
@@ -1235,6 +1202,46 @@ static int generateDefineMaskWidget(FILE *fout, QWidget *widget, const char *tab
   return 0;
 }
 
+// tabparentname: nombre del TabWidget/ToolBox al que pertenece una página TQWidget
+// (Nestor: extraído de generateDefineMaskWidgets para usarlo también al copiar widgets)
+static void updateTabParentName(QWidget *widget, char *tabparentname)
+{
+  if(widget->statusTip().startsWith("TQTabWidget:"))
+  {
+    strcpy(tabparentname,(const char *) widget->objectName().toUtf8());
+  }
+  if(widget->statusTip().startsWith("TQToolBox:"))
+  {
+    strcpy(tabparentname,(const char *) widget->objectName().toUtf8());
+  }
+  if(widget->statusTip().startsWith("TQWidget:"))
+  {
+    if(opt_develop.arg_debug) printf("tabparentname0=%s\n",(const char *) widget->objectName().toUtf8());
+    QWidget *p = (QWidget *) widget->parent();
+    if(p != NULL)
+    {
+      strcpy(tabparentname,(const char *) p->objectName().toUtf8());
+      if(opt_develop.arg_debug) printf("tabparentname1=%s\n",tabparentname);
+      QWidget *gp = (QWidget *) p->parent();
+      if(gp != NULL)
+      {
+        int what = 0;
+        if(strcmp(tabparentname,"qt_scrollarea_viewport")     == 0) what = 1;
+        if(strcmp(tabparentname,"qt_tabwidget_stackedwidget") == 0) what = 2;
+        strcpy(tabparentname,(const char *) gp->objectName().toUtf8());
+        if(opt_develop.arg_debug) printf("tabparentname2=%s\n",tabparentname);
+        QWidget *ggp = (QWidget *) gp->parent();
+        if(ggp != NULL && strlen(tabparentname) == 0 && what == 1)
+        {
+          strcpy(tabparentname,(const char *) ggp->objectName().toUtf8());
+          if(opt_develop.arg_debug) printf("tabparentname3=%s\n",tabparentname);
+        }
+        // if(what == 0) strcpy(tabparentname,"ERROR_PLEASE_FIX_ME");
+      }
+    }
+  }
+}
+
 static int generateDefineMaskWidgets(FILE *fout, QWidget *root)
 {
   QString item;
@@ -1268,40 +1275,7 @@ static int generateDefineMaskWidgets(FILE *fout, QWidget *root)
   {
     item = strlist.at(i);
     widget = findChild(item.toUtf8()); //root->findChild<QWidget *>(item);
-    if(widget->statusTip().startsWith("TQTabWidget:"))
-    {
-      strcpy(tabparentname,(const char *) widget->objectName().toUtf8());
-    }
-    if(widget->statusTip().startsWith("TQToolBox:"))
-    {
-      strcpy(tabparentname,(const char *) widget->objectName().toUtf8());
-    }
-    if(widget->statusTip().startsWith("TQWidget:"))
-    {
-      if(opt_develop.arg_debug) printf("tabparentname0=%s\n",(const char *) widget->objectName().toUtf8());
-      QWidget *p = (QWidget *) widget->parent();
-      if(p != NULL)
-      {
-        strcpy(tabparentname,(const char *) p->objectName().toUtf8());
-        if(opt_develop.arg_debug) printf("tabparentname1=%s\n",tabparentname);
-        QWidget *gp = (QWidget *) p->parent();
-        if(gp != NULL)
-        {
-          int what = 0;
-          if(strcmp(tabparentname,"qt_scrollarea_viewport")     == 0) what = 1;
-          if(strcmp(tabparentname,"qt_tabwidget_stackedwidget") == 0) what = 2;
-          strcpy(tabparentname,(const char *) gp->objectName().toUtf8());
-          if(opt_develop.arg_debug) printf("tabparentname2=%s\n",tabparentname);
-          QWidget *ggp = (QWidget *) gp->parent();
-          if(ggp != NULL && strlen(tabparentname) == 0 && what == 1)
-          {
-            strcpy(tabparentname,(const char *) ggp->objectName().toUtf8());
-            if(opt_develop.arg_debug) printf("tabparentname3=%s\n",tabparentname);
-          }
-          // if(what == 0) strcpy(tabparentname,"ERROR_PLEASE_FIX_ME");
-        }  
-      }
-    }
+    if(widget != NULL) updateTabParentName(widget, tabparentname);
     if(widget != NULL)
     {
       generateDefineMaskWidget(fout,widget,tabparentname);
@@ -1820,6 +1794,11 @@ static void getParams(char *id, char *parent, int *ival, char *text, char *cval)
         text[i++] = '\n';
         cptr1++;
         cptr1++;
+      }
+      else if(*cptr1 == '\\' && cptr1[1] == '\"') // Nestor: comilla escapada (quote()): no termina el texto
+      {
+        text[i++] = '\"';
+        cptr1 += 2;
       }
       //commented this out in order to allow \ in strings.
       //else if(*cptr1 == '\\')
@@ -3177,6 +3156,265 @@ int getWidgetsFromMask(const char *filename, QWidget *root)
   tooltiplist.clear();
   whatsthislist.clear();
   return ret;
+}
+
+// ###########################################################################
+// Nestor: copiar/pegar widgets en el diseñador (Ctrl+C / Ctrl+V).
+// Se usa el mismo formato con el que se guarda y se carga la máscara
+// (generateDefineMaskWidget / getWidget): así se copian todos los tipos de widget,
+// con las mismas propiedades que se guardan, y también los widgets que contienen
+// (frames, groupbox, buttongroup, pestañas de TabWidget, items de ToolBox).
+// Se pueden copiar varios widgets seleccionados a la vez.
+//
+// Texto que se deja en el portapapeles:
+//   #pvdevelop-widgets
+//   #script <opt_develop.script>
+//   #top <nombre> <nombre del padre>                    (uno por widget seleccionado)
+//   #widget <nombre> <whatsThis en percent-encoding>   (todos, en el orden de la máscara)
+//   ...líneas pvQXxx(...) / pvSetXxx(...) generadas...
+static const char *clipboardMagic = "#pvdevelop-widgets";
+
+static QString tempFileName(QTemporaryFile &tmp)
+{
+  if(!tmp.open()) return QString();
+  QString name = tmp.fileName();
+  tmp.close(); // el archivo sigue existiendo hasta que se destruye tmp
+  return name;
+}
+
+QString copyWidgetsToText(QWidget *root, const QList<QWidget *> &selected)
+{
+  if(root == NULL) return QString();
+  theroot = root;
+
+  // los widgets que están dentro de otro seleccionado ya se copian con su contenedor
+  QList<QWidget *> tops;
+  for(int i=0; i<selected.size(); i++)
+  {
+    QWidget *w = selected.at(i);
+    if(w == NULL || w->parentWidget() == NULL || tops.contains(w)) continue;
+    bool inside = false;
+    for(int k=0; k<selected.size(); k++)
+    {
+      if(selected.at(k) != NULL && selected.at(k) != w && selected.at(k)->isAncestorOf(w)) inside = true;
+    }
+    if(!inside) tops.append(w);
+  }
+  if(tops.isEmpty()) return QString();
+
+  QTemporaryFile tmp;
+  QString tmpname = tempFileName(tmp);
+  if(tmpname.isEmpty()) return QString();
+  FILE *fout = fopen(QFile::encodeName(tmpname).constData(), "w");
+  if(fout == NULL) return QString();
+
+  QString header = QString(clipboardMagic) + "\n";
+  header += QString("#script %1\n").arg(opt_develop.script);
+  QString widgetLines;
+  for(int t=0; t<tops.size(); t++)
+  {
+    QWidget *top = tops.at(t);
+    // misma lista y orden que al guardar la máscara, limitada al widget y a su contenido
+    strlist.clear();
+    createStrList(top->parentWidget());
+    QList<QWidget *> widgets;
+    for(int i=0; i<strlist.size(); i++)
+    {
+      QWidget *w = root->findChild<QWidget *>(strlist.at(i));
+      if(w != NULL && (w == top || top->isAncestorOf(w)) && !widgets.contains(w)) widgets.append(w);
+    }
+    strlist.clear();
+    if(widgets.isEmpty() || widgets.first() != top) continue;
+
+    header += "#top " + top->objectName() + " " + top->parentWidget()->objectName() + "\n";
+    char tabparentname[512];
+    strcpy(tabparentname,"0");
+    for(int i=0; i<widgets.size(); i++)
+    {
+      updateTabParentName(widgets.at(i), tabparentname);
+      generateDefineMaskWidget(fout, widgets.at(i), tabparentname);
+      widgetLines += "#widget " + widgets.at(i)->objectName() + " " +
+                     QString::fromLatin1(widgets.at(i)->whatsThis().toUtf8().toPercentEncoding()) + "\n";
+    }
+  }
+  fclose(fout);
+  if(widgetLines.isEmpty()) return QString();
+
+  QFile f(tmpname);
+  if(!f.open(QIODevice::ReadOnly)) return QString();
+  QString body = QString::fromUtf8(f.readAll());
+  f.close();
+  body.remove('\r');
+
+  return header + widgetLines + body;
+}
+
+bool isWidgetClipboardText(const QString &text)
+{
+  return text.startsWith(clipboardMagic);
+}
+
+// renombra los identificadores de widgets (solo antes del primer texto entre comillas)
+static QString renameIds(const QString &line, const QMap<QString,QString> &rename)
+{
+  static const QRegularExpression ident("[A-Za-z_][A-Za-z0-9_]*");
+  int q = line.indexOf('"');
+  QString head = (q < 0) ? line : line.left(q);
+  QString tail = (q < 0) ? QString() : line.mid(q);
+  QString out;
+  int last = 0;
+  QRegularExpressionMatchIterator it = ident.globalMatch(head);
+  while(it.hasNext())
+  {
+    QRegularExpressionMatch m = it.next();
+    out += head.mid(last, m.capturedStart() - last);
+    out += rename.value(m.captured(), m.captured());
+    last = m.capturedEnd();
+  }
+  out += head.mid(last);
+  return out + tail;
+}
+
+// cambia el 3er parámetro (el padre) de la línea del constructor: pvQXxx(p,id,parent,...)
+static QString replaceParent(const QString &line, const QString &newParent)
+{
+  int start = line.indexOf("(p,");
+  if(start < 0) return line;
+  start = line.indexOf(',', start + 3);  // fin del id
+  if(start < 0) return line;
+  start++;
+  int end = start;
+  while(end < line.length() && line.at(end) != ',' && line.at(end) != ')') end++;
+  return line.left(start) + newParent + line.mid(end);
+}
+
+QList<QWidget *> pasteWidgetsFromText(QWidget *root, const QString &text,
+                                      const QList<QWidget *> &allowedParents, int firstObjNumber,
+                                      const QString &forcedParent, const QString &namePrefix, bool exactNames)
+{
+  QList<QWidget *> pasted;
+  if(root == NULL || !isWidgetClipboardText(text)) return pasted;
+
+  QStringList topNames, topParents, oldNames, whatsThis, body;
+  int script = -1;
+  const QStringList lines = text.split('\n');
+  for(int i=0; i<lines.size(); i++)
+  {
+    const QString &l = lines.at(i);
+    if(l.startsWith("#script ")) script = l.mid(8).toInt();
+    else if(l.startsWith("#top "))
+    {
+      QStringList parts = l.mid(5).split(' ');
+      topNames.append(parts.value(0));
+      topParents.append(parts.value(1));
+    }
+    else if(l.startsWith("#widget "))
+    {
+      QString rest = l.mid(8);
+      int sp = rest.indexOf(' ');
+      oldNames.append(sp < 0 ? rest : rest.left(sp));
+      whatsThis.append(sp < 0 ? QString() : QString::fromUtf8(QByteArray::fromPercentEncoding(rest.mid(sp+1).toLatin1())));
+    }
+    else if(!l.startsWith("#")) body.append(l);
+  }
+  if(oldNames.isEmpty() || topNames.isEmpty()) return pasted;
+  if(script != opt_develop.script)
+  {
+    printf("pasteWidgetsFromText: copied from a project with another script language\n");
+    return pasted;
+  }
+
+  // cada widget va al mismo contenedor que su original; si ya no existe (u otra máscara), a la máscara principal
+  QMap<QString,QString> newParentOf; // nombre original del widget -> padre donde se pega
+  for(int t=0; t<topNames.size(); t++)
+  {
+    QString newParent = forcedParent.isEmpty() ? QString("0") : forcedParent;
+    for(int i=0; forcedParent.isEmpty() && i<allowedParents.size(); i++)
+    {
+      QWidget *p = allowedParents.at(i);
+      if(p != NULL && p != root && p->objectName() == topParents.at(t) && root->isAncestorOf(p))
+      {
+        newParent = p->objectName();
+        break;
+      }
+    }
+    newParentOf.insert(topNames.at(t), newParent);
+  }
+
+  // nombres nuevos y únicos:
+  //   objN (nombre por defecto)  -> siguiente objN libre, como al insertar un widget
+  //   nombre propio (btnStart)   -> se conserva con un número: btnStart_2, btnStart_3...
+  //                                 (si ya era btnStart_2 sigue la serie de btnStart)
+  static const QRegularExpression defaultName("^obj\\d+$");
+  static const QRegularExpression numberSuffix("_\\d+$");
+  QSet<QString> used;
+  const QList<QObject *> existing = root->findChildren<QObject *>();
+  for(int i=0; i<existing.size(); i++) used.insert(existing.at(i)->objectName());
+  QMap<QString,QString> rename;
+  int n = firstObjNumber;
+  for(int i=0; i<oldNames.size(); i++)
+  {
+    const QString &old = oldNames.at(i);
+    if(rename.contains(old)) continue;
+    QString name;
+    if(exactNames)
+    {
+      name = namePrefix + old;   // bloques: <copia>_<widget> (unicos porque la copia lo es)
+    }
+    else if(old.isEmpty() || defaultName.match(old).hasMatch())
+    {
+      do { name = QString::asprintf("obj%d", n++); } while(used.contains(name));
+    }
+    else
+    {
+      QString base = old;
+      base.remove(numberSuffix);
+      int k = 2;
+      do { name = QString("%1_%2").arg(base).arg(k++); } while(used.contains(name));
+    }
+    used.insert(name);
+    rename.insert(old, name);
+  }
+
+  QTemporaryFile tmp;
+  QString tmpname = tempFileName(tmp);
+  if(tmpname.isEmpty()) return pasted;
+  FILE *fout = fopen(QFile::encodeName(tmpname).constData(), "w");
+  if(fout == NULL) return pasted;
+  static const QRegularExpression constructor("pvQ\\w*\\(p,(\\w+),");
+  for(int i=0; i<body.size(); i++)
+  {
+    QString l = renameIds(body.at(i), rename);
+    QRegularExpressionMatch m = constructor.match(body.at(i));
+    if(m.hasMatch() && newParentOf.contains(m.captured(1)))
+    {
+      l = replaceParent(l, newParentOf.value(m.captured(1))); // constructor de un widget seleccionado
+    }
+    fprintf(fout, "%s\n", l.toUtf8().constData());
+  }
+  fprintf(fout, "\n  pvEndDefinition(p);\n");
+  fclose(fout);
+
+  // igual que getWidgetsFromMask(): whatsThis[0] es ID_MAIN_WIDGET
+  iitem = 1;
+  whatsthislist.clear();
+  whatsthislist.append("");
+  whatsthislist += whatsThis;
+  theroot = root;
+  FILE *fin = fopen(QFile::encodeName(tmpname).constData(), "r");
+  if(fin != NULL)
+  {
+    getWidgets(fin, root);
+    fclose(fin);
+  }
+  whatsthislist.clear();
+
+  for(int t=0; t<topNames.size(); t++)
+  {
+    QWidget *w = root->findChild<QWidget *>(rename.value(topNames.at(t)));
+    if(w != NULL) pasted.append(w);
+  }
+  return pasted;
 }
 
 // add additional language here

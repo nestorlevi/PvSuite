@@ -23,9 +23,9 @@ dlgnewprj::dlgnewprj()
   uidlg->setupUi(this);
   uidlg->lineEditDirectory->setText(QDir::current().path());
   uidlg->lineEditName->setText("pvs");
-  connect(uidlg->pushButtonOk,    SIGNAL(clicked()),this,SLOT(accept()));
-  connect(uidlg->pushButtonCancel,SIGNAL(clicked()),this,SLOT(reject()));
-  connect(uidlg->pushButtonDir,   SIGNAL(clicked()),this,SLOT(getdir()));
+  connect(uidlg->pushButtonOk,    &QPushButton::clicked, this, &dlgnewprj::accept); // Nestor was here
+  connect(uidlg->pushButtonCancel,&QPushButton::clicked, this, &dlgnewprj::reject);
+  connect(uidlg->pushButtonDir,   &QPushButton::clicked, this, &dlgnewprj::getdir);
 }
 
 dlgnewprj::~dlgnewprj()
