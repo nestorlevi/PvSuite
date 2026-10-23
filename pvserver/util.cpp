@@ -28,6 +28,9 @@
 
 /* #include "qimage.h" */
 #include <time.h>
+#include <string>
+#include <vector>
+#include <set>
 #include <sys/stat.h>
 #include <ctype.h>
 
@@ -78,6 +81,7 @@ int  WSAAPI getnameinfo(const struct sockaddr*,socklen_t,char*,DWORD, char*,DWOR
 #include <signal.h>
 #include "processviewserver.h"
 #include "pvbImage.h"
+#include "pvbthreaddata.h"
 #ifdef __VMS
 #define MSG_NOSIGNAL 0
 #include "ucx$inetdef.h"
@@ -147,6 +151,16 @@ static plugin_closesocket         plug_closesocket = NULL;
 struct sockaddr lastSockaddr; // sockaddr of last client. detect brute force attack.
 pvTime          last_connect;
 struct sockaddr pvSockaddr;   // sockaddr of last client. can be used for authorization.
+// Nestor: struct sockaddr (16 bytes) no alcanza para IPv6: accept escribe aca y se copia a pvSockaddr.
+// clientSockaddr guarda la direccion de cada cliente (indice iclientsocket): el hilo del cliente no
+// puede leer pvSockaddr, que el hilo principal pisa en el accept siguiente.
+#ifdef AF_INET6_IS_AVAILABLE
+typedef struct sockaddr_storage pvSockaddrAll;
+#else
+typedef struct sockaddr pvSockaddrAll;
+#endif
+static pvSockaddrAll pvSockaddrFull;
+static pvSockaddrAll clientSockaddr[MAX_CLIENTS];
 #ifdef __VMS
 size_t          pvSocklen;  // socklen  of last client. can be used for authorization.
 #endif
@@ -745,6 +759,18 @@ const char *getTextFromText(const char *text)
 
 int do_post_accept_operations(PARAM *p);
 
+// Nestor: en macOS MSG_NOSIGNAL no existe (vale 0): sin SO_NOSIGPIPE, mandar a un pvbrowser que corto
+// la conexion mata todo el pvserver con SIGPIPE (igual que rlNoSigPipe en rllib/lib/rlsocket.cpp)
+static void pvNoSigPipe(int sock)
+{
+#ifdef SO_NOSIGPIPE
+  int one = 1;
+  if(sock >= 0) setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+#else
+  (void) sock;
+#endif
+}
+
 int pvAccept(PARAM *p)
 {
 static int first = 1;
@@ -763,6 +789,8 @@ int option = 1;
     ret = plug_pvAccept(p);
     if(ret > 0)
     {
+      memset(&pvSockaddrFull, 0, sizeof(pvSockaddrFull));   // el plugin no da la direccion: la de antes
+      memcpy(&pvSockaddrFull, &pvSockaddr, sizeof(pvSockaddr));
       return do_post_accept_operations(p);
     }
   }
@@ -883,8 +911,11 @@ bind:
         free(buf);
       }
     }
-    pvSocklen = sizeof(struct sockaddr);
-    p->s = accept(p->os, &pvSockaddr, &pvSocklen);
+    pvSocklen = sizeof(pvSockaddrFull);
+    memset(&pvSockaddrFull, 0, sizeof(pvSockaddrFull));
+    p->s = accept(p->os, (struct sockaddr *) &pvSockaddrFull, &pvSocklen);
+    pvNoSigPipe(p->s);
+    memcpy(&pvSockaddr, &pvSockaddrFull, sizeof(pvSockaddr));
     printf("p->s = %d\n", p->s);
   }
 #ifdef AF_INET6_IS_AVAILABLE
@@ -958,8 +989,11 @@ bindv6:
       signal(SIGTERM,sighandler);
       printf("Info: going to accept on port %d\n",p->port);
     }
-    pvSocklen = sizeof(struct sockaddr);
-    p->s = accept(p->os, &pvSockaddr, &pvSocklen);
+    pvSocklen = sizeof(pvSockaddrFull);
+    memset(&pvSockaddrFull, 0, sizeof(pvSockaddrFull));
+    p->s = accept(p->os, (struct sockaddr *) &pvSockaddrFull, &pvSocklen);
+    pvNoSigPipe(p->s);
+    memcpy(&pvSockaddr, &pvSockaddrFull, sizeof(pvSockaddr));
   }
 #endif
   else
@@ -1020,6 +1054,7 @@ int i;
     {
       clientsocket[i] = p->s;
       p->iclientsocket = i;
+      clientSockaddr[i] = pvSockaddrFull;   // la lee el hilo de este cliente (send_thread)
       break;
     }
   }
@@ -1142,8 +1177,11 @@ int pvtcpreceive(PARAM *p, char *buf, int maxlen)
     return plug_pvtcpreceive(p, buf, maxlen);
   }
 
+  // Nestor: una linea mas larga que maxlen-2 se corta (el resto se descarta hasta el \n);
+  // antes se escribia buf[maxlen] y el resto llegaba como otro evento
+  if(maxlen < 2) return 0;
   i = 0;
-  while(i < maxlen-1)
+  while(1)
   {
 #if defined(USE_INETD) && !defined(__VMS)
     ret = read(pv_STDIN,&buf[i],1);
@@ -1152,10 +1190,9 @@ int pvtcpreceive(PARAM *p, char *buf, int maxlen)
     ret = recv(p->s,&buf[i],1,0);
     if(ret <= 0) pvThreadFatal(p,"exit");
 #endif
-    if(buf[i] == '\n') break;
-    i += ret;
+    if(buf[i] == '\n') { i++; break; }
+    if(i < maxlen-2) i++;
   }
-  i++;
   buf[i] = '\0';
   
   if(debug)
@@ -1354,9 +1391,13 @@ int pvInit(int ac, char **av, PARAM *p)
 int i,ret,cmdline_length;
 
   printf("pvserver_version %s\n", pvserver_version);
-#ifdef PVWIN32  
+#ifdef PVWIN32
+#ifdef __GNUC__
   printf("serverlib.a was build with MinGW %d.%d.%d\n", __GNUC__ , __GNUC_MINOR__ , __GNUC_PATCHLEVEL__ );
-#endif  
+#elif defined(_MSC_VER)
+  printf("serverlib.lib was build with MSVC %d\n", _MSC_VER); // Nestor
+#endif
+#endif
   ret = 0;
   cmdline_length = strlen(av[0]);
   pvInitInternal(p);
@@ -1503,9 +1544,9 @@ int pvGetInitialMask(PARAM *p)
     cptr = strstr(event,"version=");
     if(cptr != NULL)
     {
-      sscanf(cptr,"version=%s",p->version);
+      sscanf(cptr,"version=%31s",p->version);   // version[32]
+      cptr = strchr(cptr, ' ');
     }
-    cptr = strchr(cptr, ' ');
     if(cptr != NULL)
     {
       cptr++;
@@ -1703,14 +1744,14 @@ start_poll:  // only necessary for pause
     {
       if(strncmp(event,"@hello=",7) == 0)
       {
-        sscanf(event,"@hello=%s",p->version);
+        sscanf(event,"@hello=%31s",p->version);   // version[32]
       }
       *event = '\0';
     }
     else if(strncmp(event,"@clipboard(",11) == 0)
     {
-      int id,size;
-      sscanf(event,"@clipboard(%d,%d",&id,&size);
+      int id = 0, size = -1;
+      if(sscanf(event,"@clipboard(%d,%d",&id,&size) != 2 || size < 0) pvThreadFatal(p,"invalid @clipboard size");
       if(size > 1024*1024*16) pvThreadFatal(p,"not enough memory for clipboard (more than 16MB were requested)");
       pvlock(p);
       if(p->clipboard != NULL) free(p->clipboard);
@@ -1819,149 +1860,111 @@ static int normalizeIPv6(char *adr)
 }
 
 #ifndef USE_INETD
+// Nestor: direccion del cliente de este hilo (la usa pvGetClientAddress sin recorrer adrTable)
+struct PvClientAddress { int s = -1; char adr[64] = ""; };
+static PvClientAddress &pvClientAddress() { return pvbThreadData<PvClientAddress, 101>(); }
+
+// Nestor: avisa al cliente y termina el hilo (no se acepta la conexion)
+static void send_thread_reject(PARAM *p, const char *msg, const char *fatal)
+{
+  pvStartDefinition(p,3);
+  pvQLabel(p,1,0);
+  pvSetGeometry(p,1,20,10,500,25);
+  pvSetText(p,1,msg);
+  pvEndDefinition(p);
+  pvBeep(p);
+  pvSleep(3000);
+  pvThreadFatal(p,fatal);
+}
+
+// Nestor: cuenta los clientes y agrega este a adrTable de una vez (con pvlock: otro hilo puede estar
+// haciendo lo mismo). n = 4 o 16 bytes de la direccion. 0 = aceptado, 1 = maxClients, 2 = maxClientsPerIpAdr
+static int send_thread_register(PARAM *p, int version, const unsigned char *ipadr, int n)
+{
+  int i, numClients = 0, numThisClient = 0, ret = 0;
+  pvlock(p);
+  for(i=0; i<maxClients; i++) // count clients alread connected
+  {
+    if(adrTable.adr[i].s > 0 )
+    {
+      numClients++;
+      if(adrTable.adr[i].version == version && memcmp(ipadr,&adrTable.adr[i].adr[0],n) == 0) numThisClient++;
+    }
+  }
+  if(numClients >= maxClients)               ret = 1;
+  else if(numThisClient >= maxClientsPerIpAdr) ret = 2;
+  else
+  {
+    for(i=0; i<maxClients; i++) // insert client into table
+    {
+      if(adrTable.adr[i].s <= 0 )
+      {
+        adrTable.adr[i].s = p->s;
+        adrTable.adr[i].version = version;
+        memcpy(&adrTable.adr[i].adr[0],ipadr,n);
+        break;
+      }
+    }
+  }
+  pvunlock(p);
+  return ret;
+}
+
 static void *send_thread(void *ptr)
 {
   PARAM *p;
   p = (PARAM *) ptr;
   pvFilePrefix(p);
   pvSendVersion(p);
-  // struct sockaddr pvSockaddr; // sockaddr of last client. can be used for authorization.
-  // pvSocklen;                  // socklen  of last client. can be used for authorization.
-  struct sockaddr_in *sockaddr_in_ptr  = (sockaddr_in *) &pvSockaddr;
+  // Nestor: la direccion de este cliente la guardo el hilo principal en clientSockaddr[iclientsocket]
+  // (pvSockaddr es la del ultimo accept: puede ser la de otro cliente que se conecto despues)
+  pvSockaddrAll sa;
+  memset(&sa, 0, sizeof(sa));
+  if(p->iclientsocket >= 0 && p->iclientsocket < MAX_CLIENTS) sa = clientSockaddr[p->iclientsocket];
+  struct sockaddr_in *sockaddr_in_ptr  = (sockaddr_in *) &sa;
   if(sockaddr_in_ptr->sin_family == AF_INET)
   {
     char adr[64];
-    unsigned int *ipadr_ptr, ipadr,a1,a2,a3,a4;
-    int i,numClients,numThisClient;
-    ipadr_ptr = (unsigned int *) &sockaddr_in_ptr->sin_addr;
-    ipadr = *ipadr_ptr;
-    unsigned char *uc = (unsigned char *) ipadr_ptr;
-    a1 = uc[0];
-    a2 = uc[1];
-    a3 = uc[2];
-    a4 = uc[3];
-    sprintf(adr,"%d.%d.%d.%d", a1,a2,a3,a4);
+    unsigned char ipadr[4];
+    memcpy(ipadr, &sockaddr_in_ptr->sin_addr, 4);
+    snprintf(adr,sizeof(adr),"%d.%d.%d.%d", ipadr[0],ipadr[1],ipadr[2],ipadr[3]);
     printf("ipv4=%s\n",adr);
-    numClients = numThisClient = 0;
-    for(i=0; i<maxClients; i++) // count clients alread connected
-    {
-      if(adrTable.adr[i].s > 0 )
-      {
-        numClients++;
-        if(adrTable.adr[i].version == 4)
-        {
-          if(memcmp(&ipadr,&adrTable.adr[i].adr[0],4) == 0) numThisClient++;
-        }
-      }  
-    }
-    if(numClients >= maxClients)
-    {
-      pvStartDefinition(p,3);
-      pvQLabel(p,1,0);
-      pvSetGeometry(p,1,20,10,500,25);
-      pvSetText(p,1,"Did not accept because maxClients reached (IPv4)");
-      pvEndDefinition(p);
-      pvBeep(p);
-      pvSleep(3000);
-      pvThreadFatal(p,"WARNING: did not accept client because maxClients reached (IPv4)\n");
-    }  
-    if(numThisClient >= maxClientsPerIpAdr)
-    {
-      pvStartDefinition(p,3);
-      pvQLabel(p,1,0);
-      pvSetGeometry(p,1,20,10,500,25);
-      pvSetText(p,1,"Did not accept because maxClientsPerIpAdr reached (IPv4)");
-      pvEndDefinition(p);
-      pvBeep(p);
-      pvSleep(3000);
-      pvThreadFatal(p,"WARNING: did not accept client because maxClientsPerIpAdr reached (IPv4)\n");
-    }  
-    for(i=0; i<maxClients; i++) // insert client into table
-    {
-      if(adrTable.adr[i].s <= 0 )
-      {
-        adrTable.adr[i].s = p->s;
-        adrTable.adr[i].version = 4;
-        memcpy(&adrTable.adr[i].adr[0],&ipadr,4);
-        break;
-      }  
-    }
+    PvClientAddress &ca = pvClientAddress();
+    ca.s = p->s;
+    snprintf(ca.adr, sizeof(ca.adr), "%s", adr);
+    int r = send_thread_register(p, 4, ipadr, 4);
+    if(r == 1)
+      send_thread_reject(p,"Did not accept because maxClients reached (IPv4)","WARNING: did not accept client because maxClients reached (IPv4)\n");
+    if(r == 2)
+      send_thread_reject(p,"Did not accept because maxClientsPerIpAdr reached (IPv4)","WARNING: did not accept client because maxClientsPerIpAdr reached (IPv4)\n");
     if(pvIsAccessAllowed(adr, 1) == 0)
     {
       pvThreadFatal(p,"SECURITY ALARAM: unallowed connection request (IPv4)\n");
     }
-  }  
+  }
 #ifdef AF_INET6_IS_AVAILABLE
   else if(sockaddr_in_ptr->sin_family == AF_INET6)
   {
     char adr[64];
-    unsigned char *ipadr_ptr;
-    int i,numClients,numThisClient;
-
-    ipadr_ptr = (unsigned char *) &sockaddr_in_ptr->sin_addr;
-    pvinet_ntop(AF_INET6,ipadr_ptr,adr,sizeof(adr));
-
-    //printf("UNSECIFIED=%d\n",IN6_IS_ADDR_UNSPECIFIED((const struct in6_addr *) ipadr_ptr));
-    //printf("  LOOPBACK=%d\n",IN6_IS_ADDR_LOOPBACK   ((const struct in6_addr *) ipadr_ptr));
-    //printf(" MULTICAST=%d\n",IN6_IS_ADDR_MULTICAST  ((const struct in6_addr *) ipadr_ptr));
-    //printf(" LINKLOCAL=%d\n",IN6_IS_ADDR_LINKLOCAL  ((const struct in6_addr *) ipadr_ptr));
-    //printf(" SITELOCAL=%d\n",IN6_IS_ADDR_SITELOCAL  ((const struct in6_addr *) ipadr_ptr));
-    //printf("  V4MAPPED=%d\n",IN6_IS_ADDR_V4MAPPED   ((const struct in6_addr *) ipadr_ptr));
-    //printf("  V4COMPAT=%d\n",IN6_IS_ADDR_V4COMPAT   ((const struct in6_addr *) ipadr_ptr));
-
+    unsigned char ipadr[16];
+    // Nestor: la direccion esta en sin6_addr (16 bytes); en el desplazamiento de sin_addr esta sin6_flowinfo
+    memcpy(ipadr, &((struct sockaddr_in6 *) &sa)->sin6_addr, 16);
+    pvinet_ntop(AF_INET6,ipadr,adr,sizeof(adr));
+    PvClientAddress &ca = pvClientAddress();
+    ca.s = p->s;
+    snprintf(ca.adr, sizeof(ca.adr), "%s", adr);
     normalizeIPv6(adr);
-    numClients = numThisClient = 0;
-    for(i=0; i<maxClients; i++) // count clients alread connected
-    {
-      if(adrTable.adr[i].s > 0 )
-      {
-        numClients++;
-        if(adrTable.adr[i].version == 6)
-        {
-          //RL fix 12.02.2022 if(memcmp(ipadr_ptr,&adrTable.adr[i].adr[0],16) == 0) numThisClient++;
-          if(memcmp(ipadr_ptr,&adrTable.adr[i].adr[0],sizeof(in_addr)) == 0) numThisClient++;
-        }
-      }  
-    }
-    if(numClients >= maxClients)
-    {
-      pvStartDefinition(p,3);
-      pvQLabel(p,1,0);
-      pvSetGeometry(p,1,20,10,500,25);
-      pvSetText(p,1,"Did not accept because maxClients reached (IPv6)");
-      pvEndDefinition(p);
-      pvBeep(p);
-      pvSleep(3000);
-      pvThreadFatal(p,"WARNING: did not accept client because maxClients reached (IPv6)\n");
-    }  
-    if(numThisClient >= maxClientsPerIpAdr)
-    {
-      pvStartDefinition(p,3);
-      pvQLabel(p,1,0);
-      pvSetGeometry(p,1,20,10,500,25);
-      pvSetText(p,1,"Did not accept because maxClientsPerIpAdr reached (IPv6)");
-      pvEndDefinition(p);
-      pvBeep(p);
-      pvSleep(3000);
-      pvThreadFatal(p,"WARNING: did not accept client because maxClientsPerIpAdr reached (IPv6)\n");
-    }  
-    for(i=0; i<maxClients; i++) // insert client into table
-    {
-      if(adrTable.adr[i].s <= 0 )
-      {
-        adrTable.adr[i].s = p->s;
-        adrTable.adr[i].version = 6;
-        //RL fix 12.02.2022 memcpy(&adrTable.adr[i].adr[0],ipadr_ptr,16);
-        memcpy(&adrTable.adr[i].adr[0],ipadr_ptr,sizeof(in_addr));
-        break;
-      }  
-    }
+    int r = send_thread_register(p, 6, ipadr, 16);
+    if(r == 1)
+      send_thread_reject(p,"Did not accept because maxClients reached (IPv6)","WARNING: did not accept client because maxClients reached (IPv6)\n");
+    if(r == 2)
+      send_thread_reject(p,"Did not accept because maxClientsPerIpAdr reached (IPv6)","WARNING: did not accept client because maxClientsPerIpAdr reached (IPv6)\n");
     if(pvIsAccessAllowed(adr, 1) == 0)
     {
       pvThreadFatal(p,"SECURITY ALARAM: unallowed connection request (IPv6)\n");
     }
   }
-#endif  
+#endif
   pvMain(p);
   return NULL;
 }
@@ -2111,10 +2114,19 @@ int pvSleep(int msec)
 #endif
 }
 
+// Nestor: cada definicion de widgets (ver pvDefinitionCount)
+static int &pvDefinitionCounter() { return pvbThreadData<int, 102>(); }
+
+int pvDefinitionCount()
+{
+  return pvDefinitionCounter();
+}
+
 int pvStartDefinition(PARAM *p, int num_objects)
 {
 char buf[80];
 
+  pvDefinitionCounter()++;
   if(p->num_additional_widgets > 0) num_objects += p->num_additional_widgets;
   sprintf(buf,"startDefinition(%d)\n",num_objects);
   pvtcpsend(p, buf, strlen(buf));
@@ -4412,6 +4424,59 @@ char buf[MAX_PRINTF_LENGTH];
   sprintf(buf,"setImage(%d,\"%s\") -rotate=%d\n",id,pvFilename(filename),rotate);
   pvtcpsend(p, buf, strlen(buf));
   return 0;
+}
+
+// Nestor: la animacion la hace pvbrowser (no hace falta mandar cada cuadro)
+int pvSetImageAnimation(PARAM *p, int id, const char *frames, int period_ms)
+{
+char buf[MAX_PRINTF_LENGTH];
+
+  if(frames == NULL) frames = "";
+  pv_length_check(p, frames);
+  std::string list, all = frames, item;   // pvbrowser los tiene sin carpeta (como pvDownloadFile)
+  size_t a = 0;
+  while(a <= all.size())
+  {
+    size_t b = all.find(',', a);
+    if(b == std::string::npos) b = all.size();
+    item = all.substr(a, b - a);
+    if(!item.empty()) { if(!list.empty()) list += ","; list += pvFilename(item.c_str()); }
+    a = b + 1;
+  }
+  sprintf(buf,"setImageAnimation(%d,%d,\"%s\")\n",id,period_ms,list.c_str());
+  pvtcpsend(p, buf, strlen(buf));
+  return 0;
+}
+
+// Nestor: direccion IP del cliente de este hilo ("" si no se conoce)
+int pvGetClientAddress(PARAM *p, char *buf, int len)
+{
+  if(buf == NULL || len <= 0) return -1;
+  buf[0] = '\0';
+#ifndef USE_INETD
+  PvClientAddress &ca = pvClientAddress();   // la de este hilo (la puso send_thread)
+  if(p->s > 0 && ca.s == p->s && ca.adr[0])
+  {
+    snprintf(buf, len, "%s", ca.adr);
+    return 0;
+  }
+#endif
+  for(int i=0; i<MAX_CLIENTS; i++)
+  {
+    if(adrTable.adr[i].s != p->s || p->s <= 0) continue;
+    if(adrTable.adr[i].version == 4)
+      snprintf(buf, len, "%d.%d.%d.%d", adrTable.adr[i].adr[0], adrTable.adr[i].adr[1], adrTable.adr[i].adr[2], adrTable.adr[i].adr[3]);
+#if defined(AF_INET6_IS_AVAILABLE) && !defined(USE_INETD)
+    else if(adrTable.adr[i].version == 6)
+    {
+      char adr[64];
+      pvinet_ntop(AF_INET6, adrTable.adr[i].adr, adr, sizeof(adr));
+      snprintf(buf, len, "%s", adr);
+    }
+#endif
+    return 0;
+  }
+  return -1;
 }
 
 int pvSetBufferedJpgImage(PARAM *p, int id, const unsigned char *buffer, int buffersize, int rotate)
@@ -8576,3 +8641,130 @@ int pvWidgetIdManager::readEnumFromMask(const char *maskname)
 // end ifdef _VMS
 #endif
 
+
+//------------------------------------------------------------------------------------------------
+// Nestor: archivos con nombre UTF-8 sin std::filesystem (ver pvbfile.h)
+//------------------------------------------------------------------------------------------------
+#include "pvbfile.h"
+#include <algorithm>
+#ifndef _WIN32
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#endif
+
+#ifdef _WIN32
+static std::wstring pvbWide(const std::string &utf8)
+{
+  int n = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
+  if(n <= 0) return std::wstring();
+  std::vector<wchar_t> w(n);
+  MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &w[0], n);
+  return std::wstring(&w[0]);
+}
+
+static std::string pvbUtf8(const wchar_t *w)
+{
+  int n = WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
+  if(n <= 0) return std::string();
+  std::vector<char> s(n);
+  WideCharToMultiByte(CP_UTF8, 0, w, -1, &s[0], n, NULL, NULL);
+  return std::string(&s[0]);
+}
+#endif
+
+FILE *pvbFileOpen(const std::string &utf8, const char *mode)
+{
+#ifdef _WIN32
+  return _wfopen(pvbWide(utf8).c_str(), pvbWide(mode).c_str());
+#else
+  return fopen(utf8.c_str(), mode);
+#endif
+}
+
+bool pvbFileReplace(const std::string &from, const std::string &to)
+{
+#ifdef _WIN32
+  return MoveFileExW(pvbWide(from).c_str(), pvbWide(to).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+  return rename(from.c_str(), to.c_str()) == 0;
+#endif
+}
+
+bool pvbFileRemove(const std::string &utf8)
+{
+#ifdef _WIN32
+  return _wremove(pvbWide(utf8).c_str()) == 0;
+#else
+  return remove(utf8.c_str()) == 0;
+#endif
+}
+
+void pvbMakeDirs(const std::string &utf8)
+{
+  for(size_t i = 1; i <= utf8.size(); i++)
+  {
+    if(i < utf8.size() && utf8[i] != '/' && utf8[i] != '\\') continue;
+    const std::string d = utf8.substr(0, i);
+#ifdef _WIN32
+    _wmkdir(pvbWide(d).c_str());
+#else
+    mkdir(d.c_str(), 0775);
+#endif
+  }
+}
+
+std::vector<std::string> pvbDirFiles(const std::string &dir, const std::string &ext)
+{
+  std::vector<std::string> list;
+#ifdef _WIN32
+  WIN32_FIND_DATAW fd;
+  HANDLE h = FindFirstFileW(pvbWide(dir + "/*" + ext).c_str(), &fd);
+  if(h != INVALID_HANDLE_VALUE)
+  {
+    do
+    {
+      if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+      std::string n = pvbUtf8(fd.cFileName);
+      // FindFirstFile tambien encuentra "x.rcpold" con "*.rcp" (nombres cortos 8.3): se compara la extension
+      if(n.size() > ext.size() && n.compare(n.size() - ext.size(), ext.size(), ext) == 0) list.push_back(n.substr(0, n.size() - ext.size()));
+    } while(FindNextFileW(h, &fd));
+    FindClose(h);
+  }
+#else
+  DIR *d = opendir(dir.empty() ? "." : dir.c_str());
+  if(d != NULL)
+  {
+    struct dirent *e;
+    while((e = readdir(d)) != NULL)
+    {
+      std::string n = e->d_name;
+      struct stat st;
+      if(stat((dir + "/" + n).c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
+      if(n.size() > ext.size() && n.compare(n.size() - ext.size(), ext.size(), ext) == 0) list.push_back(n.substr(0, n.size() - ext.size()));
+    }
+    closedir(d);
+  }
+#endif
+  std::sort(list.begin(), list.end());
+  return list;
+}
+
+bool pvbReadLines(const std::string &utf8, std::vector<std::string> &lines)
+{
+  lines.clear();
+  FILE *f = pvbFileOpen(utf8, "rb");
+  if(f == NULL) return false;
+  std::string line;
+  int c;
+  while((c = fgetc(f)) != EOF)
+  {
+    if(c != '\n') { line += (char) c; continue; }
+    if(!line.empty() && line[line.size()-1] == '\r') line.erase(line.size() - 1);
+    lines.push_back(line);
+    line.clear();
+  }
+  if(!line.empty()) lines.push_back(line);
+  fclose(f);
+  return true;
+}

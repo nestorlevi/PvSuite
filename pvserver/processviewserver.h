@@ -2394,6 +2394,23 @@ Allowed widgets: QImage
 </pre> */
 int pvSetImage(PARAM *p, int id, const char *filename, int rotate=0);
 /*! <pre>
+Animacion de una imagen hecha por pvbrowser: muestra los cuadros uno tras otro cada period_ms.
+frames = archivos separados por coma, ya descargados con pvDownloadFile ("f1.png,f2.png,f3.png").
+period_ms = 0 detiene la animacion y deja el primer cuadro.
+Un .gif animado (pvQImage / pvSetImage) se anima solo.
+Allowed widgets: QImage
+</pre> */
+int pvSetImageAnimation(PARAM *p, int id, const char *frames, int period_ms);
+/*! <pre>
+Direccion IP del cliente (pvbrowser) de este hilo. 0 = bien, -1 = no se conoce (buf = "").
+</pre> */
+int pvGetClientAddress(PARAM *p, char *buf, int len);
+/*! <pre>
+Cantidad de pvStartDefinition de este hilo (cliente). Cambia cada vez que se definen widgets de nuevo
+(otra mascara, la misma mascara otra vez o una ventana modal): pvbind.h vuelve a mandar las animaciones.
+</pre> */
+int pvDefinitionCount();
+/*! <pre>
 Set a new image in an existing image.
 For example get a frame from a MJPG webcam with the rlWebcam method
   int getFrameBuffer(unsigned char *buffer, int maxbuffer, int timeout=3000);
