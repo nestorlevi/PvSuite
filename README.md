@@ -58,6 +58,9 @@ en Linux, g++ y make (`sudo sh /opt/pvb/terceros/preparar_linux.sh -compilar`).
 4. Ctrl+T compila y ejecuta el pvserver; Ctrl+P abre pvbrowser.
 5. Daemon > Monitor de tags para ver y forzar los valores; "Iniciar en simulacion" usa el simulador.
 
+El ejemplo [ejemplos/01_modbus](ejemplos/01_modbus) muestra todo esto armado, con un
+[simulador Modbus](ejemplos/simulador) para probarlo sin PLC.
+
 ## Compilar desde el código
 
 Hace falta **Qt 6.9** (probado con 6.9.2).

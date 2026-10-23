@@ -1,0 +1,26 @@
+# Ejemplo 1: PLC Modbus TCP (con -sim se conecta al simulador 127.0.0.1:502, ver ../simulador)
+target=PLC1
+shared_memory=automation/shm/plc1.shm
+mailbox=automation/mbx/plc1.mbx
+communication=socket
+tcpadr=192.168.1.10
+tcpport=502
+cycletime=100
+
+address_notation=modicon
+word_order=CDAB
+bit_write=rmw
+tag name=FlagTWR address=40300.15 rw=1 desc="Control desde torre"
+tag name=Brillo  address=40301 type=int rw=1 unit=%
+tag name=Caudal  address=40311 type=real rw=1 unit=m3/h
+tag name=Bomba   address=00006 rw=1 desc="Bomba principal"
+struct name=Motor
+member name=Marcha at=0.0 type=bool rw=1
+member name=Velocidad at=1 type=int rw=1
+end
+tag name=Motores address=40400 type=Motor count=2 stride=10
+console=normal
+cycle1 slave=1 function=3 start_adr=0 num_register=2
+sys name=Comunicacion
+simulation_tcpadr=127.0.0.1
+simulation_tcpport=502

@@ -1,0 +1,14 @@
+# Lo que genera compilar y correr los ejemplos
+release/
+debug/
+*.exe
+*.o
+.pvb_compiler
+automation/
+*.log
+Makefile*
+.qmake.stash
+object_script.*
+simulador/simulador_modbus
+01_modbus/PLC1
+01_modbus/pvs

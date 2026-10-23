@@ -1,0 +1,28 @@
+# Mapa de la memoria compartida de PLC1 para el historiador (generado por pvdevelop; no editar)
+source=PLC1
+protocol=modbus
+shared_memory=automation/shm/plc1.shm
+size=88
+mailbox=automation/mbx/plc1.mbx
+tag name=FlagTWR type=bool offset=10 size=2 bit=15 status=43 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=299 plcaddr=40300.15 desc="Control desde torre"
+tag name=Brillo type=int offset=12 size=2 bit=-1 status=43 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=300 plcaddr=40301 unit=%
+tag name=Caudal type=real offset=14 size=4 bit=-1 status=44 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=310 plcaddr=40311 unit=m3/h
+tag name=Bomba type=bool offset=42 size=1 bit=0 status=46 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=1 dbnum=0 address=5 plcaddr=00006 desc="Bomba principal"
+tag name=Motores[0].Marcha type=bool offset=18 size=2 bit=0 status=45 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=399 plcaddr=40400.0
+tag name=Motores[0].Velocidad type=int offset=20 size=2 bit=-1 status=45 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=400 plcaddr=40401
+tag name=Motores[1].Marcha type=bool offset=38 size=2 bit=0 status=45 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=409 plcaddr=40410.0
+tag name=Motores[1].Velocidad type=int offset=40 size=2 bit=-1 status=45 order=CDAB scale=1 soffset=0 rw=1 slave=1 area=3 dbnum=0 address=410 plcaddr=40411
+tag name=SYS.Comunicacion type=bool offset=47 size=1 bit=0 status=-1 order=ABCD scale=1 soffset=0 desc="Todos los bloques del ultimo ciclo se leyeron bien"
+tag name=SYS.ComunicacionParcial type=bool offset=48 size=1 bit=0 status=-1 order=ABCD scale=1 soffset=0 desc="Algun bloque se leyo bien y alguno fallo"
+tag name=SYS.Conectado type=bool offset=49 size=1 bit=0 status=-1 order=ABCD scale=1 soffset=0 desc="Conexion abierta"
+tag name=SYS.BloquesOk type=uint offset=51 size=2 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Bloques leidos bien en el ultimo ciclo"
+tag name=SYS.BloquesError type=uint offset=53 size=2 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Bloques con error en el ultimo ciclo"
+tag name=SYS.Ciclo type=udint offset=55 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Numero de ciclo"
+tag name=SYS.TiempoCiclo type=udint offset=59 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Duracion del ultimo ciclo (ms)"
+tag name=SYS.TiempoCicloMax type=udint offset=63 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Duracion maxima de un ciclo (ms)"
+tag name=SYS.ErroresLectura type=udint offset=67 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Errores de lectura desde el inicio"
+tag name=SYS.ErroresEscritura type=udint offset=71 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Errores de escritura desde el inicio"
+tag name=SYS.UltimoError type=dint offset=75 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Codigo del ultimo error (0 = ninguno)"
+tag name=SYS.UltimaLecturaOk type=udint offset=79 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Hora de la ultima lectura correcta (s desde 1970, UTC)"
+tag name=SYS.Inicio type=udint offset=83 size=4 bit=-1 status=-1 order=ABCD scale=1 soffset=0 desc="Hora de inicio del daemon (s desde 1970, UTC)"
+tag name=SYS.Esclavo1 type=bool offset=87 size=1 bit=0 status=-1 order=ABCD scale=1 soffset=0 desc="El esclavo 1 respondio en el ultimo ciclo"
