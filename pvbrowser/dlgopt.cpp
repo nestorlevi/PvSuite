@@ -28,10 +28,9 @@ DlgOpt::DlgOpt(QWidget *parent) : QDialog(parent)
   initDialog();
 
   filename = "";
-
-  QObject::connect(QPushButton_ok,            SIGNAL(clicked()), this,SLOT(okClicked()));
-  QObject::connect(QPushButton_cancel,        SIGNAL(clicked()), this,SLOT(reject()));
-  QObject::connect(QPushButton_reset_inifile, SIGNAL(clicked()), this,SLOT(slotResetInifile()));
+  QObject::connect(QPushButton_ok,            &QPushButton::clicked, this, &DlgOpt::okClicked);
+  QObject::connect(QPushButton_cancel,        &QPushButton::clicked, this, &DlgOpt::reject);
+  QObject::connect(QPushButton_reset_inifile, &QPushButton::clicked, this, &DlgOpt::slotResetInifile);
   edit1->setLineWrapMode(QTextEdit::NoWrap);
   edit1->setTextInteractionFlags(Qt::TextEditorInteraction);
 

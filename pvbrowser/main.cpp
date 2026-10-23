@@ -22,6 +22,8 @@
 #include <QMessageBox>
 #include "images/splash.xpm"
 #include "mainwindow.h"
+#include "pvblanguage.h"
+void pvbTranslateMenuTexts(); // opt.cpp
 #include "opt.h"
 #include "tcputil.h"
 #ifdef PVWIN32
@@ -233,6 +235,8 @@ int main(int argc, char *argv[])
 
   //Nestor aquí, nuevo estilo multiplataforma
   app.setStyle(QStyleFactory::create("Fusion"));
+  pvbInstallTranslators(app, "pvbrowser"); // Nestor: idioma (menu Archivo > Idioma o el del sistema)
+  pvbTranslateMenuTexts();
 
   //printf("within main: 3\n");
   QPixmap pm(splash_xpm);

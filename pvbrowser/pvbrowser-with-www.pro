@@ -8,7 +8,13 @@ CONFIG       += warn_on release
 DEFINES      += USE_GOOGLE_WEBKIT_FORK
 #DEFINES      += PVB_FOOTPRINT_OLD_VERSION_BEFORE_QWT62
 #mobile devices without opengl
-QT           += webenginewidgets widgets xml svg network printsupport
+# Nestor: pvbrowser con navegador web (Qt WebEngine / Blink).
+# Qt WebEngine existe en Linux, macOS y Windows con MSVC (no con MinGW):
+# en Windows+MinGW usar pvbrowser-with-basic-footprint.pro.
+QT           += webenginewidgets widgets xml svg network printsupport multimedia
+QT           += opengl
+greaterThan(QT_MAJOR_VERSION, 5): QT += openglwidgets           #Nestor aquí
+win32-g++:error("Qt WebEngine no existe para MinGW: compilar con MSVC o usar pvbrowser-with-basic-footprint.pro")
 
 linux-g++-gles2 {
   DEFINES    += USE_MAEMO
@@ -27,7 +33,7 @@ USE_SYMBIAN {
 macx:DEFINES += PVMAC
 macx:DEFINES += unix
 unix:!symbian:LIBS    += -ldl
-!symbian:QMAKE_LFLAGS += -static-libgcc
+!symbian:!msvc:!macx:QMAKE_LFLAGS += -static-libgcc
 
 HEADERS       = mainwindow.h \
                 dlgopt.h \
@@ -86,9 +92,13 @@ SOURCES      += pvglwidget.cpp \
 INCLUDEPATH  += ../qwt/src
 symbian {
 
-}
-else {
-LIBS         += ../qwt/lib/libqwt.a
+} else:win32-msvc* {   # Nestor: MSVC usa la biblioteca de importación de qwt.dll
+    DEFINES += QWT_DLL
+    LIBS += $$PWD/../Compilar/pvsuite-win64/qwt-msvc/lib/qwt.lib   # compilada por Compilar/pvsuite-win64/qwt-msvc (qwt sin modificar)
+    LIBS += -lws2_32 -lopengl32
+} else:unix {
+    LIBS += -L$$PWD/../qwt/lib -lqwt
+    QMAKE_RPATHDIR += $$PWD/../qwt/lib
 }
 
 ### begin USE_VTK #############################################
@@ -168,3 +178,9 @@ target.path   = /usr/local/bin
 sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS pvbrowser.pro images
 sources.path  = /opt/pvb/pvbrowser
 INSTALLS     += target sources
+
+# Nestor: idiomas (Qt Linguist: translations/*.ts; los .qm van dentro del ejecutable, :/i18n/)
+HEADERS      += pvblanguage.h pvbupdate.h
+SOURCES      += pvblanguage.cpp pvbupdate.cpp
+TRANSLATIONS += translations/pvbrowser_es.ts translations/pvbrowser_en.ts translations/pvbrowser_pt.ts translations/pvbrowser_de.ts
+CONFIG       += lrelease embed_translations

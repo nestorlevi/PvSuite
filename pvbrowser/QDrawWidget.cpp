@@ -265,7 +265,7 @@ QDrawWidget::QDrawWidget( QWidget *parent, const char *name, int wFlags, int *so
   }
 #endif  
   timer.setSingleShot(true);
-  connect(&timer, SIGNAL(timeout()), this, SLOT(slotTimeout()));
+  connect(&timer, &QTimer::timeout, this, &QDrawWidget::slotTimeout); // Nestor was here
   fp   = NULL;
   flog = NULL;
   s  = sock;

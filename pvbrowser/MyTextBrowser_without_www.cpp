@@ -117,7 +117,7 @@ MyTextBrowser::MyTextBrowser(int *sock, int ident, QWidget *parent, const char *
   setOpenLinks(false);
   //connect(this, SIGNAL(anchorClicked(const QUrl &)), SLOT(slotLinkClicked(const QUrl &)));
   //connect(this, SIGNAL(urlChanged(const QUrl &)), SLOT(slotUrlChanged(const QUrl &)));
-  connect(this, SIGNAL(anchorClicked(const QUrl &)), SLOT(slotUrlChanged(const QUrl &)));
+  connect(this, &QTextBrowser::anchorClicked, this, &MyTextBrowser::slotUrlChanged); // Nestor was here
 }
 
 MyTextBrowser::~MyTextBrowser()
@@ -161,7 +161,7 @@ void MyTextBrowser::contextMenuEvent(QContextMenuEvent *event)
 {
   QMenu menu(this);
   QAction *printAct = menu.addAction("Print");
-  connect(printAct, SIGNAL(triggered()), this, SLOT(slotPRINTER()));
+  connect(printAct, &QAction::triggered, this, &MyTextBrowser::slotPRINTER); // Nestor was here
   menu.exec(event->globalPos());
 }
 

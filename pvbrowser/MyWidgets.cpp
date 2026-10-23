@@ -234,9 +234,10 @@ MyQPushButton::MyQPushButton(int *sock, int ident, QWidget * parent, const char 
   id = ident;
   row = col = -1;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(pressed()),  SLOT(slotPressed()));
-  connect(this, SIGNAL(released()), SLOT(slotReleased()));
-  connect(this, SIGNAL(clicked()),  SLOT(slotClicked()));
+
+  connect(this, &MyQPushButton::pressed,   this, &MyQPushButton::slotPressed);  //Nestor was here, modern sintax
+  connect(this, &MyQPushButton::released,  this, &MyQPushButton::slotReleased);
+  connect(this, &MyQPushButton::clicked,   this, &MyQPushButton::slotClicked);
 }
 
 MyQPushButton::~MyQPushButton()
@@ -300,8 +301,8 @@ MyLineEdit::MyLineEdit(int *sock, int ident, QWidget * parent, const char * name
   s = sock;
   id = ident;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(textChanged(const QString &)), SLOT(slotTextChanged(const QString &)));
-  connect(this, SIGNAL(returnPressed()), SLOT(slotReturnPressed()));
+  connect(this, &QLineEdit::textChanged, this, &MyLineEdit::slotTextChanged); // Nestor was here
+  connect(this, &QLineEdit::returnPressed, this, &MyLineEdit::slotReturnPressed);
 }
 
 MyLineEdit::~MyLineEdit()
@@ -384,11 +385,7 @@ MyComboBox::MyComboBox(int *sock, int ident, QWidget * parent, const char * name
     //setCompleter(0);
     if(name != NULL) setObjectName(name);
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)    //Nestor was here
-    connect(this, SIGNAL(activated(const QString &)), this, SLOT(slotActivated(const QString &)));
-#else
-    connect(this, &QComboBox::textActivated, this, &MyComboBox::slotActivated);
-#endif
+    connect(this, &QComboBox::textActivated, this, &MyComboBox::slotActivated); //Nestor was here
 }
 MyComboBox::~MyComboBox()
 {
@@ -488,7 +485,7 @@ MySlider::MySlider(int *sock, int ident, int minValue, int maxValue, int pageSte
   setPageStep(pageStep);
   setValue(value);
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(valueChanged(int)), SLOT(slotValueChanged(int)));
+  connect(this, &QSlider::valueChanged, this, &MySlider::slotValueChanged); // Nestor was here
 }
 
 MySlider::~MySlider()
@@ -561,7 +558,7 @@ MyCheckBox::MyCheckBox(int *sock, int ident, QWidget * parent, const char * name
   id = ident;
   row = col = -1;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(clicked()), SLOT(slotClicked()));
+  connect(this, &QCheckBox::clicked, this, &MyCheckBox::slotClicked); // Nestor was here
 }
 
 MyCheckBox::~MyCheckBox()
@@ -646,7 +643,7 @@ MyRadioButton::MyRadioButton(int *sock, int ident, QWidget * parent, const char 
   s = sock;
   id = ident;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(toggled(bool)), SLOT(slotToggled(bool)));
+  connect(this, &QRadioButton::toggled, this, &MyRadioButton::slotToggled); // Nestor was here
 }
 
 MyRadioButton::~MyRadioButton()
@@ -865,7 +862,7 @@ MyQTabWidget::MyQTabWidget(int *sock, int ident, QWidget *parent, const char *na
   id = ident;
   s  = sock;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(currentChanged(int)), SLOT(slotCurrentChanged(int)));
+  connect(this, &QTabWidget::currentChanged, this, &MyQTabWidget::slotCurrentChanged); // Nestor was here
 }
 
 MyQTabWidget::~MyQTabWidget()
@@ -951,7 +948,7 @@ MyQToolBox::MyQToolBox(int *sock, int ident, QWidget *parent, const char *name)
   id = ident;
   s  = sock;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(currentChanged(int)), SLOT(slotCurrentChanged(int)));
+  connect(this, &QToolBox::currentChanged, this, &MyQToolBox::slotCurrentChanged); // Nestor was here
 }
 
 MyQToolBox::~MyQToolBox()
@@ -1096,14 +1093,18 @@ void MyGroupBox::leaveEvent(QEvent *event)
 
 ////////////////////////////////////////////////////////////////////////////////
 MyListBox::MyListBox(int *sock, int ident, QWidget *parent, const char *name)
-          :QListWidget(parent)
+    : QListWidget(parent)
 {
-  s = sock;
-  id = ident;
-  if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(itemClicked(QListWidgetItem *)), SLOT(slotClicked(QListWidgetItem *)));
-  connect(this, SIGNAL(currentItemChanged(QListWidgetItem *, QListWidgetItem *)), SLOT(slotCurrentChanged(QListWidgetItem *, QListWidgetItem *)));
-  connect(this, SIGNAL(itemSelectionChanged()), SLOT(slotSendSelected()));
+    s = sock;
+    id = ident;
+    if (name != nullptr) {
+        setObjectName(QString::fromUtf8(name));
+    }
+
+    //Nestor was here
+    connect(this, &QListWidget::itemClicked, this, &MyListBox::slotClicked);
+    connect(this, &QListWidget::currentItemChanged, this, &MyListBox::slotCurrentChanged);
+    connect(this, &QListWidget::itemSelectionChanged, this, &MyListBox::slotSendSelected);
 }
 
 MyListBox::~MyListBox()
@@ -1264,31 +1265,34 @@ MyTable::MyTable(int *sock, int ident, int numRows, int numColumns,
     wrap = 1;
     autoresize = 0;
     is_editable = 1;
+
 #if QT_VERSION >= 0x040300
     setWordWrap(true);
 #endif
+
     button = read_only = updates = 0;
-    if(name != NULL) setObjectName(name);
+    if (name != nullptr) {
+        setObjectName(QString::fromUtf8(name));
+    }
 
 #ifdef USE_MAEMO
     QPalette palette;
-    QColor   color(128,128,128);
+    QColor color(128, 128, 128);
     palette.setColor(QPalette::Text, color);
-    //palette.setColor(QPalette::WindowText, color);
-    //palette.setColor(QPalette::ButtonText, color);
     setPalette(palette);
 #endif
 
-    connect(horizontalHeader(), SIGNAL(sectionClicked(int)), SLOT(slotColClicked(int)));
-    connect(verticalHeader(),   SIGNAL(sectionClicked(int)), SLOT(slotRowClicked(int)));
-    connect(this, SIGNAL(cellClicked(int,int)), SLOT(slotClicked(int,int)));
-    connect(this, SIGNAL(currentCellChanged(int,int,int,int)), SLOT(slotCurrentChanged(int,int,int,int)));
-    connect(this, SIGNAL(cellChanged(int,int)), SLOT(slotValueChanged(int,int)));
+    //Nestor was here
+    connect(horizontalHeader(), &QHeaderView::sectionClicked, this, &MyTable::slotColClicked);
+    connect(verticalHeader(),   &QHeaderView::sectionClicked, this, &MyTable::slotRowClicked);
+    connect(this, &QTableWidget::cellClicked, this, &MyTable::slotClicked);
+    connect(this, &QTableWidget::currentCellChanged, this, &MyTable::slotCurrentChanged);
+    connect(this, &QTableWidget::cellChanged, this, &MyTable::slotValueChanged);
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)    //Nestor was here
-    connect(this, SIGNAL(activated(QModelIndex)), SLOT(slotActivated(QModelIndex)));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    connect(this, &QTableWidget::activated, this, &MyTable::slotActivated);
 #else
-    // Qt6: usar clicked(QModelIndex) para clic simple
+    // En Qt6, `activated` sigue disponible, pero `clicked` es más común para selección por clic
     connect(this, &QTableWidget::clicked, this, &MyTable::slotActivated);
 #endif
 }
@@ -1720,7 +1724,11 @@ MySpinBox::MySpinBox(int *sock, int ident, int minValue, int maxValue, int step,
   setMaximum(maxValue);
   setSingleStep(step);
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(valueChanged(int)), SLOT(slotValueChanged(int)));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) //Nestor aquí: Compatibilidad con QT6
+  connect(this, &QSpinBox::valueChanged, this, &MySpinBox::slotValueChanged);
+#else
+  connect(this, SIGNAL(valueChanged(int)), this, SLOT(slotValueChanged(int)));
+#endif
 }
 
 MySpinBox::~MySpinBox()
@@ -1794,7 +1802,7 @@ MyDial::MyDial(int *sock, int ident, int minValue, int maxValue, int pageStep, i
   setPageStep(pageStep);
   setValue(value);
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(valueChanged(int)), SLOT(slotValueChanged(int)));
+  connect(this, &QDial::valueChanged, this, &MyDial::slotValueChanged); // Nestor was here
 }
 
 MyDial::~MyDial()
@@ -2086,13 +2094,13 @@ MyListView::MyListView(int *sock, int ident, QWidget *parent, const char *name)
   hasStandardPopupMenu = 1;
   if(name != NULL) setObjectName(name);
   setSortingEnabled(false);
-  connect(this, SIGNAL(itemClicked(QTreeWidgetItem *, int)), SLOT(slotClicked(QTreeWidgetItem *, int)));
-  connect(this, SIGNAL(itemSelectionChanged()), SLOT(slotSendSelected()));
+  connect(this, &QTreeWidget::itemClicked, this, &MyListView::slotClicked); // Nestor was here
+  connect(this, &QTreeWidget::itemSelectionChanged, this, &MyListView::slotSendSelected);
   headerItem()->setHidden(false);
   for(int i=0; i<20; i++) colwidth[i] = 100;
 
   header()->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(header(), SIGNAL(customContextMenuRequested(const QPoint &)), SLOT(slotCustomContextMenuRequested(const QPoint &)));
+  connect(header(), &QHeaderView::customContextMenuRequested, this, &MyListView::slotCustomContextMenuRequested);
 }
 
 MyListView::~MyListView()
@@ -2668,7 +2676,7 @@ MyIconView::MyIconView(int *sock, int ident, QWidget *parent, const char *name)
   if(name != NULL) setObjectName(name);
   QListView::setViewMode(QListView::IconMode);
   setDragDropMode(QAbstractItemView::NoDragDrop);
-  connect(this, SIGNAL(itemClicked(QListWidgetItem *)), SLOT(slotClicked(QListWidgetItem *)));
+  connect(this, &QListWidget::itemClicked, this, &MyIconView::slotClicked); // Nestor was here
 }
 
 MyIconView::~MyIconView()
@@ -2972,7 +2980,7 @@ MyQwtKnob::MyQwtKnob(int *sock, int ident, QWidget *parent, const char *name)
 {
   s = sock;
   id = ident;
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtKnob::valueChanged, this, &MyQwtKnob::slotValueChanged); // Nestor was here
   if(name != NULL) setObjectName(name);
 }
 
@@ -3090,7 +3098,7 @@ MyQwtCounter::MyQwtCounter(int *sock, int ident, QWidget *parent, const char *na
 {
   s = sock;
   id = ident;
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtCounter::valueChanged, this, &MyQwtCounter::slotValueChanged); // Nestor was here
   if(name != NULL) setObjectName(name);
 }
 
@@ -3168,7 +3176,7 @@ MyQwtWheel::MyQwtWheel(int *sock, int ident, QWidget *parent, const char *name)
   setMass(0.2);
   setTotalAngle(360.0);
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtWheel::valueChanged, this, &MyQwtWheel::slotValueChanged); // Nestor was here
   // return; //rlmurx-was-here clang issue
 }
 
@@ -3273,7 +3281,7 @@ MyQwtSlider::MyQwtSlider(int *sock, int ident, QWidget *parent, const char *name
 {
   s = sock;
   id = ident;
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtSlider::valueChanged, this, &MyQwtSlider::slotValueChanged); // Nestor was here
   if(name != NULL) setObjectName(name);
 }
 
@@ -3470,7 +3478,7 @@ MyQwtDial::MyQwtDial(int *sock, int ident, QWidget *parent, const char *name)
 {
   s = sock;
   id = ident;
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtDial::valueChanged, this, &MyQwtDial::slotValueChanged);    //Nestor
   // Set default properties and create needle
   setScaleArc(30,330);
   setScale(10,2,0);
@@ -3620,7 +3628,7 @@ MyQwtCompass::MyQwtCompass(int *sock, int ident, QWidget *parent, const char *na
 {
   s = sock;
   id = ident;
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtCompass::valueChanged, this, &MyQwtCompass::slotValueChanged);  //Nestor
   if(name != NULL) setObjectName(name);
   //setScaleTicks(1,10,20);
   //setScaleArc(-120.0,120.0);
@@ -3707,7 +3715,7 @@ MyQwtAnalogClock::MyQwtAnalogClock(int *sock, int ident, QWidget *parent, const 
 {
   s = sock;
   id = ident;
-  connect(this, SIGNAL(valueChanged(double)), SLOT(slotValueChanged(double)));
+  connect(this, &QwtAnalogClock::valueChanged, this, &MyQwtAnalogClock::slotValueChanged);
   if(name != NULL) setObjectName(name);
 }
 
@@ -3794,7 +3802,7 @@ MyQDateEdit::MyQDateEdit(int *sock, int ident, QWidget *parent, const char *name
   id = ident;
   pvsVersion = 0;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(dateChanged(const QDate &)), SLOT(slotValueChanged(const QDate &)));
+  connect(this, &QDateEdit::dateChanged, this, &MyQDateEdit::slotValueChanged);
 }
 
 MyQDateEdit::~MyQDateEdit()
@@ -3865,7 +3873,7 @@ MyQTimeEdit::MyQTimeEdit(int *sock, int ident, QWidget *parent, const char *name
   id = ident;
   pvsVersion = 0;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(timeChanged(const QTime &)), SLOT(slotValueChanged(const QTime &)));
+  connect(this, &QTimeEdit::timeChanged, this, &MyQTimeEdit::slotValueChanged);
 }
 
 MyQTimeEdit::~MyQTimeEdit()
@@ -3936,7 +3944,8 @@ MyQDateTimeEdit::MyQDateTimeEdit(int *sock, int ident, QWidget *parent, const ch
   id = ident;
   pvsVersion = 0;
   if(name != NULL) setObjectName(name);
-  connect(this, SIGNAL(dateTimeChanged(const QDateTime &)), SLOT(slotValueChanged(const QDateTime &)));
+  connect(this, &QDateTimeEdit::dateTimeChanged, this, &MyQDateTimeEdit::slotValueChanged);
+
 }
 
 MyQDateTimeEdit::~MyQDateTimeEdit()
@@ -4025,7 +4034,7 @@ MyQDockWidget::MyQDockWidget(QString &title, int *sock, int ident, int dockID, Q
   y_original = 400;
   w_original = 400;
   h_original = 400;
-  connect(this, SIGNAL(topLevelChanged(bool)), SLOT(slotTopLevelChanged(bool)));
+  connect(this, &QDockWidget::topLevelChanged, this, &MyQDockWidget::slotTopLevelChanged); //Nestor
   if(name != NULL) setObjectName(name);
 }
 
@@ -4086,7 +4095,21 @@ void mySetBackgroundColor(QWidget *w, int type, int r, int g, int b)
     {
       sprintf(text,"background-color: rgb(%d,%d,%d)", 236, 235 , 235);
     }
-    w->setStyleSheet(text);
+    // Nestor: en un contenedor (marco, grupo, pagina) el color es solo del contenedor; sin selector la hoja
+    // de estilo pasaba a todos los hijos (botones, cuadros de texto... quedaban del mismo color).
+    // Las etiquetas, radios y casillas de adentro quedan transparentes (se ve el color del contenedor)
+    if(dynamic_cast<MyFrame *>(w) || dynamic_cast<MyGroupBox *>(w) || dynamic_cast<MyButtonGroup *>(w) || dynamic_cast<MyQWidget *>(w))
+    {
+      w->setProperty("pvbBackground", true);
+      w->setStyleSheet(QString("*[pvbBackground=\"true\"] { %1 } QLabel, QRadioButton, QCheckBox { background-color: transparent }").arg(text));
+      QPalette palette = w->palette();   // lo lee el generador de pvdevelop
+      palette.setColor(QPalette::Window, (r == -1 && g == -1 && b == -1) ? QColor(236,235,235) : QColor(r,g,b));
+      w->setPalette(palette);
+    }
+    else
+    {
+      w->setStyleSheet(text);
+    }
   }  
 #else
 #ifdef PVWIN32

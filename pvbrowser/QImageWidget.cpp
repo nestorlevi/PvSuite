@@ -27,6 +27,10 @@
 #include <QPaintEvent>
 #include "tcputil.h"
 #include "opt.h"
+#include <QTimer>
+#include <QMovie>
+#include <QImageReader>
+#include <QFileInfo>
 
 extern OPT opt;
 
@@ -39,6 +43,10 @@ QImageWidget::QImageWidget(int *sock, int ident, QWidget *parent, const char *na
   s = sock;
   id = ident;
   if(name != NULL) setObjectName(name);
+  animTimer = NULL;   // Nestor: animacion de imagenes
+  frameIndex = 0;
+  movie = NULL;
+  zoomX = zoomY = 1.0;  // Nestor: zoom de la mascara (fase 9.3)
   //qt3 setBackgroundMode(Qt::NoBackground);
   //setAutoFillBackground(false);
   if(wFlags == -1000) return; //trollmurx
@@ -53,12 +61,7 @@ void QImageWidget::setImage(const QImage *newimage)
   image = newimage->copy();
   if(w > 0 && h > 0 && ( w < image.width() || h < image.height() ) )
   {
-    image = image.scaled(w, h, Qt::KeepAspectRatio);
-  }
-  else if(w > image.width() || h > image.height())
-  {
-    //qt3 image = image.smoothScale(w,h,Qt::KeepAspectRatio);
-    QImage rlmurx_ignore = image.scaled(w, h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    image = image.scaled(w, h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   }
   clearMask();
   perhapsSetMask();
@@ -171,23 +174,34 @@ void QImageWidget::setGeometry(int nx, int ny, int nw, int nh)
 }
 */
 
+// Nestor (fase 9.3): con zoom 100 % igual que antes (si no entra en el widget se achica, nunca se agranda);
+// con el zoom de la mascara (zoomX/zoomY) la imagen sigue al widget con el mismo factor, sin deformarse.
+// Siempre desde el original, suavizada y en pixeles fisicos (pantallas al 125-200 %): no se pixela ni se ve borrosa.
 void QImageWidget::scale(int w, int h)
 {
   //printf("scale(%d,%d)\n",w,h);
-  image = original_image.copy();
-  if(w > 0 && h > 0 && ( w < image.width() || h < image.height() ) )
-  {
-    image = image.scaled(w, h, Qt::KeepAspectRatio);
-    clearMask();
-    perhapsSetMask();
-  }
-  else if(w > image.width() || h > image.height())
-  {
-    //qt3 image = image.smoothScale(w,h,Qt::KeepAspectRatio);
-    QImage rlmurx_ignore = image.scaled(w, h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    clearMask();
-    perhapsSetMask();
-  }
+  if(original_image.isNull()) { image = original_image; return; }
+  QSize nat = original_image.size();
+  QSize base = nat;
+  QSize box(qRound(w / zoomX), qRound(h / zoomY)); // el widget en la mascara de diseno
+  if(w > 0 && h > 0 && box.width() > 0 && box.height() > 0 && (nat.width() > box.width() || nat.height() > box.height()))
+    base = nat.scaled(box, Qt::KeepAspectRatio);
+  double z = qMin(zoomX, zoomY);
+  QSize target(qMax(1, qRound(base.width() * z)), qMax(1, qRound(base.height() * z)));
+  if(w > 0 && h > 0 && (target.width() > w || target.height() > h)) target = target.scaled(QSize(w, h), Qt::KeepAspectRatio);
+  qreal dpr = devicePixelRatioF();
+  QSize px(qMax(1, qRound(target.width() * dpr)), qMax(1, qRound(target.height() * dpr)));
+  if(px == nat) image = original_image.copy();
+  else          image = original_image.scaled(px, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+  image.setDevicePixelRatio(dpr);
+  clearMask();
+  perhapsSetMask();
+}
+
+void QImageWidget::setZoom(double zx, double zy)
+{
+  zoomX = zx > 0.01 ? zx : 1.0;
+  zoomY = zy > 0.01 ? zy : 1.0;
 }
 
 void QImageWidget::resizeEvent(QResizeEvent *event)
@@ -200,6 +214,15 @@ void QImageWidget::resizeEvent(QResizeEvent *event)
 
 void QImageWidget::setImage(const char *filename, int rotate)
 {
+  stopAnimation();
+  // Nestor: gif animado (QMovie lo anima solo)
+  if(rotate == 0 && QString(filename).endsWith(".gif", Qt::CaseInsensitive) && QImageReader(QString::fromUtf8(filename)).imageCount() > 1)
+  {
+    movie = new QMovie(QString::fromUtf8(filename), QByteArray(), this);
+    connect(movie, &QMovie::frameChanged, this, [this](int) { if(movie) showFrame(movie->currentImage()); });
+    movie->start();
+    return;
+  }
   if(image.load(filename)) // rl06nov2023
   {			  
     if(rotate)
@@ -381,3 +404,51 @@ int QImageWidget::sendJpeg2clipboard()
   return tcp_send(s, qb_buffer.data(), qb_buffer.size());
 }  
 
+
+//------------------------------------------------------------------------------------------------
+// Nestor: animacion de imagenes (pvSetImageAnimation) y gif animados
+
+void QImageWidget::stopAnimation()
+{
+  if(animTimer != NULL) animTimer->stop();
+  frames.clear();
+  if(movie != NULL)
+  {
+    movie->stop();
+    movie->deleteLater();
+    movie = NULL;
+  }
+}
+
+void QImageWidget::showFrame(const QImage &frame)
+{
+  if(frame.isNull()) return;
+  original_image = frame.copy();
+  scale(width(), height());
+  update();
+}
+
+// files = archivos de la carpeta temporal; periodMs = 0 detiene y deja el primer cuadro
+void QImageWidget::setAnimation(const QStringList &files, int periodMs)
+{
+  stopAnimation();
+  for(const QString &f : files)
+  {
+    QImage img;
+    if(img.load(f)) frames.append(img);
+  }
+  frameIndex = 0;
+  if(frames.isEmpty()) return;
+  showFrame(frames.first());
+  if(periodMs <= 0 || frames.size() < 2) { frames.clear(); return; }
+  if(animTimer == NULL)
+  {
+    animTimer = new QTimer(this);
+    connect(animTimer, &QTimer::timeout, this, [this]() {
+      if(frames.isEmpty()) { animTimer->stop(); return; }
+      frameIndex = (frameIndex + 1) % frames.size();
+      showFrame(frames.at(frameIndex));
+    });
+  }
+  animTimer->start(qMax(20, periodMs));
+}

@@ -24,6 +24,10 @@
 #include <QPaintEvent>
 #include <QMouseEvent>
 #include <QResizeEvent>
+#include <QList>
+#include <QStringList>
+class QTimer;
+class QMovie;
 
 class QImageWidget : public QWidget
 {
@@ -40,6 +44,8 @@ public:
     QImage          image; // the loaded image
     QImage          original_image; // the original loaded image
     void            scale(int w, int h);
+    void            setAnimation(const QStringList &files, int periodMs);   // Nestor: cuadros cada periodMs (0 = detener)
+    void            setZoom(double zx, double zy);  // Nestor: zoom de la mascara (1.0 = 100 %), lo usa scale()
 
 protected:
     virtual void paintEvent(QPaintEvent *);
@@ -53,7 +59,14 @@ private:
     void perhapsSetMask();
     int conversion_flags;
     int xx,yy,w,h,*s,id;
+    double zoomX, zoomY;  // Nestor: zoom de la mascara
     QBitmap mask;
+    void stopAnimation();
+    void showFrame(const QImage &frame);
+    QTimer *animTimer;
+    QList<QImage> frames;
+    int frameIndex;
+    QMovie *movie;                        // gif animado
 };
 
 

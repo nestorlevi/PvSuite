@@ -909,7 +909,7 @@ vtkStandardNewMacro(QVTKInteractor);
 */
 QVTKInteractor::QVTKInteractor()
 {
-  QObject::connect(&mTimer, SIGNAL(timeout()), this, SLOT(TimerEvent()) );
+  QObject::connect(&mTimer, &QTimer::timeout, this, &QVTKInteractor::TimerEvent); // Nestor was here
 }
 
 /*! start method for interactor

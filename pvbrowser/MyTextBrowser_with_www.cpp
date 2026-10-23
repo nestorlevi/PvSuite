@@ -31,6 +31,20 @@
 #include <QPrintDialog>
 #include <QWebEngineView>
 #include <QWebEngineHistory>
+#include <QWebEngineProfile>
+#include <QWebEngineScript>
+#include <QWebEngineScriptCollection>
+#if QT_VERSION >= 0x060000
+#include <QWebEngineDownloadRequest>
+#else
+#include <QWebEngineDownloadItem>
+#endif
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QDir>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QApplication>
 #include "tcputil.h"
 #include "MyTextBrowser_with_www.h"
 #include "mywebenginepage.h"
@@ -104,6 +118,34 @@ static const char *decode(QString text)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Nestor: descargas de las paginas (p. ej. un CSV). Sin esto el motor web
+// las descarta. Se pregunta donde guardar, empezando en la ultima carpeta usada (la primera vez: Descargas).
+#if QT_VERSION >= 0x060000
+static void pvbDownloadRequested(QWebEngineDownloadRequest *d)
+#else
+static void pvbDownloadRequested(QWebEngineDownloadItem *d)
+#endif
+{
+  QSettings st("pvbrowser", "pvbrowser");
+  QString dir = st.value("download/dir", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).toString();
+#if QT_VERSION >= 0x060000
+  QString name = d->downloadFileName();
+#else
+  QString name = QFileInfo(d->path()).fileName();
+#endif
+  QString file = QFileDialog::getSaveFileName(QApplication::activeWindow(), QObject::tr("Guardar la descarga"),
+                                              QDir(dir).filePath(name));
+  if(file.isEmpty()) { d->cancel(); return; }
+  st.setValue("download/dir", QFileInfo(file).absolutePath());
+#if QT_VERSION >= 0x060000
+  d->setDownloadDirectory(QFileInfo(file).absolutePath());
+  d->setDownloadFileName(QFileInfo(file).fileName());
+#else
+  d->setPath(file);
+#endif
+  d->accept();
+}
+
 MyTextBrowser::MyTextBrowser(int *sock, int ident, QWidget *parent, const char *name)
               :QWebEngineView(parent)
 {
@@ -115,7 +157,14 @@ MyTextBrowser::MyTextBrowser(int *sock, int ident, QWidget *parent, const char *
   MyWebEnginePage *p;
   p = new MyWebEnginePage(s, id, this);
   setPage(p);
-  
+  // Nestor: descargas (el perfil es el mismo para todas las paginas: se conecta una vez)
+  static bool downloadsConnected = false;
+  if(!downloadsConnected)
+  {
+    downloadsConnected = true;
+    QObject::connect(p->profile(), &QWebEngineProfile::downloadRequested, pvbDownloadRequested);
+  }
+
   homeIsSet = 0;
   factor = 1.0f;
   if(name != NULL) setObjectName(name);

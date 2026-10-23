@@ -22,7 +22,7 @@
 //#else
 //  #define VERSION "5.15.3 - qt5"
 //#endif
-#define VERSION "6.0.1f - qt6"
+#define VERSION "1.0.0-beta.1 - qt6"   // Nestor: igual que PVSUITE_VERSION (pvbupdate.h)
 
 #if defined PVB_FOOTPRINT_BASIC
 #define WEBVERSION " Small Footprint without Webkit or Blink"
@@ -41,6 +41,11 @@
 #include <QThread>
 #include <QSemaphore>
 #include <QTabBar>
+#include <QLabel>
+#include <QColor>
+#include <QTimer>
+#include <QMouseEvent>
+#include <functional>
 
 #ifdef USE_SYMBIAN
     #define  MAX_TABS 5

@@ -204,7 +204,7 @@ int QwtPlotWidget::interpret(const char *command, double *x, double *y)
 #ifdef PVB_FOOTPRINT_OLD_VERSION_BEFORE_QWT62    
     if(curves[c] != NULL) curves[c]->setData(x,y,count);
 #else
-#warning "todo: was done by rlmurx"
+//#warning "todo: was done by rlmurx"   // Nestor: #warning no existe en MSVC
     if(curves[c] != NULL) curves[c]->setSamples(x,y,count);
 #endif    
   }
@@ -368,7 +368,7 @@ int QwtPlotWidget::interpret(const char *command, double *x, double *y)
         ((QwtLegendItem *) w)->setChecked(autolegend);
       }
 #else
-#warning "todo: todo was done by rlmurx"
+//#warning "todo: todo was done by rlmurx"   // Nestor: #warning no existe en MSVC
       if(autolegend == 1) legend->setDefaultItemMode(QwtLegendData::Checkable);
       else                legend->setDefaultItemMode(QwtLegendData::ReadOnly);
 #endif

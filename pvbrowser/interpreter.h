@@ -124,10 +124,12 @@ class Interpreter
     void perhapsCloseModalDialog();
     int  width();
     int  height();
-    void zoomMask(int percent);
+    void zoomMask(int percent, int percentY = -1, bool automatic = false);
     QString temp;
     int  hasLayout;
-    int  percentZoomMask;
+    int  percentZoomMask;       // horizontal (y el unico si no se estira)
+    int  percentZoomMaskY;      // Nestor: vertical (igual al horizontal salvo que se pida distinto)
+    int  fontPercent() const { return percentZoomMask < percentZoomMaskY ? percentZoomMask : percentZoomMaskY; }
 
 //protected:
 //    bool eventFilter( QObject *o, QEvent *e );

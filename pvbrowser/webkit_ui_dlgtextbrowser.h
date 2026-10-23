@@ -113,7 +113,7 @@ public:
 
 
     retranslateUi(DialogTextBrowser);
-    QObject::connect(pushButtonClose, SIGNAL(clicked()), DialogTextBrowser, SLOT(accept()));
+    QObject::connect(pushButtonClose, &QPushButton::clicked, DialogTextBrowser, &QDialog::accept); // Nestor was here
 
     QMetaObject::connectSlotsByName(DialogTextBrowser);
     } // setupUi

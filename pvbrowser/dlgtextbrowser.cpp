@@ -90,11 +90,11 @@ dlgTextBrowser::dlgTextBrowser(const char *manual)
     form->textBrowser->setHtml("<html><head></head><body>Sorry no application specific help specified.</body></html>");
   }
 
-  QObject::connect(form->pushButtonFind,SIGNAL(clicked()),this,SLOT(slotFind()));
-  QObject::connect(form->lineEditPattern,SIGNAL(returnPressed()),this,SLOT(slotFind()));
-  QObject::connect(form->pushButtonClose,SIGNAL(clicked()),this,SLOT(hide()));
-  QObject::connect(form->pushButtonHome,SIGNAL(clicked()),this,SLOT(slotHome()));
-  QObject::connect(form->pushButtonBack,SIGNAL(clicked()),this,SLOT(slotBack()));
+  QObject::connect(form->pushButtonFind, &QPushButton::clicked, this, &dlgTextBrowser::slotFind); // Nestor was here
+  QObject::connect(form->lineEditPattern, &QLineEdit::returnPressed, this, &dlgTextBrowser::slotFind);
+  QObject::connect(form->pushButtonClose, &QPushButton::clicked, this, &dlgTextBrowser::hide);
+  QObject::connect(form->pushButtonHome, &QPushButton::clicked, this, &dlgTextBrowser::slotHome);
+  QObject::connect(form->pushButtonBack, &QPushButton::clicked, this, &dlgTextBrowser::slotBack);
   find = 0;
 }
 

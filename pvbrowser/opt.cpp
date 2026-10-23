@@ -78,6 +78,57 @@ QString l_status_about              = "Shows the aboutbox";
 
 QString l_print_header              = "Printed by pvbrowser at: ";
 
+// Nestor: los mismos textos en el idioma elegido (Qt Linguist, contexto "pvbrowser").
+// Se llama al arrancar, despues de cargar las traducciones y antes de leer pvbrowser.ini,
+// asi las secciones de idioma de pvbrowser.ini (p. ej. "german {") siguen teniendo prioridad.
+void pvbTranslateMenuTexts()
+{
+  l_file                      = QCoreApplication::translate("pvbrowser", "&File");
+  l_options                   = QCoreApplication::translate("pvbrowser", "&Options");
+  l_new_window                = QCoreApplication::translate("pvbrowser", "&New Window");
+  l_reconnect                 = QCoreApplication::translate("pvbrowser", "&Reconnect");
+  l_save_as_bmp               = QCoreApplication::translate("pvbrowser", "&Save as BMP ...");
+  l_log_as_bmp                = QCoreApplication::translate("pvbrowser", "Log Metafiles as &BMP ...");
+  l_log_as_pvm                = QCoreApplication::translate("pvbrowser", "Log Metafiles as P&VM ...");
+  l_print                     = QCoreApplication::translate("pvbrowser", "&Print");
+  l_new_tab                   = QCoreApplication::translate("pvbrowser", "New &Tab");
+  l_delete_tab                = QCoreApplication::translate("pvbrowser", "Close Tab");
+  l_exit                      = QCoreApplication::translate("pvbrowser", "E&xit");
+  l_edit                      = QCoreApplication::translate("pvbrowser", "&Edit");
+  l_copy                      = QCoreApplication::translate("pvbrowser", "&Copy");
+  l_copy_plus_title           = QCoreApplication::translate("pvbrowser", "Cop&y including title");
+  l_view                      = QCoreApplication::translate("pvbrowser", "&View");
+  l_editmenu                  = QCoreApplication::translate("pvbrowser", "&Editmenu");
+  l_toolbar                   = QCoreApplication::translate("pvbrowser", "&Toolbar");
+  l_statusbar                 = QCoreApplication::translate("pvbrowser", "&Statusbar");
+  l_maximized                 = QCoreApplication::translate("pvbrowser", "&Maximized");
+  l_fullscreen                = QCoreApplication::translate("pvbrowser", "&Fullscreen");
+  l_help                      = QCoreApplication::translate("pvbrowser", "&Help");
+  l_manual                    = QCoreApplication::translate("pvbrowser", "&Manual");
+  l_about                     = QCoreApplication::translate("pvbrowser", "&About ...");
+  l_status_connection_lost    = QCoreApplication::translate("pvbrowser", "Connection to server lost, CTRL-R for reconnect");
+  l_status_connected          = QCoreApplication::translate("pvbrowser", "Connected to server");
+  l_status_could_not_connect  = QCoreApplication::translate("pvbrowser", "Could not connect to server, CTRL-R for reconnect");
+  l_status_reconnect          = QCoreApplication::translate("pvbrowser", "Reconnect to host");
+  l_status_options            = QCoreApplication::translate("pvbrowser", "Views/changes pvbrowser options");
+  l_status_new_window         = QCoreApplication::translate("pvbrowser", "Opens a new pvbrowser window");
+  l_status_save_as_bmp        = QCoreApplication::translate("pvbrowser", "Saves the actual screen as BMP file");
+  l_status_log_as_bmp         = QCoreApplication::translate("pvbrowser", "Log QDrawWidgets as BMP file");
+  l_status_log_as_pvm         = QCoreApplication::translate("pvbrowser", "Log QDrawWidgets as PVM file");
+  l_status_print              = QCoreApplication::translate("pvbrowser", "Prints the actual screen");
+  l_status_new_tab            = QCoreApplication::translate("pvbrowser", "Opens a new Tab");
+  l_status_exit               = QCoreApplication::translate("pvbrowser", "Closes pvbrowser");
+  l_status_copy               = QCoreApplication::translate("pvbrowser", "Copies the screen to clipboard");
+  l_status_editmenu           = QCoreApplication::translate("pvbrowser", "Enables/disables the editmenu");
+  l_status_toolbar            = QCoreApplication::translate("pvbrowser", "Enables/disables the toolbar");
+  l_status_statusbar          = QCoreApplication::translate("pvbrowser", "Enables/disables the statusbar");
+  l_status_toggle_maximized   = QCoreApplication::translate("pvbrowser", "Maximized On/Off");
+  l_status_toggle_full_screen = QCoreApplication::translate("pvbrowser", "FullScreenMode On/Off");
+  l_status_manual             = QCoreApplication::translate("pvbrowser", "Shows application specific help");
+  l_status_about              = QCoreApplication::translate("pvbrowser", "Shows the aboutbox");
+  l_print_header              = QCoreApplication::translate("pvbrowser", "Printed by pvbrowser at: ");
+}
+
 const char *writeableLocation()
 {
   static QString text;

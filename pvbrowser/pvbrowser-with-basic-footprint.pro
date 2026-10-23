@@ -31,7 +31,7 @@ USE_SYMBIAN {
 macx:DEFINES += PVMAC
 macx:DEFINES += unix
 unix:!symbian:LIBS    += -ldl
-!symbian:QMAKE_LFLAGS += -static-libgcc
+!symbian:!msvc:QMAKE_LFLAGS += -static-libgcc
 
 HEADERS       = mainwindow.h \
                 dlgopt.h \
@@ -92,7 +92,10 @@ symbian {
 
 }
 else {
-win32 {     #Nestor aquí
+win32-msvc* {   # Nestor: MSVC usa la biblioteca de importación de qwt.dll
+    DEFINES += QWT_DLL
+    LIBS += $$PWD/../Compilar/pvsuite-win64/qwt-msvc/lib/qwt.lib   # compilada por Compilar/pvsuite-win64/qwt-msvc (qwt sin modificar)
+} else:win32 {     #Nestor aquí
     LIBS += $$PWD/../qwt/lib/libqwt.a
 } else:unix {
     LIBS += -L$$PWD/../qwt/lib -lqwt
@@ -187,3 +190,9 @@ target.path   = /usr/local/bin
 sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS pvbrowser.pro images
 sources.path  = /opt/pvb/pvbrowser
 INSTALLS     += target sources
+
+# Nestor: idiomas (Qt Linguist: translations/*.ts; los .qm van dentro del ejecutable, :/i18n/)
+HEADERS      += pvblanguage.h pvbupdate.h
+SOURCES      += pvblanguage.cpp pvbupdate.cpp
+TRANSLATIONS += translations/pvbrowser_es.ts translations/pvbrowser_en.ts translations/pvbrowser_pt.ts translations/pvbrowser_de.ts
+CONFIG       += lrelease embed_translations

@@ -48,6 +48,7 @@
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QPixmap>
+#include <QFile>
 // murx.rl.was.here.oct.2023 #include <QDesktopWidget>
 #include <QPrinter>
 #include <QPrintDialog>
@@ -117,6 +118,7 @@ Interpreter::Interpreter()
   modalDialog = NULL;
   mainWidget = NULL;
   percentZoomMask = 100;
+  percentZoomMaskY = 100;
 
 #ifdef USE_OPEN_GL
   //QGLWidget gl;
@@ -407,6 +409,21 @@ void Interpreter::setPath(const char *p)
 #endif  
 }
 
+// Nestor: archivos que se borran al cerrar pvbrowser (recursos embebidos en el pvserver)
+namespace {
+struct PvbTemporaryFiles
+{
+  QStringList files;
+  ~PvbTemporaryFiles() { for(const QString &f : files) QFile::remove(f); }
+};
+PvbTemporaryFiles pvbTemporaryFiles;
+}
+
+static void pvbTemporaryFile(const QString &file)
+{
+  if(!pvbTemporaryFiles.files.contains(file)) pvbTemporaryFiles.files << file;
+}
+
 void Interpreter::downloadFile(const char *file)
 {
   struct utimbuf utb;
@@ -431,7 +448,7 @@ void Interpreter::downloadFile(const char *file)
   if(fhdl <= 0)
   {
     QMessageBox::warning(mainWindow,
-    "pvbrowser","Could not open: " + filename);
+    "pvbrowser",QCoreApplication::translate("pvbrowser","Could not open: %1").arg(filename));
     return;
   }
 
@@ -460,7 +477,7 @@ void Interpreter::downloadFile(const char *file)
   //time_t timet; // remote file time for caching
   utb.actime  = timet;
   utb.modtime = timet;
-  utime(file,&utb); // set file modification time
+  utime(filename.toUtf8(),&utb); // set file modification time (Nestor: el archivo bajado, en temp)
   QApplication::restoreOverrideCursor();
 }
 
@@ -1179,6 +1196,8 @@ void Interpreter::interpretd(const char *command)
   {
     get_text(command,text);
     downloadFile(text.toUtf8());
+    // Nestor: recurso embebido en el pvserver: no queda en la carpeta temporal al cerrar
+    if(strstr(command,") -temporary") != NULL && !text.contains("..")) pvbTemporaryFile(temp + text);
   }
 }
 
@@ -2117,7 +2136,7 @@ void Interpreter::interpretm(const char *command)
         dock->x_original = x;
         dock->y_original = y;
         x = (x*percentZoomMask)/100;
-        y = (y*percentZoomMask)/100;
+        y = (y*percentZoomMaskY)/100;
         x += mainWindow->x();
         y += mainWindow->y();
         QWidget *cw = mainWindow->centralWidget();
@@ -2136,7 +2155,7 @@ void Interpreter::interpretm(const char *command)
       all[i]->x = x;
       all[i]->y = y;
       x = (x*percentZoomMask)/100;
-      y = (y*percentZoomMask)/100;
+      y = (y*percentZoomMaskY)/100;
     }      
     if(all[i]->w != NULL) all[i]->w->move(x,y);
   }
@@ -2621,7 +2640,7 @@ void Interpreter::interpretr(const char *command)
           dock->w_original = w;
           dock->h_original = h;
           w = (w*percentZoomMask)/100;
-          h = (h*percentZoomMask)/100;
+          h = (h*percentZoomMaskY)/100;
           dock->w = w;
           dock->h = h;
           dock->resize(w,h);
@@ -2635,7 +2654,7 @@ void Interpreter::interpretr(const char *command)
       all[i]->width  = w;
       all[i]->height = h;
       w = (w*percentZoomMask)/100;
-      h = (h*percentZoomMask)/100;
+      h = (h*percentZoomMaskY)/100;
     }      
     if(all[i]->type == TQDraw)
     {
@@ -3456,9 +3475,9 @@ void Interpreter::interprets(const char *command)
               dock->w_original = w;
               dock->h_original = h;
               x = (x*percentZoomMask)/100;
-              y = (y*percentZoomMask)/100;
+              y = (y*percentZoomMaskY)/100;
               w = (w*percentZoomMask)/100;
-              h = (h*percentZoomMask)/100;
+              h = (h*percentZoomMaskY)/100;
               x += mainWindow->x();
               y += mainWindow->y();
               QWidget *cw = mainWindow->centralWidget();
@@ -3484,13 +3503,14 @@ void Interpreter::interprets(const char *command)
             all[i]->width  = w;
             all[i]->height = h;
             x = (x*percentZoomMask)/100;
-            y = (y*percentZoomMask)/100;
+            y = (y*percentZoomMaskY)/100;
             w = (w*percentZoomMask)/100;
-            h = (h*percentZoomMask)/100;
+            h = (h*percentZoomMaskY)/100;
           }  
           if(all[i]->type == TQImage)
           {
             QImageWidget *iw = (QImageWidget *) all[i]->w;
+            if(iw != NULL) iw->setZoom(percentZoomMask/100.0, percentZoomMaskY/100.0); // Nestor
             if(iw != NULL) iw->setGeometry(x,y,w,h);
           }
           else if(all[i]->type == TQDraw)
@@ -3660,6 +3680,24 @@ void Interpreter::interprets(const char *command)
               if(temp != NULL) delete temp;
               if(data != NULL) delete [] data;
             }
+          }
+        }
+        else if(strncmp(command,"setImageAnimation(",18) == 0) // Nestor: cuadros cada periodo (pvSetImageAnimation)
+        {
+          int period = 0;
+          sscanf(command,"setImageAnimation(%d,%d,",&i,&period);
+          get_text(command,text); // archivos separados por coma
+          if(i < 0) return;
+          if(i >= nmax) return;
+          if(all[i]->type == TQImage && all[i]->w != NULL)
+          {
+            QStringList files;
+            for(const QString &f : text.split(',', Qt::SkipEmptyParts))
+            {
+              if(f.contains("..")) continue;
+              files << temp + f.trimmed();
+            }
+            ((QImageWidget *) all[i]->w)->setAnimation(files, period);
           }
         }
         else if(strncmp(command,"setImage(",9) == 0) // set new image in existing image
@@ -4638,9 +4676,10 @@ void Interpreter::interprets(const char *command)
           if(opt.arg_debug) printf("setStyleSheet text='%s'\n",(const char *)text.toUtf8());
           if(strncmp(text.toUtf8(),"alloc(",6) == 0) // allocate big buffer for big text
           {
-            int len;
+            int len = -1;
             char *buf, *cptr;
             sscanf(text.toUtf8(),"alloc(%d,",&len);
+            if(len < 0 || len > 64*1024*1024) return;   // Nestor: el largo viene del servidor
             //printf("alloc(%d)\n",len);
             buf = new char[len+1];
             tcp_rec_binary(s, buf, len);
@@ -4693,9 +4732,10 @@ void Interpreter::interprets(const char *command)
           if(opt.arg_debug) printf("setText text='%s'\n",(const char *)text.toUtf8());
           if(strncmp(text.toUtf8(),"alloc(",6) == 0) // allocate big buffer for big text
           {
-            int len;
+            int len = -1;
             char *buf, *cptr;
             sscanf(text.toUtf8(),"alloc(%d,",&len);
+            if(len < 0 || len > 64*1024*1024) return;   // Nestor: el largo viene del servidor
             //printf("alloc(%d)\n",len);
             buf = new char[len+1];
             tcp_rec_binary(s, buf, len);
@@ -4713,7 +4753,23 @@ void Interpreter::interprets(const char *command)
             char *cptr;
             char cbuf[MAX_PRINTF_LENGTH];
             char buf[MAX_PRINTF_LENGTH];
-            strcpy(cbuf,text.toUtf8());
+            // Nestor: el texto viene del servidor (con alloc() puede ser de cualquier largo) y el nombre
+            // de la cookie es un archivo: sin carpetas (nada de "..", "/", "\" ni ":")
+            QByteArray cookie = text.toUtf8();
+            int eq = cookie.indexOf('=');
+            QByteArray cookieName = (eq < 0) ? cookie : cookie.left(eq);
+            if(cookie.size() > (int) sizeof(cbuf) - 16 || cookieName.isEmpty() || cookieName.contains("..") ||
+               cookieName.contains('/') || cookieName.contains('\\') || cookieName.contains(':'))
+            {
+              printf("invalid Cookie name\n");
+              if(eq < 0)
+              {
+                sprintf(buf,"text(-6,\"%s\")\n", "null");
+                tcp_send(s,buf,strlen(buf));
+              }
+              return;
+            }
+            strcpy(cbuf,cookie.constData());
             cptr = strchr(cbuf,'=');
             if(cptr == NULL) // request cookie
             {
@@ -4752,8 +4808,8 @@ void Interpreter::interprets(const char *command)
                 int doit = 1;
                 if(opt.cookies != 1)
                 {
-                  int ret = QMessageBox::question(0,"pvbrowser","Accept Cookie ?",QMessageBox::No,QMessageBox::Yes);
-                  if(ret == QMessageBox::Yes) doit = 1;
+                  int ret = QMessageBox::question(0,"pvbrowser",QCoreApplication::translate("pvbrowser","Accept Cookie ?"),QMessageBox::No,QMessageBox::Yes);
+                  doit = (ret == QMessageBox::Yes);   // Nestor: antes con "No" se guardaba igual
                 }
                 if(doit)
                 {
@@ -5519,6 +5575,7 @@ void Interpreter::interprets(const char *command)
     mainLayout = NULL;
     hasLayout = 0;
     percentZoomMask = 100;
+    percentZoomMaskY = 100;
     mainWindow->showBusyWidget(2000,"Constructing widget tree...");
     if(opt.arg_debug) printf("startDefinition command=%s",command);
     sscanf(command,"startDefinition(%d)",&n);
@@ -6086,6 +6143,7 @@ void Interpreter::interpretw(const char *command)
     sscanf(command,"writeTextToFileAtClient(%d",&len);
     get_text(command,text);
     if(len <= 0) return;
+    if(len > 16*1024*1024) return;   // Nestor: el largo viene del servidor (new de cualquier tamanio)
     char *buf = new char[len+1];
     tcp_rec_binary(s, buf, len);
     buf[len] = '\0';
@@ -6779,20 +6837,23 @@ void Interpreter::interpretq(const char *command)
 #endif //#ifndef NO_QWT
 }
 
-void Interpreter::zoomMask(int percent)
+// percentY = -1: igual que percent; automatic: lo pide el ajuste a la ventana (sin mensaje, no cuenta como zoom del usuario)
+void Interpreter::zoomMask(int percent, int percentY, bool automatic)
 {
   int i,x,y,w,h;
   QFont f;
 
+  if(percentY < 0) percentY = percent;
   if(hasLayout == 1)
   {
+    if(automatic) return;
     int r=255, g=255, b=0;
     char text[80] = "This mask will not be zoomed because it has a layout defined.";
     mySetBackgroundColor(mainWindow->statusBar(),-1,r,g,b);
     mainWindow->statusBar()->showMessage(text,2000);
     return;
   }
-  else
+  else if(!automatic)
   {
     int r=0, g=255, b=0;
     char text[80] = "Zoom = %d percent\n";
@@ -6801,7 +6862,9 @@ void Interpreter::zoomMask(int percent)
     mySetBackgroundColor(mainWindow->statusBar(),-1,r,g,b);
     mainWindow->statusBar()->showMessage(text,2000);
   }
+  int oldFont = fontPercent();
   percentZoomMask = percent;
+  percentZoomMaskY = percentY;
   for(i=0; i<nmax; i++)
   {
     if(all[i]->w != NULL)
@@ -6810,23 +6873,27 @@ void Interpreter::zoomMask(int percent)
       if(all[i]->x >= 0 && all[i]->y >= 0 && all[i]->width >= 0 && all[i]->height >= 0)
       {
         x = (all[i]->x      * percent) / 100;
-        y = (all[i]->y      * percent) / 100;
+        y = (all[i]->y      * percentY) / 100;
         w = (all[i]->width  * percent) / 100;
-        h = (all[i]->height * percent) / 100;
+        h = (all[i]->height * percentY) / 100;
         if(all[i]->type == TQImage)
         {
           QImageWidget *iw = (QImageWidget *) all[i]->w;
+          if(iw != NULL) iw->setZoom(percent/100.0, percentY/100.0);
           if(iw != NULL) iw->setGeometry(x,y,w,h);
         }
         else if(all[i]->type == TQDraw)
         {
           char buf[80];
           QDrawWidget *iw = (QDrawWidget *) all[i]->w;
-          iw->percentZoomMask = percentZoomMask;
+          iw->percentZoomMask = fontPercent(); // el dibujo no se deforma al estirar
           iw->setGeometry(x,y,w,h);
           //iw->renderScene();
-          sprintf(buf,"slider(%d,%d)\n",i,percent);
-          tcp_send(s,buf,strlen(buf));
+          if(fontPercent() != oldFont)
+          {
+            sprintf(buf,"slider(%d,%d)\n",i,fontPercent());
+            tcp_send(s,buf,strlen(buf));
+          }
         }
         else
         {
@@ -6843,7 +6910,7 @@ void Interpreter::zoomMask(int percent)
             QPushButton *wi = (QPushButton *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6852,7 +6919,7 @@ void Interpreter::zoomMask(int percent)
             QLabel *wi = (QLabel *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6861,7 +6928,7 @@ void Interpreter::zoomMask(int percent)
             QLineEdit *wi = (QLineEdit *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6870,7 +6937,7 @@ void Interpreter::zoomMask(int percent)
             QComboBox *wi = (QComboBox *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6881,7 +6948,7 @@ void Interpreter::zoomMask(int percent)
             QRadioButton *wi = (QRadioButton *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6890,7 +6957,7 @@ void Interpreter::zoomMask(int percent)
             QCheckBox *wi = (QCheckBox *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6904,7 +6971,7 @@ void Interpreter::zoomMask(int percent)
             QTabWidget *wi = (QTabWidget *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6913,7 +6980,7 @@ void Interpreter::zoomMask(int percent)
             QGroupBox *wi = (QGroupBox *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6922,7 +6989,7 @@ void Interpreter::zoomMask(int percent)
             QListWidget *wi = (QListWidget *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6932,7 +6999,7 @@ void Interpreter::zoomMask(int percent)
             QTableWidget *wi = (QTableWidget *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6942,7 +7009,7 @@ void Interpreter::zoomMask(int percent)
             QSpinBox *wi = (QSpinBox *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6952,7 +7019,7 @@ void Interpreter::zoomMask(int percent)
             QProgressBar *wi = (QProgressBar *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6961,7 +7028,7 @@ void Interpreter::zoomMask(int percent)
             QTextEdit *wi = (QTextEdit *) all[i]->w;
             f = wi->currentFont();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setCurrentFont(f);
           }  
           break;
@@ -6971,7 +7038,7 @@ void Interpreter::zoomMask(int percent)
             QTreeWidget *wi = (QTreeWidget *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -6980,7 +7047,7 @@ void Interpreter::zoomMask(int percent)
             QListWidget *wi = (QListWidget *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -7002,7 +7069,7 @@ void Interpreter::zoomMask(int percent)
             QDateEdit *wi = (QDateEdit *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -7011,7 +7078,7 @@ void Interpreter::zoomMask(int percent)
             QTimeEdit *wi = (QTimeEdit *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -7020,7 +7087,7 @@ void Interpreter::zoomMask(int percent)
             QDateTimeEdit *wi = (QDateTimeEdit *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -7029,7 +7096,7 @@ void Interpreter::zoomMask(int percent)
             QToolBox *wi = (QToolBox *) all[i]->w;
             f = wi->font();
             if(all[i]->fontsize == -1) all[i]->fontsize = f.pointSize();
-            f.setPointSize((all[i]->fontsize * percentZoomMask)/100);
+            f.setPointSize((all[i]->fontsize * fontPercent())/100);
             wi->setFont(f);
           }  
           break;
@@ -7049,9 +7116,9 @@ void Interpreter::zoomMask(int percent)
     if(dock != NULL)
     {
       x = (dock->x_original * percent) / 100;
-      y = (dock->y_original * percent) / 100;
+      y = (dock->y_original * percentY) / 100;
       w = (dock->w_original * percent) / 100;
-      h = (dock->h_original * percent) / 100;
+      h = (dock->h_original * percentY) / 100;
       dock->setGeometry(x,y,w,h);
     }
   }
@@ -7786,7 +7853,9 @@ void Interpreter::interpretQ(const char *command)
     tcp_rec(s,arg,sizeof(arg)-1); // get second string
 
     QStringList param=lib_widget.split('/',Qt::SkipEmptyParts);
-    if(param.size()>2) return;
+    if(param.size()!=2) return;   // Nestor: con un solo componente param[1] se leia fuera de rango
+    // Nestor: el nombre viene del servidor: solo un archivo dentro de pvb_widget_plugindir
+    if(param[0].contains("..") || param[0].contains('\\') || param[0].contains(':')) return;
 
     libname=param[0];
     classname=param[1];

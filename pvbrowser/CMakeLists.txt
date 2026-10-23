@@ -34,6 +34,10 @@ qt_add_executable(pvbrowser6
                 dlgtextbrowser.cpp
                 dlgmybrowser_with_www.cpp
                 mywebenginepage.cpp
+                pvblanguage.cpp
+                pvblanguage.h
+                pvbupdate.cpp
+                pvbupdate.h
                 pvbrowser.qrc
                 dlgmybrowser_ui_with_www.h
                 dlgopt.h
@@ -56,6 +60,13 @@ qt_add_executable(pvbrowser6
      pvglwidget.v5.h
 
 )
+
+# Nestor: idiomas (Qt Linguist: translations/*.ts; los .qm van dentro del ejecutable, :/i18n/)
+find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+qt_add_translations(pvbrowser6
+    TS_FILES translations/pvbrowser_es.ts translations/pvbrowser_en.ts
+             translations/pvbrowser_pt.ts translations/pvbrowser_de.ts
+    RESOURCE_PREFIX "/i18n")
 
 qt_add_resources(pvbrowser6 imageresources
     PREFIX "images"
