@@ -61,7 +61,6 @@ mkdir -p  /opt/pvb/language_bindings/lua/pvapplua
 mkdir -p  /opt/pvb/language_bindings/python/id
 mkdir -p  /opt/pvb/language_bindings/python/mt
 mkdir -p  /opt/pvb/language_bindings/python/template
-mkdir -p  /opt/pvb/browserplugin
 
 echo 'copy documentation...'
 cp -r doc                                                 /opt/pvb/
@@ -109,11 +108,8 @@ cp    language_bindings/python/template/pvs_init.py       /opt/pvb/language_bind
 cp    language_bindings/python/template/pvs.pro           /opt/pvb/language_bindings/python/template/
 cp    language_bindings/python/template/pvs.pvproject     /opt/pvb/language_bindings/python/template/
 cp    designer/README.txt                                 /opt/pvb/designer/
-cp    browserplugin/pvbrowserplugin-example.html          /opt/pvb/browserplugin/
-cp    browserplugin/README.txt                            /opt/pvb/browserplugin/
 if [ "$PVB_OSTYPE" == "linux" ]; then
 echo 'copy shared objects on linux...'
-cp    browserplugin/libpvbrowser.so                       /opt/pvb/browserplugin/
 cp    language_bindings/python/mt/pv.py                   /opt/pvb/language_bindings/python/mt/
 cp    language_bindings/python/mt/_pv.so                  /opt/pvb/language_bindings/python/mt/
 cp    language_bindings/python/mt/rllib.py                /opt/pvb/language_bindings/python/mt/

@@ -24,5 +24,6 @@ macx:DEFINES += RLUNIX
 win32 {
     LIBS += -lws2_32
 }
+win32-msvc*:LIBS += -ladvapi32   # Nestor: rlBrowser() usa el registro; MinGW la enlaza por defecto
 
 TARGET = fake_qmake

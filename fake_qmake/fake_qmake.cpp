@@ -18,6 +18,9 @@ static const int debug = 0;
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <ctype.h>
+#include <map>
+#include <string>
 #include "fake_qmake.h"
 
 #define IS_UNKNOWN      0
@@ -60,8 +63,147 @@ enum Assignment
 
 static int assignment = equal;
 
+// Nestor: proyecto sin bloque win32-msvc (creado antes de MSVC): con MSVC se usa su bloque
+// win32-g++ y se traducen las bibliotecas (libserverlib.a -> serverlib.lib, ...)
+static int msvcFallback = 0;
+
+// Nestor: "win32-g++" y "win32-msvc" contienen "win32": un bloque del otro compilador no es relevante
+static int otherCompilerScope(const char *line)
+{
+#ifdef RLWIN32
+  if(use_msvc) return msvcFallback == 0 && strstr(line,"win32-g++") != NULL;
+  else         return strstr(line,"win32-msvc") != NULL;
+#else
+  (void) line;
+  return 0;
+#endif
+}
+
+// Nestor: variables del .pro (NOMBRE = valor, NOMBRE += valor), con condiciones opcionales delante
+// (equals(QMAKE_GCC_MAJOR_VERSION, N): o un nombre de CONFIG, con ! para negar). $$NOMBRE y $${NOMBRE}
+// se reemplazan por su valor en las lineas que siguen. Los .pro de pvdevelop eligen asi la carpeta de
+// las bibliotecas de MinGW: PVB_MINGWLIB = .../win-mingw/bin/mingw81_64 con GCC 8.
+static std::map<std::string, std::string> vars;
+
+// version mayor de GCC (gcc -dumpversion del PATH, la primera vez que se pregunta); -1 si no hay gcc
+static int gccMajor()
+{
+  static int major = -2;
+  if(major != -2) return major;
+  major = -1;
+#ifdef RLWIN32
+  if(use_msvc) return major; // con MSVC qmake no define QMAKE_GCC_MAJOR_VERSION
+  FILE *p = _popen("gcc -dumpversion 2>nul", "r");
+#else
+  FILE *p = popen("gcc -dumpversion 2>/dev/null", "r");
+#endif
+  if(p == NULL) return major;
+  char buf[80];
+  if(fgets(buf, sizeof(buf), p) != NULL && isdigit((unsigned char) buf[0])) major = atoi(buf);
+#ifdef RLWIN32
+  _pclose(p);
+#else
+  pclose(p);
+#endif
+  return major;
+}
+
+static int conditionTrue(std::string cond)
+{
+  while(!cond.empty() && (unsigned char) cond.back()  <= ' ') cond.pop_back();
+  while(!cond.empty() && (unsigned char) cond.front() <= ' ') cond.erase(0, 1);
+  int neg = 0;
+  if(!cond.empty() && cond[0] == '!') { neg = 1; cond.erase(0, 1); }
+  int ret = 0, n;
+  if(sscanf(cond.c_str(), "equals(QMAKE_GCC_MAJOR_VERSION, %d)", &n) == 1)
+  {
+    ret = (gccMajor() == n);
+  }
+  else if(!otherCompilerScope(cond.c_str()))
+  {
+    for(int i=1; i<=n_config; i++) if(cond == row_config.text(i)) ret = 1;
+  }
+  return neg ? !ret : ret;
+}
+
+// palabras que interpretProFile() busca en la linea: esas no son variables del usuario
+static int knownKeyword(const std::string &name)
+{
+  static const char *keys[] = { "TEMPLATE", "CONFIG", "HEADERS", "SOURCES", "LIBS", "INCLUDEPATH", "DEFINES",
+                                "QMAKE_LFLAGS", "CFLAGS", "CXXFLAGS", "TARGET", NULL };
+  for(int i=0; keys[i] != NULL; i++) if(name.find(keys[i]) != std::string::npos) return 1;
+  return 0;
+}
+
+// 1 si la linea es la asignacion de una variable del usuario (y la guarda si se cumplen sus condiciones)
+static int userAssignment(const char *text)
+{
+  const char *eq = strchr(text, '=');
+  if(eq == NULL || *text == '#') return 0;
+  std::string left(text, eq - text);
+  int append = 0;
+  if(!left.empty() && left.back() == '+') { append = 1; left.pop_back(); }
+  else if(!left.empty() && (left.back() == '-' || left.back() == '*' || left.back() == '~')) return 0;
+  while(!left.empty() && (unsigned char) left.back() <= ' ') left.pop_back();
+  std::string name = left, conds;
+  size_t colon = left.rfind(':');
+  if(colon != std::string::npos) { name = left.substr(colon + 1); conds = left.substr(0, colon); }
+  while(!name.empty() && (unsigned char) name.front() <= ' ') name.erase(0, 1);
+  if(name.empty() || knownKeyword(name)) return 0;
+  for(size_t i=0; i<name.size(); i++)
+  {
+    if(!isalnum((unsigned char) name[i]) && name[i] != '_' && name[i] != '.') return 0;
+  }
+  size_t start = 0;
+  while(!conds.empty())
+  {
+    size_t c = conds.find(':', start);
+    if(!conditionTrue(conds.substr(start, c == std::string::npos ? std::string::npos : c - start))) return 1;
+    if(c == std::string::npos) break;
+    start = c + 1;
+  }
+  std::string value(eq + 1);
+  while(!value.empty() && (unsigned char) value.back()  <= ' ') value.pop_back();
+  while(!value.empty() && (unsigned char) value.front() <= ' ') value.erase(0, 1);
+  if(append && !vars[name].empty()) vars[name] += " " + value;
+  else                              vars[name] = value;
+  if(debug) printf("variable %s = '%s'\n", name.c_str(), vars[name].c_str());
+  return 1;
+}
+
+// $$NOMBRE y $${NOMBRE} de las variables conocidas (lo demas, como $$(PVBDIR) o $$quote(...), queda igual)
+static void expandVariables(rlString &text)
+{
+  std::string s(text.text());
+  if(s.find("$$") == std::string::npos) return;
+  std::string out;
+  size_t i = 0;
+  while(i < s.size())
+  {
+    if(s.compare(i, 2, "$$") == 0)
+    {
+      size_t b = i + 2, e;
+      int braces = (b < s.size() && s[b] == '{');
+      if(braces) b++;
+      e = b;
+      while(e < s.size() && (isalnum((unsigned char) s[e]) || s[e] == '_' || s[e] == '.')) e++;
+      std::string name = s.substr(b, e - b);
+      if(braces && (e >= s.size() || s[e] != '}')) name.clear();
+      if(!name.empty() && vars.count(name))
+      {
+        out += vars[name];
+        i = e + (braces ? 1 : 0);
+        continue;
+      }
+    }
+    out += s[i++];
+  }
+  text.strcpy(out.c_str());
+}
+
 static int filter2Found(const char *line)
 {
+  if(otherCompilerScope(line)) return 0;
   const char *cptr;
   for(int i=1; i<n_config; i++)
   {
@@ -168,16 +310,47 @@ int interpretProFile()
   n_config++;
   row_config.setText(n_config,filter2);
 #ifdef RLWIN32
-  n_config++;
-  row_config.setText(n_config,filter2b);
+  if(use_msvc) // Nestor: bloques win32-msvc / win32-msvc*
+  {
+    msvcFallback = 1;
+    for(const char *l = fpro.firstLine(); l != NULL; l = fpro.nextLine())
+    {
+      if(*l != '#' && strstr(l,"win32-msvc") != NULL) msvcFallback = 0;
+    }
+    if(msvcFallback)
+    {
+      printf("fake_qmake: %s no tiene bloque win32-msvc: se usa el de win32-g++ adaptado a MSVC\n", fname.text());
+      n_config++;
+      row_config.setText(n_config,filter2b); // antes que el ultimo: filter1Found()/filter2Found() no miran el ultimo
+    }
+    n_config++;
+    row_config.setText(n_config,"win32-msvc*");
+    n_config++;
+    row_config.setText(n_config,"win32-msvc");
+  }
+  else
+  {
+    n_config++;
+    row_config.setText(n_config,filter2b);
+  }
 #endif
 
+  vars.clear();
   const char *ccptr = fpro.firstLine();
   while(ccptr != NULL)
   {
     line.strcpy(ccptr);
     cptr = strchr(line.text(),'\n');
     if(cptr != NULL) *cptr = ' ';
+    // Nestor: variables del usuario ($$NOMBRE); la linea expandida reemplaza a la original
+    expandVariables(line);
+    rlString expanded(line.text());
+    ccptr = expanded.text();
+    if(relevant && iitem == IS_UNKNOWN && userAssignment(ccptr))
+    {
+      ccptr = fpro.nextLine();
+      continue;
+    }
 
     if(relevant && *ccptr != '#' && strstr(ccptr,"=") != NULL)
     {
@@ -544,16 +717,154 @@ const char *slosh(const char *text)
 #endif
 
 #if defined(RLWIN32)
+// Nestor: LIBS de qmake -> link.exe  (-lfoo -> foo.lib, -Lpath -> /LIBPATH:path, path/x.lib -> path\x.lib)
+static const char *msvcLib(const char *lib)
+{
+  static rlString txt;
+  if(strncmp(lib,"-l",2) == 0)
+  {
+    txt.strcpy(&lib[2]);
+    if(strstr(txt.text(),".lib") == NULL) txt.cat(".lib");
+  }
+  else if(strncmp(lib,"-L",2) == 0)
+  {
+    txt.strcpy("/LIBPATH:\"");
+    txt.cat(slosh(&lib[2]));
+    txt.cat("\"");
+  }
+  else if(strstr(lib,".lib") != NULL && strchr(lib,'/') == NULL && strchr(lib,'\\') == NULL)
+  {
+    txt.strcpy(lib); // ws2_32.lib, etc.
+  }
+  else if(strlen(lib) > 2 && strcmp(lib + strlen(lib) - 2, ".a") == 0)
+  {
+    // biblioteca de MinGW (bloque win32-g++): .../libserverlib.a -> ".../serverlib.lib"
+    rlString path(lib);
+    char *name = strrchr(path.text(),'/');
+    if(name == NULL) name = strrchr(path.text(),'\\');
+    name = (name == NULL) ? path.text() : name + 1;
+    rlString base(name);
+    *name = '\0';
+    const char *b = base.text();
+    if(strncmp(b,"lib",3) == 0) b += 3;
+    rlString libname(b);
+    char *dot = strrchr(libname.text(),'.');
+    if(dot != NULL) *dot = '\0';
+    txt.strcpy("\"");
+    txt.cat(slosh(path.text()));
+    txt.cat(libname.text());
+    txt.cat(".lib\"");
+  }
+  else
+  {
+    txt.strcpy("\""); // entre comillas: la instalación puede estar en una carpeta con espacios
+    txt.cat(slosh(lib));
+    txt.cat("\"");
+  }
+  return txt.text();
+}
+
+// Nestor: Makefile para nmake/jom y el compilador de Visual Studio (cl.exe)
 int writeMakefileMSCPP()
 {
+  int i;
+  int is_staticlib = 0;
+  int is_lib = (strcmp(str_template.text(),"lib") == 0);
+  for(i=1; i<=n_config; i++)
+  {
+    if(strcmp(row_config.text(i),"staticlib") == 0) is_staticlib = 1;
+  }
+
   fprintf(fout,"#############################################################################\n");
   fprintf(fout,"# Makefile for Windows MSCPP building: %s\n", str_target.text());
-  fprintf(fout,"# Generated by fake_qmake\n");
+  fprintf(fout,"# Generated by fake_qmake  (nmake /f %s   o   jom /f %s)\n", fmake.text(), fmake.text());
   fprintf(fout,"# Project:  %s\n", fname.text());
   fprintf(fout,"# Template: %s\n", str_template.text());
   fprintf(fout,"# Command:  %s\n", cmdline.text());
   fprintf(fout,"#############################################################################\n");
-
+  fprintf(fout,"\n");
+  fprintf(fout,"####### Compiler, tools and options\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"CC            = cl\n");
+  fprintf(fout,"CXX           = cl\n");
+  fprintf(fout,"DEFINES       = -DUNICODE -D_UNICODE -DWIN32 -DWIN64 -D_CRT_SECURE_NO_WARNINGS");
+  for(i=1; i<=n_defines; i++)
+  {
+    if(strlen(row_defines.text(i)) > 0 && strcmp(row_defines.text(i),"UNICODE") != 0)
+      fprintf(fout," -D%s", row_defines.text(i));
+  }
+  fprintf(fout,"\n");
+  fprintf(fout,"CFLAGS        = -nologo -O2 -MD -W3 $(DEFINES)");
+  for(i=1; i<=n_cflags; i++) fprintf(fout," %s", row_cflags.text(i));
+  fprintf(fout,"\n");
+  fprintf(fout,"CXXFLAGS      = -nologo -O2 -MD -W3 -EHsc -Zc:__cplusplus $(DEFINES)");
+  for(i=1; i<=n_cxxflags; i++) fprintf(fout," %s", row_cxxflags.text(i));
+  fprintf(fout,"\n");
+  fprintf(fout,"INCPATH       = -I.");
+  for(i=1; i<=n_includepath; i++) fprintf(fout," -I\"%s\"", slosh(row_includepath.text(i)));
+  fprintf(fout,"\n");
+  fprintf(fout,"LINK          = link\n");
+  fprintf(fout,"LIBAPP        = lib\n");
+  fprintf(fout,"LFLAGS        = /NOLOGO");
+  if(is_lib && is_staticlib == 0) fprintf(fout," /DLL");
+  else if(!is_lib)                fprintf(fout," /SUBSYSTEM:CONSOLE");
+  for(i=1; i<=n_qmake_lflags; i++)
+  {
+    // opciones de gcc (-static-libgcc, -Wl,...) no sirven para link.exe
+    if(row_qmake_lflags.text(i)[0] != '-') fprintf(fout," %s", row_qmake_lflags.text(i));
+  }
+  fprintf(fout,"\n");
+  fprintf(fout,"LIBS          =");
+  for(i=1; i<=n_libs; i++)
+  {
+    if(strcmp(row_libs.text(i),"-lpthread") == 0) continue; // MSVC: hilos de Windows
+    fprintf(fout," %s", msvcLib(row_libs.text(i)));
+  }
+  // MinGW las enlaza siempre; con MSVC hay que nombrarlas (rllib/pvserver las usan)
+  fprintf(fout," ws2_32.lib advapi32.lib user32.lib\n");
+  fprintf(fout,"DEL_FILE      = del\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"####### Files\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"OBJECTS       =");
+  for(i=1; i<=n_sources; i++)
+  {
+    if(i==n_sources) fprintf(fout,"\t%s%s.obj\n\n",  destination, getName(row_sources.text(i)));
+    else             fprintf(fout,"\t%s%s.obj \\\n", destination, getName(row_sources.text(i)));
+  }
+  if(!is_lib)            fprintf(fout,"DESTDIR_TARGET = %s%s.exe\n", destination, str_target.text());
+  else if(is_staticlib)  fprintf(fout,"DESTDIR_TARGET = %s%s.lib\n", destination, str_target.text());
+  else                   fprintf(fout,"DESTDIR_TARGET = %s%s.dll\n", destination, str_target.text());
+  fprintf(fout,"\n");
+  fprintf(fout,"####### Build rules\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"first: all\n");
+  fprintf(fout,"all: $(DESTDIR_TARGET)\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"$(DESTDIR_TARGET): $(OBJECTS)\n");
+  if(is_lib && is_staticlib) fprintf(fout,"\t$(LIBAPP) /NOLOGO /OUT:$(DESTDIR_TARGET) $(OBJECTS)\n");
+  else                       fprintf(fout,"\t$(LINK) $(LFLAGS) /OUT:$(DESTDIR_TARGET) $(OBJECTS) $(LIBS)\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"qmake:\n");
+  fprintf(fout,"\t%s\n", cmdline.text());
+  fprintf(fout,"\n");
+  fprintf(fout,"clean:\n");
+  fprintf(fout,"\t-$(DEL_FILE) $(OBJECTS)\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"####### Compile\n");
+  fprintf(fout,"\n");
+  for(i=1; i<=n_sources; i++)
+  {
+    fprintf(fout,"%s%s.obj: %s", destination, getName(row_sources.text(i)), row_sources.text(i));
+    printDepend(i);
+    fprintf(fout,"\n");
+    const char *ext = getExtension(row_sources.text(i));
+    if(ext != NULL && strcmp(ext,".c") == 0)
+      fprintf(fout,"\t$(CC) -c $(CFLAGS) $(INCPATH) -Fo%s%s.obj %s\n", destination, getName(row_sources.text(i)), slosh(row_sources.text(i)));
+    else
+      fprintf(fout,"\t$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo%s%s.obj %s\n", destination, getName(row_sources.text(i)), slosh(row_sources.text(i)));
+    fprintf(fout,"\n");
+  }
   return 0;
 }
 #endif
@@ -561,10 +872,9 @@ int writeMakefileMSCPP()
 int writeMakefile()
 {
 #if defined(RLWIN32)
-if(1)
+if(use_msvc) // Nestor: antes siempre se llamaba (sin terminar) y nunca se generaba el Makefile de MinGW
 {
-  writeMakefileMSCPP();
-  return 0;
+  return writeMakefileMSCPP();
 }
 // write makefile for MinGW
 int i;
@@ -632,7 +942,13 @@ else if(strcmp(str_template.text(),"lib") == 0)
   }
 }
 fprintf(fout,"LIBS          =");
-for(i=1; i<=n_libs; i++) fprintf(fout," %s", row_libs.text(i));
+for(i=1; i<=n_libs; i++)
+{
+  // Nestor: rutas entre comillas (la instalacion puede estar en una carpeta con espacios)
+  const char *lib = row_libs.text(i);
+  if(*lib != '-' && (strchr(lib,'/') != NULL || strchr(lib,'\\') != NULL)) fprintf(fout," \"%s\"", lib);
+  else                                                                     fprintf(fout," %s", lib);
+}
 fprintf(fout,"\n");
 fprintf(fout,"QMAKE         = fake_qmake.exe\n");
 fprintf(fout,"IDL           = midl\n");

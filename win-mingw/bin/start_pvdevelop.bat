@@ -1,46 +1,56 @@
- @echo off                                                                            
- rem #########################################################################################                                                 
- rem # This is the file start_pvdevelop.bat                                                  #
- rem #                                                                                       #
- rem # If you only want to develop in Lua you do not need to set any environment variables   #
- rem # If you want to develop in C/C++ you must install MinGW and set %MINGWDIR%             #
- rem #   If you use the standard path from the MinGW installer c:\mingw should be ok         #
- rem #   The MinGW installation must include mingw32-make.exe                                #
- rem # Optionally you might install the Qt development package and set %QTDIR%               #
- rem #   If the Qt development package is installed we use qmake.exe to generate Makefile    #
- rem #   Otherwise we fall back to our simple fake_qmake.exe tool                            #
- rem # Otionally you can set %PYDIR% if you want to use Python                               #
- rem #                                                                                       #
- rem #########################################################################################                                                 
- if    [%QTDIR%]    == [] goto environment_not_set                                 
- if    [%MINGWDIR%] == [] goto environment_not_set                                 
- goto  start_pvdevelop                                                               
- :environment_not_set                                                                
- rem   ############################################################################# 
- rem
- rem   Please adjust environment variables within %PVBDIR%\win-mingw\bin\start_pvdevelop.bat                                  
- REM   set   QTDIR=c:\Qt\4.8.2
- REM   set   MINGWDIR=c:\mingw
- set   QTDIR=C:\Qt\6.9.2\mingw_64
- set   MINGWDIR=C:\Qt\Tools\mingw1310_64
- set   PYDIR=C:\Python25
- rem
- rem   ############################################################################# 
- rem   instead of setting QTDIR and MINGWDIR here you could also set them            
- rem   within the registry using the system control                                  
- :start_pvdevelop                                                                    
- set   PATH=%MINGWDIR%\bin;%QTDIR%\bin;%PVBDIR%\win-mingw\bin;c:\windows;c:\windows\system32;
- set   PYTHONPATH="%PVBDIR%\win-mingw\bin";%PYTHONPATH%
- echo  PVBDIR     = %PVBDIR%
- echo  QTDIR      = %QTDIR%
- echo  MINGWDIR   = %MINGWDIR%
- echo  PYDIR      = %PYDIR%
- echo  PATH       = %PATH%
- echo  PYTHONPATH = %PYTHONPATH%
- echo  starting pvdevelop
- echo  Please verify if the above environment variables are correct on your system.
- echo  If not please adjust by editing file 
- echo    %PVBDIR%\win-mingw\bin\start_pvdevelop.bat
- start pvdevelop6                                                                     
- :end                                                                                
- pause                                                                               
+@echo off
+rem #########################################################################################
+rem # This is the file start_pvdevelop.bat                                                  #
+rem #                                                                                       #
+rem # Configuracion del entorno de pvdevelop. Se puede editar despues de instalar.          #
+rem #                                                                                       #
+rem # IMPORTANTE: el compilador, sus carpetas y la cantidad de procesadores se eligen en     #
+rem # pvdevelop (Accion > Compilador... y la barra "Compilacion") y se pueden cambiar en     #
+rem # cualquier momento. Los valores de abajo solo se usan la primera vez que se abre        #
+rem # pvdevelop (despues manda lo elegido en esa ventana).                                  #
+rem #                                                                                       #
+rem # PVB_COMPILER : compilador para los proyectos pvserver en C/C++                        #
+rem #    mingw = MinGW (por defecto). Ajustar MINGWDIR (debe incluir mingw32-make.exe).     #
+rem #    msvc  = Visual Studio 2022 (Build Tools o Community). Ajustar VSDIR.               #
+rem # QTDIR (opcional): Qt SDK del MISMO compilador para usar el qmake real.                #
+rem #    Si queda vacio, fake_qmake.exe genera el Makefile (suficiente para un pvserver).   #
+rem # PYDIR (opcional): Python.                                                             #
+rem # Si solo se desarrolla en Lua no hace falta ningun compilador.                         #
+rem #                                                                                       #
+rem # Las variables se pueden definir tambien en el sistema (Panel de control): los         #
+rem # valores de abajo solo se usan si no estan definidas.                                  #
+rem #########################################################################################
+
+if "%PVB_COMPILER%"=="" set "PVB_COMPILER=mingw"
+if "%VSDIR%"==""        set "VSDIR=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
+rem Visual Studio Community:  set "VSDIR=C:\Program Files\Microsoft Visual Studio\2022\Community"
+if "%MINGWDIR%"==""     set "MINGWDIR=C:\Qt\Tools\mingw1310_64"
+rem Qt SDK opcional (MSVC: C:\Qt\6.9.2\msvc2022_64   MinGW: C:\Qt\6.9.2\mingw_64)
+rem set "QTDIR=C:\Qt\6.9.2\mingw_64"
+if "%PYDIR%"==""        set "PYDIR=C:\Python25"
+
+rem ######### Compatibility with pvbrowser qt5 #############
+set "PVBDIR=%SUITEDIR%"
+
+set "PATH=%SUITEDIR%\win-mingw\bin;c:\windows;c:\windows\system32"
+if not "%QTDIR%"=="" set "PATH=%QTDIR%\bin;%PATH%"
+set "PYTHONPATH=%SUITEDIR%\win-mingw\bin;%PYTHONPATH%"
+
+rem Entorno del compilador elegido (cl.exe/nmake o gcc/mingw32-make)
+call "%SUITEDIR%\win-mingw\bin\pvenv.bat"
+
+echo  SUITEDIR     = %SUITEDIR%
+echo  PVBDIR       = %PVBDIR%
+echo  PVB_COMPILER = %PVB_COMPILER%
+echo  VSDIR        = %VSDIR%
+echo  MINGWDIR     = %MINGWDIR%
+echo  QTDIR        = %QTDIR%
+echo  PYDIR        = %PYDIR%
+echo  PYTHONPATH   = %PYTHONPATH%
+echo  starting pvdevelop
+echo  Please verify if the above environment variables are correct on your system.
+echo  If not please adjust by editing file
+echo    %SUITEDIR%\win-mingw\bin\start_pvdevelop.bat
+start pvdevelop6
+:end
+pause

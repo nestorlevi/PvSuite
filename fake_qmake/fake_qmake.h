@@ -52,6 +52,7 @@ extern rlString cmdline;
 
 extern const char *builddir;;
 extern char destination[];
+extern int use_msvc; // Nestor: 1 = Makefile para nmake/cl.exe (MSVC), 0 = MinGW
 
 int interpretProFile();
 int getItemsFromLine(int iitem); // items := sources | includes | libs | includepath | defines

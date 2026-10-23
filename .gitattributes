@@ -1,0 +1,3 @@
+# Scripts de Linux/macOS siempre con LF y los de Windows con CRLF (tambien con core.autocrlf=true)
+*.sh  text eol=lf
+*.bat text eol=crlf

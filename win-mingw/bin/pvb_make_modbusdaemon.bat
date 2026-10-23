@@ -1,3 +1,5 @@
-g++ modbusdaemon.cpp "%PVBDIR%\win-mingw\bin\librllib.a" -lws2_32 "-I%PVBDIR%\rllib\lib" -ladvapi32  -static-libgcc -o modbusdaemon.exe   
-pause                                                                                                                                                                  
-exit                                                                                                                                                                   
+@echo off
+rem compatibilidad: ahora compila pvb_make_daemon.bat (nombre opcional, por defecto modbusdaemon)
+set "N=%~1"
+if "%N%"=="" set "N=modbusdaemon"
+"%~dp0pvb_make_daemon.bat" "%N%"

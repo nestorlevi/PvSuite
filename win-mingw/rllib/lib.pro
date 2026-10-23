@@ -32,6 +32,9 @@ HEADERS  = ../../rllib/lib/rlwthread.h                \
            ../../rllib/lib/rlserial.h                 \
            ../../rllib/lib/rlmodbus.h                 \
            ../../rllib/lib/rlmodbusclient.h           \
+           ../../rllib/lib/rltag.h                    \
+           ../../rllib/lib/rltagdef.h                 \
+           ../../rllib/lib/rlopcuaclient.h            \
            ../../rllib/lib/rl3964r.h                  \
            ../../rllib/lib/rlsiemenstcp.h             \
            ../../rllib/lib/rlsiemenstcpclient.h       \
@@ -80,6 +83,9 @@ SOURCES  = ../../rllib/lib/rlwthread.cpp                \
            ../../rllib/lib/rlserial.cpp                 \
            ../../rllib/lib/rlmodbus.cpp                 \
            ../../rllib/lib/rlmodbusclient.cpp           \
+           ../../rllib/lib/rltag.cpp                    \
+           ../../rllib/lib/rltagdef.cpp                 \
+           ../../rllib/lib/rlopcuaclient.cpp            \
            ../../rllib/lib/rl3964r.cpp                  \
            ../../rllib/lib/rlsiemenstcp.cpp             \
            ../../rllib/lib/rlsiemenstcpclient.cpp       \

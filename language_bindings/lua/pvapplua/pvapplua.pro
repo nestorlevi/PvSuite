@@ -34,9 +34,9 @@ INCLUDEPATH += ../lua-5.4.0/src/
     unix:LIBS          += -ldl
 }
 
-macx:LIBS          += ../../../pvserver/libpvsmt.a /usr/lib/libpthread.dylib
+macx:LIBS          += $$PWD/../../../pvserver/libpvsmt.a /usr/lib/libpthread.dylib
 macx:INCLUDEPATH   += ../../../pvserver
-macx:LIBS          += ../../../rllib/lib/librllib.dylib
+macx:LIBS          += $$PWD/../../../rllib/lib/librllib.dylib
 macx:INCLUDEPATH   += ../../../rllib/lib
 
 win32-g++ {
@@ -46,6 +46,15 @@ win32:LIBS += $$PWD/../../../rllib/lib/librllib.a
 win32:LIBS += $$PWD/../../../pvserver/libserverlib.a -lws2_32 -ladvapi32
 win32:INCLUDEPATH  += $$PWD/../../../rllib/lib
 win32:INCLUDEPATH  += $$PWD/../../../pvserver
+}
+
+win32-msvc* {   # Nestor: MSVC (lua.dll de Compilar/pvsuite-win64/lua-msvc, lua sin modificar)
+DEFINES            += LUA_BUILD_AS_DLL
+LIBS               += $$PWD/../../../Compilar/pvsuite-win64/lua-msvc/lib/lua.lib
+LIBS               += $$PWD/../../../rllib/lib/rllib.lib
+LIBS               += $$PWD/../../../pvserver/serverlib.lib -lws2_32 -ladvapi32 -luser32
+INCLUDEPATH        += $$PWD/../../../rllib/lib
+INCLUDEPATH        += $$PWD/../../../pvserver
 }
 
 #DEFINES += USE_INETD

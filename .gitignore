@@ -1,8 +1,29 @@
 ####################
 # git ignore files #
 ####################
-# Nestor: la carpeta Compilar (compilaciones, instalador, pruebas, notas) queda fuera de git
-/Compilar/
+# Compilar: solo los proyectos y scripts de compilacion (lo compilado queda fuera)
+/Compilar/*
+!/Compilar/pvsuite-win64/
+!/Compilar/pvsuite-linux64/
+/Compilar/pvsuite-win64/*
+!/Compilar/pvsuite-win64/*.pro
+!/Compilar/pvsuite-win64/build.bat
+!/Compilar/pvsuite-win64/*-msvc/
+/Compilar/pvsuite-win64/*-msvc/*
+!/Compilar/pvsuite-win64/*-msvc/*.pro
+/Compilar/pvsuite-linux64/*
+!/Compilar/pvsuite-linux64/*.pro
+!/Compilar/pvsuite-linux64/build.sh
+!/Compilar/installer/
+/Compilar/installer/*
+!/Compilar/installer/*.bat
+!/Compilar/installer/*.sh
+!/Compilar/installer/config/
+!/Compilar/installer/plantillas/
+!/Compilar/installer/translations/
+!/Compilar/installer/packages/
+/Compilar/installer/packages/*/data/
+/Compilar/installer/packages/*/meta/*.qm
 
 # Nestor: documentacion generada (doc/generar_documentacion) y manuales: no hacen falta para compilar
 /doc/pvdevelop/

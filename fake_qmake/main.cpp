@@ -54,7 +54,9 @@ rlString fmake("Makefile");
 #ifdef RLWIN32
 const char *builddir = "release";
 char destination[64] = "release\\";
+int use_msvc = 0;
 #else
+int use_msvc = 0;
 const char *builddir = "";
 char destination[64] = "";
 #endif
@@ -73,7 +75,11 @@ static void perhapsRunQmake(int ac, char **av)
     return;
   }  
   rlString cmd(name.text());
-  for(int i=1; i<ac; i++) { cmd.cat(" "); cmd.cat(av[i]); }
+  for(int i=1; i<ac; i++)
+  {
+    if(strcmp(av[i],"-msvc") == 0 || strcmp(av[i],"-mingw") == 0) continue; // opciones solo de fake_qmake
+    cmd.cat(" "); cmd.cat(av[i]);
+  }
   printf("running real: %s\n", cmd.text());
   ret = system(cmd.text());
   exit(ret);
@@ -85,7 +91,28 @@ static void perhapsRunQmake(int ac, char **av)
   exit(ret);
 #elif defined(RLUNIX)
   struct stat buf;
-  const char *candidates[] = { "/usr/bin/qmake",
+  // Nestor: primero el Qt elegido en pvdevelop (QTDIR, como en Windows); despues el Qt 6 de la distribucion
+  // (Debian/Ubuntu: qt6-base-dev, Fedora: qt6-qtbase-devel, openSUSE: qt6-base-devel) y los nombres viejos
+  if(getenv("QTDIR") != NULL)
+  {
+    rlString qtdir(getenv("QTDIR"));
+    qtdir.cat("/bin/qmake");
+    if(stat(qtdir.text(),&buf) >= 0)
+    {
+      rlString cmd(qtdir.text());
+      for(int i=1; i<ac; i++) { cmd.cat(" "); cmd.cat(av[i]); }
+      printf("running real: %s\n", cmd.text());
+      exit(system(cmd.text()));
+    }
+    printf("stat(\"%s\") failed: se busca el qmake de la distribucion\n", qtdir.text());
+  }
+  const char *candidates[] = { "/usr/bin/qmake6",
+                               "/usr/lib/qt6/bin/qmake",
+                               "/usr/lib64/qt6/bin/qmake",
+                               "/usr/lib/x86_64-linux-gnu/qt6/bin/qmake",
+                               "/usr/lib/aarch64-linux-gnu/qt6/bin/qmake",
+                               "/usr/bin/qmake-qt6",
+                               "/usr/bin/qmake",
                                "/usr/bin/qmake-qt4",
                                "/usr/lib/qt4/bin/qmake-qt4",
                                "/usr/lib/qt4/bin/qmake",
@@ -113,11 +140,24 @@ static void perhapsRunQmake(int ac, char **av)
 int main(int ac, char **av)
 {
   int fake = 0;
+#ifdef RLWIN32
+  // Nestor: compilador de los proyectos (start_pvdevelop.bat: set PVB_COMPILER=msvc | mingw)
+  const char *compiler = getenv("PVB_COMPILER");
+  if(compiler != NULL && strcmp(compiler,"msvc") == 0) use_msvc = 1;
+#endif
   for(int i=0; i<ac; i++) { cmdline.cat(av[i]); cmdline.cat(" "); }
   for(int i=1; i<ac; i++)
   {
     const char *arg = av[i];
-    if(strcmp(av[i],"-o") == 0)
+    if(strcmp(av[i],"-msvc") == 0)
+    {
+      use_msvc = 1;
+    }
+    else if(strcmp(av[i],"-mingw") == 0)
+    {
+      use_msvc = 0;
+    }
+    else if(strcmp(av[i],"-o") == 0)
     {
       i++;
       fmake = av[i];
@@ -146,6 +186,7 @@ int main(int ac, char **av)
       printf("if you need all the qmake functions install the qt development package.\n");
       printf("usage:   fake_qmake <-fake> <name.pro> <-o makefile>   <-builddir directory>\n");
 #ifdef RLWIN32
+      printf("         <-msvc|-mingw>  Makefile for nmake/cl.exe or mingw32-make (default: %%PVB_COMPILER%%, else mingw)\n");
       printf("default: fake_qmake          name.pro   -o Makefile.win -builddir release\n");
 #else
       printf("default: fake_qmake          name.pro   -o Makefile\n");
@@ -173,17 +214,21 @@ int main(int ac, char **av)
       if(writeMakefile() < 0)
       {
         printf("error writeing makefile=%s\n", fmake.text());
+        fclose(fout);
+        return 1; // Nestor: codigo de error para que pvb_build.bat no siga con un Makefile viejo
       }
       fclose(fout);
     }
     else
     {
       printf("error interpreting file=%s line=%s\n", fname.text(), line.text());
+      return 1;
     }
   }
   else
   {
     printf("could not load project_file=%s\n", fname.text());
+    return 1;
   }
 
   return 0;

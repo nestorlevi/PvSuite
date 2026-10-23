@@ -1,9 +1,16 @@
-@echo off    
-taskkill /F /IM pvs.exe
-rem system("pvb_server.bat " + name);                                      
-CALL "%PVBDIR%\win-mingw\bin\pvenv.bat"                              
-fake_qmake %1.pro -o Makefile.win                                              
-mingw32-make.exe -j -f Makefile.win                                                
-release\%1  
-taskkill /F /FI "WINDOWTITLE eq cmd.exe"
+@echo off
+rem system("pvb_server.bat " + name);  (pvdevelop: Ctrl+T)
+rem cerrar el servidor anterior: si sigue abierto no se puede reemplazar el .exe al enlazar
+taskkill /F /IM %1.exe >nul 2>&1
+taskkill /F /IM pvs.exe >nul 2>&1
+CALL "%PVBDIR%\win-mingw\bin\pvb_build.bat" %1
+if errorlevel 1 goto error
+if not exist release\%1.exe goto error
+release\%1
+exit
+
+:error
+echo.
+echo No se pudo compilar %1 (ver los mensajes de arriba). Compilador: %PVB_COMPILER%
+pause
 exit

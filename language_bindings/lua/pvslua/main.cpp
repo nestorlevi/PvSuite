@@ -6,7 +6,11 @@
 //  email            : lehrig@t-online.de
 //***************************************************************************
 #include "pvapp.h"
+#ifdef _MSC_VER
+#include <direct.h>   // Nestor: getcwd() en MSVC
+#else
 #include <unistd.h>
+#endif
 #include <cstdint>  //Nestor aquí: Para uintptr_t
 
 // Include the Lua API header files

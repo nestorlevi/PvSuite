@@ -7,7 +7,11 @@
 //***************************************************************************
 #include <stdio.h>
 #include <string.h>
+#ifdef _MSC_VER
+#include <direct.h>   // Nestor: getcwd() en MSVC
+#else
 #include <unistd.h>
+#endif
 #include "processviewserver.h"
 
 int trace = 0;

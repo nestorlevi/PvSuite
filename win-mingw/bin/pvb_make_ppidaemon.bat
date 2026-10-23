@@ -1,3 +1,5 @@
-g++ ppidaemon.cpp "%PVBDIR%\win-mingw\nodave_mingw.o" "%PVBDIR%\win-mingw\bin\librllib.a" -lws2_32 "-I%PVBDIR%\rllib\lib"  -static-libgcc -o ppidaemon.exe                                                                      
-pause                                                                                                                                                                  
-exit                                                                                                                                                                   
+@echo off
+rem compatibilidad: ahora compila pvb_make_daemon.bat (nombre opcional, por defecto ppidaemon)
+set "N=%~1"
+if "%N%"=="" set "N=ppidaemon"
+"%~dp0pvb_make_daemon.bat" "%N%" ppi
