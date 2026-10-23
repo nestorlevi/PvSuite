@@ -18,14 +18,17 @@ INCLUDEPATH += ../lib
 SOURCES += rlhistory.cpp
 
 !macx {
-    win32 {
+    win32-msvc* {
+        LIBS += $${PWD}/../lib/rllib.lib -lws2_32 -ladvapi32   # Nestor: MSVC
+    }
+    else:win32 {
         LIBS += $${PWD}/../lib/librllib.a
     }
     else {
-        LIBS += ../lib/librllib.so -lpthread
+        LIBS += $${PWD}/../lib/librllib.so -lpthread
     }
 }
 #macx::LIBS    += ../lib/librllib.dylib
-macx::LIBS    += ../lib/librllib.a
+macx::LIBS    += $${PWD}/../lib/librllib.a
 
 TARGET = rlhistory

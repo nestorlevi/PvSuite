@@ -94,7 +94,9 @@ static void *eib_reader(void *arg) // thread
           b[1]   = pdu.data[1];
           b[2]   = pdu.data[2];
           b[3]   = pdu.data[3];
-          len    = ntohs(pdu.totalsize) - 6;    // remember len (-headerlength)
+          len    = ntohs(pdu.totalsize);        // Nestor: no mas de lo recibido (el largo lo declara el paquete)
+          if(len > ret) len = ret;
+          len   -= 6;                           // remember len (-headerlength)
           pdu.headersize  = EIB_HEADERSIZE;     // fill acknowledge
           pdu.version     = EIB_VERSION;
           pdu.servicetype = htons(TUNNELLING_ACK);
@@ -204,7 +206,7 @@ int rlEIBnetIP::storeBuffer(unsigned char *buf, int len)
   short unsigned int *sptr;
   int i;
 
-  if(len <= 0 || mem == NULL) return -1;
+  if(len < 10 || mem == NULL) return -1;   // Nestor: antes len <= 0 (se leian bytes de afuera)
   if(debug)
   {
     ::printf("rlEIBnetIP::storeBuffer() buf=[0x%x",buf[0]);
@@ -226,7 +228,8 @@ int rlEIBnetIP::storeBuffer(unsigned char *buf, int len)
   tel.val[1] = buf[10+1];
   tel.val[2] = buf[10+2];
   tel.val[3] = buf[10+3];
-  for(i=0; i<(len-10); i++) tel.val[i] = buf[10+i];
+  // Nestor: como mucho sizeof(tel.val): un totalsize grande desbordaba tel en la pila
+  for(i=0; i<(len-10) && i<(int) sizeof(tel.val); i++) tel.val[i] = buf[10+i];
   switch (tel.mc)
   {
     case L_Data_Req: //0x11:
@@ -251,7 +254,7 @@ int rlEIBnetIP::storeBuffer(unsigned char *buf, int len)
     tel.daddr,
     tel.apci_length,
     tel.apci);
-    for(i=10; i<len; i++) ::printf(" val[%d]=0x%x",i-10,tel.val[i-10]);
+    for(i=10; i<len && i-10<(int) sizeof(tel.val); i++) ::printf(" val[%d]=0x%x",i-10,tel.val[i-10]);
     ::printf("\n");
   }
 

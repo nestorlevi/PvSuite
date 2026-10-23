@@ -16,6 +16,25 @@
 #include "rlmodbus.h"
 #include <stdio.h>
 #include <string.h>
+#include <map>
+#include <mutex>
+#include <chrono>
+
+// Nestor: ultimo intento de conexion por objeto (sin agregar miembros a rlModbus: los daemons ya
+// generados se compilan con el mismo encabezado)
+static bool reconnectCheck(const void *who, bool done)
+{
+  static std::mutex m;
+  static std::map<const void *, long long> last;
+  long long now = (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  std::lock_guard<std::mutex> lock(m);
+  std::map<const void *, long long>::iterator it = last.find(who);
+  if(done) { last[who] = now; return true; }   // fin del intento: el plazo cuenta desde aca (el connect puede tardar)
+  return !(it != last.end() && now - it->second < 3000);
+}
+
+static bool reconnectAllowed(const void *who) { return reconnectCheck(who, false); }
+static void reconnectDone(const void *who)    { reconnectCheck(who, true); }
 
 rlModbus::rlModbus(long max_telegram_length, int _mode, char end_delimitor)
 {
@@ -105,7 +124,9 @@ int rlModbus::write(int slave, int function, const unsigned char *data, int data
   {
     if(s->isConnected() == 0)
     {
-      if(autoreconnectSocket) s->connect();
+      // Nestor: un intento de conexion por vez cada 3 s: con el equipo apagado cada connect espera el
+      // timeout (rlSocketSetConnectTimeout) y antes se reintentaba en cada bloque (ciclos de 30 s o mas)
+      if(autoreconnectSocket && reconnectAllowed(this)) { s->connect(); reconnectDone(this); }
       if(s->isConnected() == 0) return MODBUS_ERROR;
     }
     if(s->write(tel,len-2) < 0) return MODBUS_ERROR; // don't send LRC or CRC
@@ -150,6 +171,8 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
       if(s->read((char *) tel, 2, timeout) <= 0) return MODBUS_ERROR;
       *slave     = tel[0];
       *function  = tel[1];
+      // Nestor: el largo del encabezado MBAP tiene que ser razonable (antes no se miraba el byte alto)
+      if(tel[4] != 0 || tel[5] < 3) { s->disconnect(); return MODBUS_ERROR; }
       byte_count = tel[5] - 3;
       if(s->read((char *) tel, 1, timeout) <= 0)            return MODBUS_ERROR;
       switch(*function)
@@ -197,7 +220,7 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
     if(mode == MODBUS_ASCII)
     {
       //printf("modbus ascii\n");
-      for(i=0; i<maxtel; i++)
+      for(i=0; i<maxtel-1; i++) // Nestor: maxtel-1: tel[i] = '\0' escribia fuera de tel sin delimitador
       {
         ret = tty->select(timeout);
         if(ret == 0) return MODBUS_ERROR;
@@ -211,6 +234,9 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
       tel[i] = '\0';
       telptr = (unsigned char *) strchr((const char *) tel,':');
       if(telptr == NULL) return MODBUS_ERROR;
+      // Nestor: lo que sigue al final se lee como ceros, y los largos que manda el equipo se controlan (tlen)
+      memset(&tel[i], 0, maxtel - i);
+      int tlen = (int) strlen((const char *) telptr);
       len++;
       sscanf((char *) &telptr[len],"%02X",slave);       len += 2;
       sscanf((char *) &telptr[len],"%02X",function);    len += 2;
@@ -226,6 +252,7 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
         case WriteGeneralReference:
         case ReadWrite4XRegisters:
           sscanf((char *) &telptr[len],"%02X",&byte_count);    len += 2;
+          if(byte_count < 0 || len + 2*byte_count + 2 > tlen) return MODBUS_ERROR;
           for(idata=0; idata<byte_count; idata++)
           {
             sscanf((const char *) &telptr[len], "%02X", &val); len += 2;
@@ -267,6 +294,7 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
           return byte_count;
         case ReadFifoQueue:
           sscanf((char *) &telptr[len],"%04X",&byte_count); len += 4;
+          if(byte_count < 0 || len + byte_count + 2 > tlen) return MODBUS_ERROR;
           for(idata=0; idata<(byte_count/2); idata++)
           {
             data[idata] = buf2int_ascii(&telptr[len]);     len += 2;
@@ -286,7 +314,14 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
       if(tty->readBlock(tel, 2, timeout) <= 0) return MODBUS_ERROR;
       *slave     = tel[len++];
       *function  = tel[len++];
-      byte_count = tel[5] - 3;
+      if(*function & 0x80)
+      { // Nestor: respuesta de excepcion (codigo + CRC): se lee entera para no dejar bytes en el puerto
+        if(tty->select(timeout) == 0)                          return MODBUS_ERROR;
+        if(tty->readBlock(&tel[len], 3, timeout) <= 0)         return MODBUS_ERROR;
+        return MODBUS_ERROR;
+      }
+      // Nestor: la cantidad de bytes sale de la respuesta. Antes era tel[5]-3, que en serie es un byte
+      // del pedido que se acaba de mandar: fallaba el CRC en cada lectura y quedaban bytes en el puerto
       switch(*function)
       {
         case ReadCoilStatus:
@@ -300,49 +335,35 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
         case ReadWrite4XRegisters:
           if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
           if(tty->readBlock(&tel[len], 1, timeout) <= 0)       return MODBUS_ERROR;
-          //byte_count = tel[len++];
-          if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
-          if(tty->readBlock(data, byte_count+2, timeout) <= 0) return MODBUS_ERROR;
-          memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
-          if(CRCerror(len) == 1)                      return MODBUS_CHECKSUM_ERROR;
-          return byte_count;
+          byte_count = tel[len++];
+          break;
         case ForceSingleCoil:
         case PresetSingleRegister:
         case FetchCommEventCtr:
         case ForceMultipleCoils:
         case PresetMultipleRegs:
-          //byte_count = 4;
-          if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
-          if(tty->readBlock(data, byte_count+2, timeout) <= 0) return MODBUS_ERROR;
-          memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
-          if(CRCerror(len) == 1)                      return MODBUS_CHECKSUM_ERROR;
-          return byte_count;
+          byte_count = 4;
+          break;
         case ReadExceptionStatus:
-          //byte_count = 1;
-          if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
-          if(tty->readBlock(data, byte_count+2, timeout) <= 0) return MODBUS_ERROR;
-          memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
-          if(CRCerror(len) == 1)                      return MODBUS_CHECKSUM_ERROR;
-          return byte_count;
+          byte_count = 1;
+          break;
         case MaskWrite4XRegisters:
-          //byte_count = 6;
-          if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
-          if(tty->readBlock(data, byte_count+2, timeout) <= 0) return MODBUS_ERROR;
-          memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
-          if(CRCerror(len) == 1)                      return MODBUS_CHECKSUM_ERROR;
-          return byte_count;
+          byte_count = 6;
+          break;
         case ReadFifoQueue:
           if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
           if(tty->readBlock(&tel[len], 2, timeout) <= 0)       return MODBUS_ERROR;
-          //byte_count = tel[len]*256 + tel[len+1]; len += 2;
-          if(tty->select(timeout) == 0)                        return MODBUS_ERROR;
-          if(tty->readBlock(data, byte_count+2, timeout) <= 0) return MODBUS_ERROR;
-          memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
-          if(CRCerror(len) == 1)                      return MODBUS_CHECKSUM_ERROR;
-          return byte_count;
+          byte_count = tel[len]*256 + tel[len+1]; len += 2;
+          break;
         default:
           return MODBUS_ERROR;
       }
+      if(len + byte_count + 2 > maxtel)                        return MODBUS_ERROR;
+      if(tty->select(timeout) == 0)                            return MODBUS_ERROR;
+      if(tty->readBlock(data, byte_count+2, timeout) < byte_count+2) return MODBUS_ERROR;
+      memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
+      if(CRCerror(len) == 1)                                   return MODBUS_CHECKSUM_ERROR;
+      return byte_count;
     }
   }
   else return MODBUS_ERROR;
@@ -419,7 +440,7 @@ int rlModbus::readRequest(int *slave, int *function, unsigned char *data, int ti
     if(mode == MODBUS_ASCII)
     {
       //printf("modbus ascii\n");
-      for(i=0; i<maxtel; i++)
+      for(i=0; i<maxtel-1; i++) // Nestor: maxtel-1: tel[i] = '\0' escribia fuera de tel sin delimitador
       {
         ret = tty->select(timeout);
         if(ret == 0) return MODBUS_ERROR;
@@ -433,6 +454,9 @@ int rlModbus::readRequest(int *slave, int *function, unsigned char *data, int ti
       tel[i] = '\0';
       telptr = (unsigned char *) strchr((const char *) tel,':');
       if(telptr == NULL) return MODBUS_ERROR;
+      // Nestor: lo que sigue al final se lee como ceros, y los largos que manda el equipo se controlan (tlen)
+      memset(&tel[i], 0, maxtel - i);
+      int tlen = (int) strlen((const char *) telptr);
       len++;
       sscanf((char *) &telptr[len],"%02X",slave);       len += 2;
       sscanf((char *) &telptr[len],"%02X",function);    len += 2;
@@ -463,6 +487,7 @@ int rlModbus::readRequest(int *slave, int *function, unsigned char *data, int ti
           sscanf((char *) &telptr[len],"%02X",&val); data[2] = (unsigned char) val; len += 2;
           sscanf((char *) &telptr[len],"%02X",&val); data[3] = (unsigned char) val; len += 2;
           sscanf((char *) &telptr[len],"%02X",&byte_count);                         len += 2;
+          if(byte_count < 0 || len + 2*byte_count + 2 > tlen) return MODBUS_ERROR; // Nestor
           for(i=0; i<byte_count; i++)
           {
             sscanf((char *) &telptr[len],"%02X",&val); data[4+i] = (unsigned char) val; len += 2;
@@ -472,6 +497,7 @@ int rlModbus::readRequest(int *slave, int *function, unsigned char *data, int ti
         case ReadGeneralReference:
         case WriteGeneralReference:
           sscanf((char *) &telptr[len],"%02X",&byte_count);                           len += 2;
+          if(byte_count < 0 || len + 2*byte_count + 2 > tlen) return MODBUS_ERROR; // Nestor
           for(i=0; i<byte_count; i++)
           {
             sscanf((char *) &telptr[len],"%02X",&val); data[i] = (unsigned char) val; len += 2;
@@ -497,6 +523,7 @@ int rlModbus::readRequest(int *slave, int *function, unsigned char *data, int ti
           sscanf((char *) &telptr[len],"%02X",&val); data[6] = (unsigned char) val; len += 2;
           sscanf((char *) &telptr[len],"%02X",&val); data[7] = (unsigned char) val; len += 2;
           sscanf((char *) &telptr[len],"%02X",&byte_count);                         len += 2;
+          if(byte_count < 0 || len + 2*byte_count + 2 > tlen) return MODBUS_ERROR; // Nestor
           for(i=0; i<byte_count; i++)
           {
             sscanf((char *) &telptr[len],"%02X",&val); data[8+i] = (unsigned char) val; len += 2;
@@ -835,7 +862,7 @@ int rlModbus::readHoldingRegisters(int slave, int start_adr, int number_of_regis
   int j = 0;
   for(int i=0; i<ret; i+=2) 
   {
-    registers[j++] = ((data[i] * 256) & 0x0ff) + (data[i+1] & 0x0ff);
+    registers[j++] = (data[i] << 8) | data[i+1]; // Nestor: antes (data[i]*256) & 0x0ff perdia el byte alto
   }  
 
   return ret;
@@ -864,7 +891,7 @@ int rlModbus::readInputRegisters(int slave, int start_adr, int number_of_registe
   int j=0;
   for(int i=0; i<ret; i+=2) 
   {
-    registers[j++] = ((data[i] * 256) & 0x0ff) + (data[i+1] & 0x0ff);
+    registers[j++] = (data[i] << 8) | data[i+1]; // Nestor: antes (data[i]*256) & 0x0ff perdia el byte alto
   }  
 
   return ret;
@@ -929,7 +956,8 @@ int rlModbus::forceMultipleCoils(int slave, int coil_adr, int number_of_coils, u
   data[1] = coil_adr & 0x0ff;
   data[2] = (number_of_coils / 256) & 0x0ff;
   data[3] = number_of_coils & 0x0ff;
-  data[4] = (number_of_coils / 8) + 1;
+  if(number_of_coils < 1 || number_of_coils > 1968) return MODBUS_ERROR;
+  data[4] = (number_of_coils + 7) / 8; // Nestor: antes n/8+1 (un byte de mas con 8, 16... coils)
   int i;
   for(i=0; i<data[4]; i++) data[5+i] = coils[i];
   ret = write(slave, ForceMultipleCoils, data, 5+i);
@@ -956,6 +984,7 @@ int rlModbus::presetMultipleRegisters(int slave, int start_adr, int number_of_re
   data[1] = start_adr & 0x0ff;
   data[2] = (number_of_registers / 256) & 0x0ff;
   data[3] = number_of_registers & 0x0ff;
+  if(number_of_registers < 1 || number_of_registers > 123) return MODBUS_ERROR; // Nestor: data[256]
   data[4] = (number_of_registers * 2) & 0x0ff;
   int j=5;
   for(int i=0; i<number_of_registers; i++)

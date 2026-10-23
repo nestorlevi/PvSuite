@@ -71,7 +71,7 @@ int rlwthread_create(pthread_t *tid, const pthread_attr_t *attr,
   else               return 0;
 #else
   int ret = pthread_create(tid,attr,func,arg);
-  pthread_detach(*tid);
+  if(ret == 0) pthread_detach(*tid);   // Nestor: si fallo, *tid no tiene un hilo
   return ret;
 #endif
 }

@@ -30,6 +30,9 @@ HEADERS  = rllib.h                   \
            rlserial.h                \
            rlmodbus.h                \
            rlmodbusclient.h          \
+           rltag.h                   \
+           rltagdef.h                \
+           rldaemonstatus.h          \
            rl3964r.h                 \
            rlsiemenstcp.h            \
            rlsiemenstcpclient.h      \
@@ -79,6 +82,8 @@ SOURCES  = rlspawn.cpp                 \
            rlserial.cpp                \
            rlmodbus.cpp                \
            rlmodbusclient.cpp          \
+           rltag.cpp                   \
+           rltagdef.cpp                \
            rl3964r.cpp                 \
            rlsiemenstcp.cpp            \
            rlsiemenstcpclient.cpp      \

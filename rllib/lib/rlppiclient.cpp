@@ -56,7 +56,7 @@ int rlPPIClient::write(int slave, int area, int dbnum, int start, int len, const
   buf[6] = len / 256;
   buf[7] = len & 0x0ff;
   memcpy(&buf[8],data,len);
-  rlMailbox::write((void *) buf,len+8);
+  if(rlMailbox::write((void *) buf,len+8) < 0) return -1; // Nestor: antes devolvia 0 aunque fallara
   return 0;
 }
     
@@ -64,7 +64,7 @@ int rlPPIClient::writeFloat(int slave, int area, int dbnum, int start, int len, 
 {
   SWAP swap;
   int i;
-  unsigned char buf[BUFSIZE];
+  unsigned char buf[BUFSIZE+4]; // Nestor: +4: los bucles de a 2 o 4 bytes se pasan si len no es multiplo
   
   if(len < 0)       return -1;
   if(len > BUFSIZE) return -1;
@@ -99,7 +99,7 @@ int rlPPIClient::writeDword(int slave, int area, int dbnum, int start, int len, 
 {
   SWAP swap;
   int i;
-  unsigned char buf[BUFSIZE];
+  unsigned char buf[BUFSIZE+4]; // Nestor: +4: los bucles de a 2 o 4 bytes se pasan si len no es multiplo
   
   if(len < 0)       return -1;
   if(len > BUFSIZE) return -1;
@@ -134,7 +134,7 @@ int rlPPIClient::writeShort(int slave, int area, int dbnum, int start, int len, 
 {
   SWAP swap;
   int i;
-  unsigned char buf[BUFSIZE];
+  unsigned char buf[BUFSIZE+4]; // Nestor: +4: los bucles de a 2 o 4 bytes se pasan si len no es multiplo
   
   if(len < 0)       return -1;
   if(len > BUFSIZE) return -1;
@@ -165,7 +165,7 @@ int rlPPIClient::writeUDword(int slave, int area, int dbnum, int start, int len,
 {
   SWAP swap;
   int i;
-  unsigned char buf[BUFSIZE];
+  unsigned char buf[BUFSIZE+4]; // Nestor: +4: los bucles de a 2 o 4 bytes se pasan si len no es multiplo
   
   if(len < 0)       return -1;
   if(len > BUFSIZE) return -1;
@@ -200,7 +200,7 @@ int rlPPIClient::writeUShort(int slave, int area, int dbnum, int start, int len,
 {
   SWAP swap;
   int i;
-  unsigned char buf[BUFSIZE];
+  unsigned char buf[BUFSIZE+4]; // Nestor: +4: los bucles de a 2 o 4 bytes se pasan si len no es multiplo
   
   if(len < 0)       return -1;
   if(len > BUFSIZE) return -1;

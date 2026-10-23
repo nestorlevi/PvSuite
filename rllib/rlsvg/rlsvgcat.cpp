@@ -222,7 +222,7 @@ int rlSvgCat::outValue(int i)
     }
     else if(line[i] == '\\' && line[i+1]=='\n') //may2013 handle ...
     {
-      if(fgets(line,sizeof(line)-1,(FILE *) fin) == 0) exit(0);
+      if(fgets(line,256*256-1,(FILE *) fin) == 0) exit(0);
       i = 0; // ... line spanning over more than 1 line
     }
     else
@@ -254,7 +254,7 @@ void rlSvgCat::catline(char *line_in)
     {
       fprintf(out,"%s",&line[i]);
       if(strstr(&line[i],">") != NULL) return;
-      while(fgets(line,sizeof(line)-1,(FILE *) fin) != 0)
+      while(fgets(line,256*256-1,(FILE *) fin) != 0)
       {
         fprintf(out,"%s",line);
         if(strstr(line,">") != NULL) return;

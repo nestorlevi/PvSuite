@@ -49,7 +49,7 @@ void rlInterpreter::copyStringParam(char *destination, int index)
   // find " number index*2
   while(line[i] != '\0')
   {
-    if(line[i] == '\"' && (i > 0 || line[i-1] != '\\')) iparen++;
+    if(line[i] == '\"') iparen++;   // Nestor: antes (i > 0 || line[i-1] != '\\'): con i == 0 leia line[-1]; para i > 0 daba siempre true
     if(iparen == (2*index + 1))
     {
       ndest = 0;

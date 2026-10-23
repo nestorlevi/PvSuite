@@ -17,7 +17,9 @@
 #include "rlstring.h"
 #include "rlcutil.h"
 #include "rlthread.h"
+#ifndef RLWIN32
 #include <unistd.h>
+#endif
 #include <stdarg.h>
 
 rlCommandlineInterface::rlCommandlineInterface()

@@ -79,4 +79,8 @@ private:
 #endif
 };
 
+//! Nestor: crea las carpetas que faltan de la ruta de un archivo (memoria compartida, mailbox).
+//! "automation/PLC1.shm" -> crea "automation". Devuelve 0.
+int rlMkdirParents(const char *filepath);
+
 #endif

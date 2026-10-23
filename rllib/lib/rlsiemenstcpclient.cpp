@@ -18,6 +18,7 @@
  *                                                                         *
  ***************************************************************************/
 #include <string.h>
+#include <cmath>
 #include "rlsiemenstcpclient.h"
 #include "rlsiemenstcp.h"
 #define BUFSIZE 2048
@@ -44,12 +45,14 @@ rlSiemensTCPClient::~rlSiemensTCPClient()
 
 int rlSiemensTCPClient::write(int slave, int org, int dbnr, int start_adr, int len, const unsigned char *inbuf, int function=rlSiemensTCP::WriteByte)
 {
-  unsigned char buf[BUFSIZE+8];
+  unsigned char buf[BUFSIZE+9];
   int len_byte;
 
   if(len <= 0)     return -1;
+  if(len > BUFSIZE) return -1;   // Nestor: buf tiene BUFSIZE+8 y los datos empiezan en buf[9]
   if(slave < 0)    return -1;
   if(slave >= 256) return -1;
+  if(start_adr < 0 || start_adr > 0x0ffff) return -1; // va en 2 bytes del mailbox (un bit: byte*8+bit)
   len_byte = len;
   buf[0] = slave;
   buf[1] = org;
@@ -61,7 +64,7 @@ int rlSiemensTCPClient::write(int slave, int org, int dbnr, int start_adr, int l
   buf[7] = len & 0x0ff;
   buf[8] = function;
   memcpy(&buf[9],inbuf,len_byte);
-  rlMailbox::write((void *) buf, len_byte + 9);
+  if(rlMailbox::write((void *) buf, len_byte + 9) < 0) return -1; // Nestor: antes devolvia 0 aunque fallara
   return 0;
 }
 
@@ -356,4 +359,69 @@ unsigned int rlSiemensTCPClient::UShort(int index)
     swap.b[1] = buf[2*index+1];  
   }    
   return swap.us[0];
+}
+
+// Nestor: tags por nombre (rltag.h)
+int rlSiemensTCPClient::getBool(const rlTag &tag)
+{
+  return rlTagGetBool(this, tag);
+}
+
+int rlSiemensTCPClient::getInt(const rlTag &tag)
+{
+  return rlTagGetInt(this, tag);
+}
+
+unsigned int rlSiemensTCPClient::getUInt(const rlTag &tag)
+{
+  return rlTagGetUInt(this, tag);
+}
+
+double rlSiemensTCPClient::getReal(const rlTag &tag)
+{
+  return rlTagGetValue(this, tag);
+}
+
+int rlSiemensTCPClient::quality(const rlTag &tag)
+{
+  return rlTagQuality(this, tag);
+}
+
+int rlSiemensTCPClient::daemonAlive(const rlTag &ciclo, int seconds)
+{
+  return rlTagAlive(this, ciclo, seconds);
+}
+
+int rlSiemensTCPClient::setBool(const rlTag &tag, int value)
+{
+  return writeTag(tag, value ? 1 : 0);
+}
+
+int rlSiemensTCPClient::setInt(const rlTag &tag, int value)
+{
+  return writeTag(tag, value);
+}
+
+int rlSiemensTCPClient::setReal(const rlTag &tag, double value)
+{
+  return writeTag(tag, rlTagUnscale(tag, value));
+}
+
+int rlSiemensTCPClient::writeTag(const rlTag &tag, double raw)
+{
+  unsigned char b[8];
+  if(tag.rw == 0) return -1;
+  // Nestor: fuera del rango del tipo se desbordaba en silencio
+  if(!std::isfinite(raw) || (tag.type != RLTAG_BOOL && !rlTagInRange(tag, raw))) return -1;
+  if(tag.type == RLTAG_BOOL && tag.bit >= 0)
+  {
+    // Nestor: un bit de un entero (rlTagBit, PLC1:Estado.3): S7 es big endian, el bit n esta en el byte
+    // size-1-n/8 del valor. Se escriben bits de enteros de 8 y 16 bits; un bool propio (DBX4.3) tiene size 1.
+    if(tag.size > 2 || tag.bit >= tag.size * 8) return -1;
+    b[0] = (raw != 0) ? 1 : 0;
+    return writeBit(tag.slave, tag.area, tag.dbnum, tag.address + (tag.size - 1 - tag.bit / 8), tag.bit % 8, 1, b);
+  }
+  // los bytes ya quedan en el orden del PLC (big endian)
+  if(rlTagEncode(tag, raw, b) < 0) return -1;
+  return write(tag.slave, tag.area, tag.dbnum, tag.address, tag.size, b, rlSiemensTCP::WriteByte);
 }

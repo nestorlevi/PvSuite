@@ -84,6 +84,7 @@ static void *receiverThread(void *arg)
       d->dprintf("receiverThread: DLE WANT_TO_SEND\n");
       d->send();
       d->state = IDLE;
+      send_retry = 0;
       d->receiver.incrementSemaphore();
     }
     else if(c==NAK)
@@ -93,7 +94,9 @@ static void *receiverThread(void *arg)
     else if(d->state==WANT_TO_SEND)
     {
       if(send_retry < 1)
-      {
+      { // Nestor: la primera vuelta sin respuesta solo cuenta; antes nunca incrementaba y write() quedaba
+        // esperando para siempre si el otro equipo no contestaba
+        send_retry++;
       }
       else if(send_retry < 3)
       {
@@ -254,7 +257,7 @@ int rl3964R::receive()
   bcc = 0;
   i = received_bcc = 0;
   tel_receive[i++] = c =  STX;
-  while(c > 0 && i < (int) sizeof(tel_receive))
+  while(c != -1 && i < (int) sizeof(tel_receive)) // Nestor: antes c > 0: un byte 0x00 en los datos cortaba el telegrama
   {
     ret = tty.select(1000);
     if(ret == 1) c = tty.readChar();
@@ -270,6 +273,7 @@ int rl3964R::receive()
       case -2:
         return -1;
       case DLE:
+        if(i + 2 > (int) sizeof(tel_receive)) return -1;   // Nestor: aca se guardan hasta 2 bytes
         bcc = bcc ^ c;
         c2 = tty.readChar();
         dprintf(" %x\n",c2);
@@ -295,6 +299,7 @@ int rl3964R::receive()
   }
   tel_receive_length = i;
 
+  if(c != -1) { tty.writeChar(NAK); return -1; }   // Nestor: se lleno el buffer sin DLE ETX
   if(bcc == received_bcc)
   {
     tty.writeChar(DLE);

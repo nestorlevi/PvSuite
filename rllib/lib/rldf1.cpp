@@ -36,9 +36,9 @@ mail:arkalis.e@gmail.com
 
 
 #ifdef DF1_DEBUG
-#define DBGPRINTF(x...) {printf(x);fflush(stdout);}
+#define DBGPRINTF(...) {printf(__VA_ARGS__);fflush(stdout);}
 #else
-#define DBGPRINTF(x...)
+#define DBGPRINTF(...)
 #endif
 /*
     df1Buffer
@@ -245,9 +245,9 @@ int rlDF1::cmdSetCPUMode(unsigned char destination, unsigned char mode)
     cdat[1]=mode;
     int ret = sendCommand( destination, 0x0F, 0x00, cdat, 2);
     if (ret==retSUCCESS) {
-        unsigned char dest,cmd,sts,len;
+        unsigned char dest,cmd,sts=0,len;
         ret = receiveAnswer( dest, cmd, sts, cdat, len);
-        if (sts!=0) {
+        if (ret==retSUCCESS && sts!=0) {
             printf("\nSet CPU Mode Execution Error! STS:%02X",sts);
         }
     }
@@ -281,19 +281,20 @@ int  rlDF1::cmdLogicalRead( unsigned char destination, unsigned char nsize, unsi
     cdat[5]=sadr;
     int ret = sendCommand( destination , 0x0F, 0x00, cdat, 6);
     if (ret==retSUCCESS) {
-        unsigned char dest,cmd,sts,len;
+        unsigned char dest,cmd,sts=0,len;
         ret = receiveAnswer( dest, cmd, sts, cdat, len);
         if ( ret == retSUCCESS ) {
+            if (len > nsize) len = nsize;   // Nestor: no mas de lo pedido (buffer es de nsize bytes)
             for (int i=0;i<len;i++) buffer[i]=cdat[i];
             ret = len;
         }
-        if (sts!=0) ret = retERROR_STS;
+        if (ret>=0 && sts!=0) ret = retERROR_STS;
     }
     return ret;
 }
 int  rlDF1::cmdLogicalWrite( unsigned char destination, unsigned char nsize, unsigned char filetype, unsigned char filenum, unsigned char adr, unsigned char sadr, unsigned char *buffer)
 {
-    unsigned char cdat[256];
+    unsigned char cdat[6+256];   // Nestor: 6 de encabezado + nsize (hasta 255): con [256] desbordaba
     cdat[0]=0xAA;
     cdat[1]=nsize;
     cdat[2]=filenum;
@@ -303,9 +304,10 @@ int  rlDF1::cmdLogicalWrite( unsigned char destination, unsigned char nsize, uns
     for (int i=0;i<nsize;i++) cdat[6+i] = buffer[i];
     int ret = sendCommand( destination, 0x0F, 0x00, cdat, 6+nsize);
     if (ret==retSUCCESS) {
-        unsigned char dest,cmd,sts,len;
+        unsigned char dest,cmd,sts=0,len;
         ret = receiveAnswer( dest, cmd, sts, cdat, len);
         if ( ret == retSUCCESS ) {
+            if (len > nsize) len = nsize;   // Nestor: no mas que el buffer del llamador
             for ( int i=0;i<len;i++) buffer[i] = cdat[i];
             ret = len;
         }
@@ -432,6 +434,11 @@ int rlDF1::receiveAnswer( unsigned char &destination, unsigned char &cmd, unsign
             crc += ( (unsigned short)rxc )<<8;
             if ( crc != computeCRC( msg.data(), msg.length() ) ) {
                 DBGPRINTF(" [CRC ERROR] ");
+                sendNAC();
+                response = NAC;
+                continue;
+            }
+            if ( msg.length() < 6 ) {   // Nestor: con menos, len = length()-6 daba la vuelta (250..255)
                 sendNAC();
                 response = NAC;
                 continue;

@@ -16,6 +16,7 @@
 #include <string.h> 
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -38,7 +39,7 @@ int find(const char *szDir, const char *szFunction, const char *szPattern)
 {
    WIN32_FIND_DATAA ffd;
    HANDLE hFind = INVALID_HANDLE_VALUE;
-   char buf[strlen(szDir) + 4];
+   std::vector<char> bufv(strlen(szDir) + 4); char *buf = bufv.data(); // Nestor: sin VLA (MSVC)
    if(szDir[0] == '/') { strcpy(buf,&szDir[1]); strcat(buf,"\\*"); }
    else                { strcpy(buf,szDir);     strcat(buf,"\\*"); }
    
@@ -50,7 +51,7 @@ int find(const char *szDir, const char *szFunction, const char *szPattern)
       {
         if(ffd.cFileName[0] != '.')
         {  
-          char path[strlen(szDir) + strlen(ffd.cFileName) + 1];
+          std::vector<char> pathv(strlen(szDir) + strlen(ffd.cFileName) + 2); char *path = pathv.data(); // Nestor: sin VLA (MSVC); +2 = separador + terminador
           strcpy(path, szDir);
           strcat(path,"\\");
           strcat(path,ffd.cFileName);
@@ -64,7 +65,7 @@ int find(const char *szDir, const char *szFunction, const char *szPattern)
       }
       else if(*szPattern=='\0' || strstr(ffd.cFileName,szPattern) != NULL)
       {
-        char path[strlen(szDir) + strlen(ffd.cFileName) + 1];
+        std::vector<char> pathv(strlen(szDir) + strlen(ffd.cFileName) + 2); char *path = pathv.data(); // Nestor: sin VLA (MSVC); +2 = separador + terminador
         strcpy(path, szDir);
         strcat(path,"\\");
         strcat(path,ffd.cFileName);
@@ -82,7 +83,7 @@ int find(const char *szDir, const char *szFunction, const char *szPattern)
 #include <dirent.h>
 int find(const char *szDir, const char *szFunction, const char *szPattern)
 {
-   char buf[strlen(szDir) + 4];
+   std::vector<char> bufv(strlen(szDir) + 4); char *buf = bufv.data(); // Nestor: sin VLA (MSVC)
    strcpy(buf,szDir); strcat(buf,"\\*");
 
    DIR *dir = opendir(szDir);
@@ -95,7 +96,7 @@ int find(const char *szDir, const char *szFunction, const char *szPattern)
       {
 	      if(de->d_name[0] != '.')
 	      {
-          char path[strlen(szDir) + strlen(de->d_name) + 1];
+          std::vector<char> pathv(strlen(szDir) + strlen(de->d_name) + 2); char *path = pathv.data(); // Nestor: +2 = separador + terminador
           strcpy(path, szDir);
           strcat(path,"/");
           strcat(path,de->d_name);
@@ -105,7 +106,7 @@ int find(const char *szDir, const char *szFunction, const char *szPattern)
       }
       else
       {
-        char path[strlen(szDir) + strlen(de->d_name) + 1];
+        std::vector<char> pathv(strlen(szDir) + strlen(de->d_name) + 2); char *path = pathv.data(); // Nestor: +2 = separador + terminador
         strcpy(path, szDir);
         strcat(path,"/");
         strcat(path,de->d_name);
@@ -136,7 +137,7 @@ int main(int argc, char **argv)
       return (-1);
    }
 
-   char mypattern[strlen(argv[3])];
+   std::vector<char> mypatternv(strlen(argv[3]) + 1); char *mypattern = mypatternv.data(); // Nestor: sin VLA (MSVC)
    char       *dest = &mypattern[0];
    const char *cptr = argv[3];
    while(*cptr != '\0')

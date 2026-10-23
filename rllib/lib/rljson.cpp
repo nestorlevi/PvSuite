@@ -176,7 +176,7 @@ int rlJSON::print(FILE *fout, rlJSONrecord *record, const char *indent)
   return 0;
 }
 
-#define TESTING
+//#define TESTING   // Nestor: una biblioteca no trae main() (pvdevelop enlaza rllib)
 #ifdef TESTING
 int main()
 {

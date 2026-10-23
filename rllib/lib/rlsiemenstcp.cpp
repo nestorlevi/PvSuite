@@ -23,6 +23,25 @@
 #include "rlcutil.h"
 #include <stdio.h>
 #include <string.h>
+#include <map>
+#include <mutex>
+#include <chrono>
+
+// Nestor: ultimo intento de conexion por objeto: con el PLC apagado doConnect hace 3 intentos con el
+// timeout de rlSocket cada uno, y antes se repetia en cada bloque del ciclo
+static bool reconnectCheck(const void *who, bool done)
+{
+  static std::mutex m;
+  static std::map<const void *, long long> last;
+  long long now = (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  std::lock_guard<std::mutex> lock(m);
+  std::map<const void *, long long>::iterator it = last.find(who);
+  if(done) { last[who] = now; return true; }   // fin del intento: el plazo cuenta desde aca (el connect puede tardar)
+  return !(it != last.end() && now - it->second < 3000);
+}
+
+static bool reconnectAllowed(const void *who) { return reconnectCheck(who, false); }
+static void reconnectDone(const void *who)    { reconnectCheck(who, true); }
 #define TIMEOUT 2000
 #define ISO_PORT 102
 
@@ -144,6 +163,8 @@ void rlSiemensTCP::doConnect()
       if(ret <= 0) { rlSocket::disconnect(); continue; }
       length = ih.length_high*256 + ih.length_low;
       rlDebugPrintf("read buf length=%d\n",length);
+      // Nestor: el largo lo manda el otro extremo: sin este control desbordaba buf[512] en la pila
+      if(length <= (int) sizeof(ih) || length - (int) sizeof(ih) > (int) sizeof(buf)) { rlSocket::disconnect(); continue; }
       ret = rlSocket::read(buf,length-sizeof(ih),TIMEOUT);
       rlDebugPrintf("read buf ret=%d\n",ret);
       if(ret <= 0) { rlSocket::disconnect(); continue; }
@@ -155,11 +176,13 @@ void rlSiemensTCP::doConnect()
           rlSocket::write(connect_block2,sizeof(connect_block2));
           ret = rlSocket::read(&ih,sizeof(ih),TIMEOUT);
           rlDebugPrintf("read2 ih ret=%d\n",ret);
+          if(ret <= 0) { rlSocket::disconnect(); break; }
           length = ih.length_high*256 + ih.length_low;
           rlDebugPrintf("read2 buf length=%d\n",length);
+          if(length <= (int) sizeof(ih) || length - (int) sizeof(ih) > (int) sizeof(buf)) { rlSocket::disconnect(); break; }
           ret = rlSocket::read(buf,length-sizeof(ih),TIMEOUT);
           rlDebugPrintf("read2 buf ret=%d\n",ret);
-          if(ret <= 0) { rlSocket::disconnect(); continue; }
+          if(ret <= 0) { rlSocket::disconnect(); break; }
           if(ret > 0) 
           {
             rlDebugPrintf("connect success\n");
@@ -212,7 +235,7 @@ int rlSiemensTCP::getOrg(int org)
 int rlSiemensTCP::write(int org, int dbnr, int start_adr, int len, const unsigned char *buf, int function)
 {
   int i,ibuf,ret,len_byte,length;
-  if(rlSocket::isConnected() == 0) doConnect();
+  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: 3 s entre intentos
   if(rlSocket::isConnected() == 0) return -1;
 
   len_byte = len;
@@ -325,8 +348,8 @@ int rlSiemensTCP::write(int org, int dbnr, int start_adr, int len, const unsigne
       pdu[i++] = 0x20;
       for(ibuf=0; ibuf<len_byte; ibuf++)
       {
+        if(i >= (int) sizeof(pdu)) return -1;   // Nestor: antes se miraba despues de escribir
         pdu[i++] = buf[ibuf];
-        if(i > (int) sizeof(pdu)) return -1;
       }
     }  
     ret = write_iso(pdu,i);
@@ -367,6 +390,7 @@ int rlSiemensTCP::write(int org, int dbnr, int start_adr, int len, const unsigne
 int rlSiemensTCP::write_bit(int& i, int org, int dbnr, int start_adr, int len, const unsigned char *buf)
 {
   int j;
+  if(len < 1 || i + 5 + 18 * len > (int) sizeof(pdu)) return -1;   // Nestor: 12 + 6 bytes por bit
   pdu[i++] = 14 + 12 * (len - 1);
   pdu[i++] = 0x00;
   pdu[i++] = 6 * len - 1;
@@ -425,8 +449,8 @@ int rlSiemensTCP::write_byte(int& i, int org, int dbnr, int start_adr, int len, 
   pdu[i++] = (len * 8) & 0xff;
   for(int ibuf=0; ibuf<len; ibuf++)
   {
+    if(i >= (int) sizeof(pdu)) return -1;   // Nestor: antes se miraba despues de escribir
     pdu[i++] = buf[ibuf];
-    if(i > (int) sizeof(pdu)) return -1;
   }
   return i;
 }
@@ -435,7 +459,7 @@ int rlSiemensTCP::fetch(int org, int dbnr, int start_adr, int len, unsigned char
 {
   int i,ret,len_byte,length;
 
-  if(rlSocket::isConnected() == 0) doConnect();
+  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: 3 s entre intentos
   if(rlSocket::isConnected() == 0) return -1;
 
   len_byte = len;
@@ -563,11 +587,11 @@ int rlSiemensTCP::read_iso(unsigned char *buf)
   int i,ret,len;
 
   ret = rlSocket::read(&ih,sizeof(ih),TIMEOUT);
-  if(ret < 0)                
+  if(ret <= 0) /* Nestor: 0 = timeout, antes se seguia con datos viejos */                
   { 
     rlDebugPrintf("read_iso:failure to read iso header ret=%d -> disconnecting\n", ret);
     rlSocket::disconnect(); 
-    return ret; 
+    return -1; 
   }
   if(ih.version != 3)
   { 
@@ -589,11 +613,11 @@ int rlSiemensTCP::read_iso(unsigned char *buf)
     return -1;  
   }
   ret = rlSocket::read(buf,len,TIMEOUT);
-  if(ret < 0)                 
+  if(ret <= 0) /* Nestor: 0 = timeout, antes se seguia con datos viejos */                 
   { 
     rlDebugPrintf("read_iso:read buf got timeout -> disconnecting\n");
     rlSocket::disconnect(); 
-    return ret; 
+    return -1; 
   }
   if(rlDebugPrintfState != 0)
   {
@@ -609,7 +633,7 @@ int rlSiemensTCP::write_iso(unsigned char *buf, int len)
   int i,ret;
 
   if(len > (int) sizeof(pdu)) return -1;
-  if(rlSocket::isConnected() == 0) doConnect();
+  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: 3 s entre intentos
   if(rlSocket::isConnected() == 0) return -1;
  
   // speedup siemens communication as suggested by Vincent Segui Pascual
@@ -620,7 +644,7 @@ int rlSiemensTCP::write_iso(unsigned char *buf, int len)
   ih.length_high = (len+4) / 256;
   ih.length_low  = (len+4) & 0x0ff;
   memcpy(total_buf,              &ih, sizeof(ih));
-  memcpy(total_buf + sizeof(ih), buf, sizeof(ih)+len);
+  memcpy(total_buf + sizeof(ih), buf, len);   // Nestor: antes sizeof(ih)+len (4 bytes de mas)
   ret = rlSocket::write(total_buf,    sizeof(ih)+len);
   if(ret < 0)
   { 

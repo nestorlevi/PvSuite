@@ -22,7 +22,7 @@ rlOpcXmlDa::rlOpcXmlDa(const char *mailbox, const char *shared_memory, long shar
 {
   mbx = new rlMailbox(mailbox);
   shm = new rlSharedMemory(shared_memory,shared_memory_size);
-  shmheader = (SHM_HEADER *) shm->getUserAdr();
+  shmheader = (shm->status == rlSharedMemory::OK) ? (SHM_HEADER *) shm->getUserAdr() : NULL; // Nestor: si no se abrio, la direccion no vale
   shmvalues = ((const char *)shmheader) + sizeof(SHM_HEADER);
 }
 

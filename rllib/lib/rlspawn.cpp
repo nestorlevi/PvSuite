@@ -18,6 +18,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 #ifndef RLWIN32
 #include <unistd.h>
 #include <sys/time.h>
@@ -187,8 +188,11 @@ int rlSpawn::spawn(const char *command)
     saAttr.lpSecurityDescriptor = NULL;
 
     // Convert command to wide char
-    wchar_t wcommand[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, command, -1, wcommand, MAX_PATH);
+    // Nestor: el comando entero (antes wchar_t[MAX_PATH]: con mas de 259 caracteres quedaba sin terminar)
+    int nw = MultiByteToWideChar(CP_ACP, 0, command, -1, NULL, 0);
+    std::vector<wchar_t> wbuf((nw > 0) ? nw : 1, L'\0');
+    if(nw > 0) MultiByteToWideChar(CP_ACP, 0, command, -1, &wbuf[0], nw);
+    wchar_t *wcommand = &wbuf[0];
 
     if(!CreatePipe(&fromChildRD, &fromChildWR, &saAttr, 0))
     {

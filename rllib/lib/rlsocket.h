@@ -39,6 +39,8 @@ you have to call this function before you use any sockets
 #define wsa rlwsa
 int rlwsa();
 int rlScoketWrite(int *socket, const void *buf, int len);
+//! Nestor: tiempo maximo de rlSocket::connect() en ms (por omision 5000; <= 0 = sin limite, como antes)
+void rlSocketSetConnectTimeout(int ms);
 
 /*! <pre>
 class for encapsulating TCP/IP socket calls

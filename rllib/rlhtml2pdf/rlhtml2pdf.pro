@@ -27,3 +27,8 @@ win32:INCLUDEPATH += ../lib
 win32:LIBS        += -lws2_32 -ladvapi32 -lpthread
 }
 
+win32-msvc* {   # Nestor: MSVC (sin pthread: rllib usa hilos de Windows)
+INCLUDEPATH       += ../lib
+LIBS              += -lws2_32 -ladvapi32
+}
+

@@ -13,6 +13,7 @@ unix:QMAKE_LFLAGS += -pthread -lpthread
 macx:DEFINES      += unix
 macx:DEFINES      += PVMAC
 
+QWT_OUT_ROOT       = $${PWD}/             # librllib.so junto a las fuentes (ahi la buscan los .pro), como lib_staticlib.pro
 DESTDIR           = $${QWT_OUT_ROOT}      #Here Nestor
 
 HEADERS  = rllib.h                     \
@@ -36,6 +37,9 @@ HEADERS  = rllib.h                     \
            rlserial.h                  \
            rlmodbus.h                  \
            rlmodbusclient.h            \
+           rltag.h                     \
+           rltagdef.h                  \
+           rldaemonstatus.h            \
            rl3964r.h                   \
            rlsiemenstcp.h              \
            rlsiemenstcpclient.h        \
@@ -85,6 +89,8 @@ SOURCES  = rlspawn.cpp                   \
            rlserial.cpp                  \
            rlmodbus.cpp                  \
            rlmodbusclient.cpp            \
+           rltag.cpp                     \
+           rltagdef.cpp                  \
            rl3964r.cpp                   \
            rlsiemenstcp.cpp              \
            rlsiemenstcpclient.cpp        \

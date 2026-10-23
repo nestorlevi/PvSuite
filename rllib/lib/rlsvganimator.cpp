@@ -186,7 +186,7 @@ int rlSvgAnimator::read(const char *infile, rlIniFile *inifile)
   rlDebugPrintf("rlSvgAnimator step=1 infile=%s\n",infile);
   if(use_stdout == 0) 
   {
-    sprintf(command,"rlsvgcat %s",infile);
+    snprintf(command,sizeof(command),"rlsvgcat \"%s\"",infile); // Nestor: comillas (rutas con espacios)
     ret = rlsvg.spawn(command);
     if(ret < 0) return -1;
   }
@@ -207,14 +207,14 @@ int rlSvgAnimator::read(const char *infile, rlIniFile *inifile)
     }
     else
     {
-      sprintf(command,"/usr/bin/rlsvgcat %s",infile);
+      snprintf(command,sizeof(command),"/usr/bin/rlsvgcat \"%s\"",infile);
       ret = system(command);
       if(ret == -1) return -1;
       if(inifile != NULL) 
       {
         char outfile[80];
         sprintf(outfile,"PVTMP%d.svg",*s);
-        sprintf(command,"/usr/bin/rlsvgcat %s %s",infile,outfile);
+        snprintf(command,sizeof(command),"/usr/bin/rlsvgcat \"%s\" \"%s\"",infile,outfile);
         ret = system(command);
         if(ret == -1) return -1;
         fileFillIniFile(outfile, inifile);
@@ -241,9 +241,12 @@ int rlSvgAnimator::read(const char *infile, rlIniFile *inifile)
 
   inifileState = 0;
   inifileCount = 0;
-  if(s==NULL) sprintf(filename,"PVTEMP%s",infile);
-  else        sprintf(filename,"PVTEMP%d%s",*s,infile);
-  sprintf(cmd,"rlsvgcat %s %s",infile,filename);
+  // Nestor: el temporal sin la ruta de infile ("PVTEMP5img/tanque.svg" estaba en una carpeta que no
+  // existe y el SVG no se cargaba) y el comando con comillas (rutas con espacios)
+  if(s==NULL) snprintf(filename,sizeof(filename),"PVTEMP%s",infile);
+  else        snprintf(filename,sizeof(filename),"PVTEMP%d%s",*s,infile);
+  for(cptr = &filename[6]; *cptr != '\0'; cptr++) if(*cptr == '/' || *cptr == '\\' || *cptr == ':') *cptr = '_';
+  if(snprintf(cmd,sizeof(cmd),"rlsvgcat \"%s\" \"%s\"",infile,filename) >= (int) sizeof(cmd)) return -1;
   ret = system(cmd);
   if(ret < 0) return -1;
   fin = fopen(filename,"r");
@@ -262,6 +265,7 @@ int rlSvgAnimator::read(const char *infile, rlIniFile *inifile)
   }
   sprintf(command,"\n<svgend></svgend>\n");
   tcpsend(command, strlen(command));;
+  fclose(fin);        // Nestor: sin esto el archivo quedaba abierto y en Windows unlink no lo borraba
   unlink(filename);
   return 0;
 #endif

@@ -47,6 +47,8 @@ int  WSAAPI getnameinfo(const struct sockaddr*,socklen_t,char*,DWORD, char*,DWOR
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "unistd.h"
+#include <fcntl.h>
+#include <errno.h>
 #endif
 
 #ifdef __VMS
@@ -90,6 +92,76 @@ int rlwsa()
   }
 #endif
   return 0;
+}
+
+// Nestor: en macOS MSG_NOSIGNAL no existe: sin SO_NOSIGPIPE, escribir en un socket que el otro
+// extremo cerro mata el proceso con SIGPIPE (un PLC que se reinicia tiraba el daemon)
+static void rlNoSigPipe(int sock)
+{
+#ifdef SO_NOSIGPIPE
+  int one = 1;
+  if(sock >= 0) setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+#else
+  (void) sock;
+#endif
+}
+
+// Nestor: tiempo maximo de connect() (ms); <= 0 = sin limite (como antes). Con el equipo apagado un
+// connect bloqueante tarda unos 21 s en Windows y hasta unos 2 min en Linux, con el ciclo del daemon detenido
+static int rlConnectTimeoutMs = 5000;
+
+void rlSocketSetConnectTimeout(int ms)
+{
+  rlConnectTimeoutMs = ms;
+}
+
+static int rlConnectWithTimeout(int sock, const struct sockaddr *a, int alen)
+{
+  int ms = rlConnectTimeoutMs;
+  if(ms <= 0) return ::connect(sock, a, alen);
+#ifdef RLWIN32
+  u_long nb = 1;
+  ioctlsocket(sock, FIONBIO, &nb);
+#else
+  int flags = fcntl(sock, F_GETFL, 0);
+  fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+#endif
+  int ret = ::connect(sock, a, alen);
+  if(ret != 0)
+  {
+#ifdef RLWIN32
+    int pending = (WSAGetLastError() == WSAEWOULDBLOCK);
+#else
+    int pending = (errno == EINPROGRESS);
+#endif
+    ret = -1;
+    if(pending)
+    {
+      fd_set wset, eset;
+      struct timeval tv;
+      FD_ZERO(&wset); FD_SET(sock, &wset);
+      FD_ZERO(&eset); FD_SET(sock, &eset);
+      tv.tv_sec  = ms / 1000;
+      tv.tv_usec = (ms % 1000) * 1000;
+      if(::select(sock + 1, NULL, &wset, &eset, &tv) > 0)
+      {
+        int err = 0;
+#ifdef RLWIN32
+        int len = sizeof(err);
+#else
+        socklen_t len = sizeof(err);
+#endif
+        if(getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *) &err, &len) == 0 && err == 0) ret = 0;
+      }
+    }
+  }
+#ifdef RLWIN32
+  nb = 0;
+  ioctlsocket(sock, FIONBIO, &nb);
+#else
+  fcntl(sock, F_SETFL, flags);
+#endif
+  return ret;
 }
 
 int rlScoketWrite(int *socket, const void *buf, int len)
@@ -387,6 +459,7 @@ bind:
       if(os < 0) return ACCEPT_ERR;
       s = accept(os, (struct sockaddr *) &sockaddr[0], &socklen);
       if(s == -1) return ACCEPT_ERR;
+      rlNoSigPipe(s);
     }
     else if(rl_ipversion == 6)
     {
@@ -450,6 +523,7 @@ bindv6:
       if(os < 0) return ACCEPT_ERR;
       s = accept(os, (struct sockaddr *) &sockaddr[0], &socklen);
       if(s == -1) return ACCEPT_ERR;
+      rlNoSigPipe(s);
 #else
       ::printf("rlSocket:ERROR IPV6 not available on this platform\n");
 #endif
@@ -469,6 +543,7 @@ bindv6:
       os = socket(AF_INET,SOCK_STREAM,0);
       if(os == -1) return SOCKET_ERR;
       s = os;
+      rlNoSigPipe(s);
 
       //::printf("debug: gethostbyname\n");
       // fill destblk structure 
@@ -496,7 +571,7 @@ bindv6:
       remoteAddr.sin_addr = RemoteIpAddress;
 
       //::printf("debug: connect\n");
-      ret = ::connect(s, (struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
+      ret = rlConnectWithTimeout(s, (struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
       //::printf("debug: connect ret=%d\n",ret);
       if(ret == -1) 
       {
@@ -524,7 +599,8 @@ bindv6:
       {
         s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
         if(s < 0)                                            continue; // ignore this one
-        if(::connect(s, res->ai_addr, res->ai_addrlen) == 0) break;    // success
+        rlNoSigPipe(s);
+        if(rlConnectWithTimeout(s, res->ai_addr, (int) res->ai_addrlen) == 0) break;    // success
         disconnect();                                                  // ignore this one
       }
       while((res = res->ai_next) != NULL);

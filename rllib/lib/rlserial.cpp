@@ -108,11 +108,15 @@ int rlSerial::openDevice(const char *devicename, int speed, int block, int rtsct
     fd = open(devicename, O_RDWR | O_NOCTTY | O_NDELAY);
     if(fd < 0) { return -1; }
 
-    if(tcgetattr(fd, &save_termios) < 0) { return -1; }
+    if(tcgetattr(fd, &save_termios) < 0) { ::close(fd); fd = -1; return -1; }   // Nestor: antes quedaba abierto y fd != -1
     buf = save_termios;
 
     // Configure for Unicode/UTF-8 support
-    buf.c_cflag = speed | CLOCAL | CREAD;
+    // Nestor: la velocidad con cfsetispeed/cfsetospeed: en macOS B9600 vale 9600 y no es un bit de c_cflag
+    // (activaba PARODD, CSTOPB y CS6); en Linux es igual que antes
+    buf.c_cflag = CLOCAL | CREAD;
+    cfsetispeed(&buf, (speed_t) speed);
+    cfsetospeed(&buf, (speed_t) speed);
     if(rtscts   == 1)  buf.c_cflag |= CRTSCTS;
     if(bits     == 7)  buf.c_cflag |= CS7;
     else               buf.c_cflag |= CS8;  // Default to 8 bits for Unicode
@@ -133,7 +137,7 @@ int rlSerial::openDevice(const char *devicename, int speed, int block, int rtsct
     buf.c_line      = 0;
 #endif
 
-    if(tcsetattr(fd, TCSAFLUSH, &buf) < 0) { return -1; }
+    if(tcsetattr(fd, TCSAFLUSH, &buf) < 0) { ::close(fd); fd = -1; return -1; }
     ttystate = RAW;
     ttysavefd = fd;
 

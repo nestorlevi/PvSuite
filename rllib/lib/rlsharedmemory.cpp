@@ -25,6 +25,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/file.h>
+#include <errno.h>
 #endif
 
 #ifdef __VMS
@@ -87,28 +88,206 @@ static void myunlock(pthread_mutex_t *mutex)
 #endif
 #endif
 
+#ifndef RLWIN32
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
+int rlMkdirParents(const char *filepath)
+{
+  char buf[4096];
+  if(filepath == NULL || strlen(filepath) >= sizeof(buf)) return -1;
+  strcpy(buf, filepath);
+  for(char *c = buf + 1; *c != '\0'; c++)
+  {
+    if(*c != '/' && *c != '\\') continue;
+    if(c == buf + 2 && buf[1] == ':') continue; // "C:\" (unidad)
+    char save = *c;
+    *c = '\0';
+#ifdef RLWIN32
+    CreateDirectoryA(buf, NULL);   // si ya existe, falla sin hacer nada
+#else
+    mkdir(buf, 0755);
+#endif
+    *c = save;
+  }
+  return 0;
+}
+
 rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmode)
 {
+  rlMkdirParents(shmname); // Nestor: la carpeta de la memoria compartida (p. ej. automation del proyecto)
 #ifdef RLUNIX
-    // Código original sin cambios para Unix
-    struct shmid_ds buf;
-    status  = OK;
-    name = new char[strlen(shmname)+1];
-    strcpy(name,shmname);
-    _size    = Size + sizeof(*mutex);
-    // ... resto del código original para Unix ...
+  struct shmid_ds buf;
+
+  status  = OK;
+  name = new char[strlen(shmname)+1];
+  strcpy(name,shmname);
+  _size    = Size + sizeof(*mutex);
+
+  // create file
+  fdlock = open(name, O_RDWR | O_CREAT, rwmode );
+  if(fdlock < 0)     
+  {
+    int ret; 
+    char buf[1024];
+    sprintf(buf,"could not write shm=%s\n",shmname);
+    ret = ::write(1,buf,strlen(buf));
+    if(ret < 0) exit(-1);
+    sprintf(buf,"you have to run this program as root !!!\n");
+    ret = ::write(1,buf,strlen(buf));
+    if(ret < 0) exit(-1);
+    status=ERROR_FILE;
+    exit(-1);
+  }
+
+  // old stuff, without suggestions from Stefan Lievens 
+  //shmkey  = ftok(name,0);
+  //
+  //id  = shmget(shmkey, _size, IPC_CREAT);
+
+  //shmkey  = ftok(name, 'R');
+  shmkey  = ftok(name, 'b');
+
+  //id  = shmget(shmkey, _size, 0600 | IPC_CREAT);
+  id  = shmget(shmkey, _size, rwmode | IPC_CREAT);
+  if(id < 0 && errno == EINVAL)
+  {
+    // Nestor: ya hay un segmento mas chico con esta clave (se agregaron tags y se regenero el daemon).
+    // Si nadie lo tiene enganchado se borra y se crea con el tamanio nuevo; si no, hay que cerrar
+    // los procesos que lo usan (daemon, pvserver, historiador...) o reiniciar.
+    int oldid = shmget(shmkey, 0, 0);
+    if(oldid >= 0 && shmctl(oldid, IPC_STAT, &buf) == 0)
+    {
+      if(buf.shm_nattch == 0 && shmctl(oldid, IPC_RMID, NULL) == 0)
+        id = shmget(shmkey, _size, rwmode | IPC_CREAT);
+      else
+        fprintf(stderr, "rlSharedMemory: %s: la memoria compartida existente tiene %lu bytes y se piden %lu; "
+                        "esta en uso por %lu proceso(s): cerrarlos para que se cree de nuevo\n",
+                shmname, (unsigned long) buf.shm_segsz, (unsigned long) _size, (unsigned long) buf.shm_nattch);
+    }
+  }
+  if(id < 0)           { status=ERROR_SHMGET; return; }
+
+  base_adr = (char *) shmat(id,NULL,0);
+  if(base_adr == (char *) -1 || base_adr == NULL) { base_adr = NULL; status=ERROR_SHMAT;  return; }
+
+  if(shmctl(id, IPC_STAT, &buf) != 0) { status=ERROR_SHMCTL; return; };
+
+  mutex     = (pthread_mutex_t *) base_adr;
+  user_adr  = base_adr + sizeof(*mutex);
+  flock(fdlock,LOCK_UN);
 #endif
 
 #ifdef __VMS
-    // Código original sin cambios para VMS
-    int file_existed = 0;
-    long ret,fd,page_size,pagelets,pagelet_size,file_block_size,flags,item,ident[2];
-    // ... resto del código original para VMS ...
+  int file_existed = 0;
+  long ret,fd,page_size,pagelets,pagelet_size,file_block_size,flags,item,ident[2];
+  FILE *fp;
+  ADD  add_in,add_ret;
+  struct dsc$descriptor_s section_name;
+  struct FAB fab;
+
+  status  = OK;
+  name = new char[strlen(shmname)+1];
+  strcpy(name,shmname);
+  _size    = Size + sizeof(*mutex);
+  // The file block size is fixed
+  file_block_size = 512; // Bytes
+  // Get the page size
+  item = SYI$_PAGE_SIZE;
+  ret = lib$getsyi( &item       ,
+                    &page_size  ,
+                    0           ,
+                    0           ,
+                    0           ,
+                    0
+                   );
+  if(ret != SS$_NORMAL) { status=ERROR_FILE; return; }
+  // Fill descriptor for section name
+  section_name.dsc$w_length  = strlen(name);
+  section_name.dsc$a_pointer = name;
+  section_name.dsc$b_dtype   = DSC$K_DTYPE_T;
+  section_name.dsc$b_class   = DSC$K_CLASS_S;
+  // The pagelet size is fixed
+  pagelet_size = 512; // Bytes
+  // Get memory
+  if(_size % page_size == 0) pagelets = _size / pagelet_size;
+  else                      pagelets = (_size / page_size + 1) * (page_size / pagelet_size);
+  ret = sys$expreg(pagelets,&add_ret,0,0);
+  if(ret != SS$_NORMAL) { status=ERROR_FILE; return; }
+  // Set the addresses
+  base_adr = (char *) add_ret.start;
+  user_adr = base_adr + sizeof(*mutex);
+  mutex    = (pthread_mutex_t *) base_adr;
+  if(base_adr == NULL) { status=ERROR_SHMAT;  return; }
+  // Fill the fab
+  fab = cc$rms_fab;                       // Initialize fab
+  fab.fab$b_fac = fab.fab$b_fac | FAB$M_PUT | FAB$M_DEL | FAB$M_GET | FAB$M_UPD;
+  fab.fab$l_fna = name;
+  fab.fab$b_fns = strlen(name);
+  fab.fab$l_fop = fab.fab$l_fop
+                      | FAB$M_CIF            // create file if not existent
+                      | FAB$M_CTG            // contiguous
+                      | FAB$M_UFO;           // user open
+  fab.fab$b_shr =   fab.fab$b_shr            // shareble access
+                      | FAB$M_SHRPUT
+                      | FAB$M_UPI;
+  fab.fab$l_alq = pagelets * pagelet_size / file_block_size;
+  // Open the section file
+  ret = sys$create (&fab);
+  if(ret != RMS$_NORMAL && ret != RMS$_CREATED)
+  {
+    sys$close (&fab);
+    status=ERROR_FILE;
+    return;
+  }
+  // Set the channel
+  fd = fab.fab$l_stv;
+  // Fill the input address
+  add_in.start = add_ret.start;
+  add_in.end   = add_ret.end;
+  // Clear ident
+  ident[0] = 0;
+  ident[1] = 0;
+  // Set flags
+  flags = 0;
+  flags = SEC$M_GBL | SEC$M_WRT | SEC$M_PERM;
+  // Create and map the section
+  ret = sys$crmpsc(&add_in ,&add_ret,
+                     (long)0       ,  // acmode
+                     flags         ,  // flags
+                     &section_name ,  // gsdnam
+                     &ident        ,  // ident
+                     (long)0       ,  // relpag
+                     (short)fd     ,  // chan
+                     pagelets      ,  // pagcnt
+                     (long)0       ,  // vbn
+                     (long)0       ,  // prot
+                     (long)0          // pfc
+                   );
+  if(ret != SS$_NORMAL && ret != SS$_CREATED)
+  {
+    sys$close(&fab);
+    status=ERROR_FILE;
+    return;
+  }
+  // Test the section addresses
+  if(add_in.start != add_ret.start || add_in.end != add_ret.end)
+  {
+    sys$close(&fab);
+    status=ERROR_FILE;
+    return;
+  }
+  // Close the section file
+  ret = sys$close(&fab);
+  // rlwthread_mutex_init(mutex,NULL);
+  if(file_existed == 0) myinit(mutex);
 #endif
 
 #ifdef RLWIN32
     HANDLE hShmem;
     status  = OK;
+    id = shmkey = NULL; base_adr = user_adr = NULL;
 
     // Convertir nombre a Unicode
     wchar_t *wname = new wchar_t[strlen(shmname)+1];
@@ -150,7 +329,7 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
         _size,               // size: low 32-bits
         NULL);               // name of map object
 
-    if(hShmem == NULL) { status=ERROR_FILE; return; }
+    if(hShmem == NULL) { CloseHandle(hSharedFile); hSharedFile = INVALID_HANDLE_VALUE; status=ERROR_FILE; return; }
 
     base_adr = (char *) MapViewOfFile(
         hShmem,              // object to map view of
@@ -159,7 +338,7 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
         0,                   // low offset: beginning
         0);                  // default: map entire file
 
-    if(base_adr == NULL) { status=ERROR_FILE; return; }
+    if(base_adr == NULL) { CloseHandle(hShmem); CloseHandle(hSharedFile); hSharedFile = INVALID_HANDLE_VALUE; status=ERROR_FILE; return; }
 
     id     = hShmem;
     shmkey = hSharedFile;
@@ -178,8 +357,9 @@ rlSharedMemory::~rlSharedMemory()
   //printf("We are within the destructor\n");
 #ifdef RLWIN32
   if(status != OK) return;
+  UnmapViewOfFile(base_adr);        // Nestor: sin esto la vista quedaba mapeada
   CloseHandle((HANDLE) id);
-  CloseHandle((HANDLE) shmkey);
+  CloseHandle((HANDLE) shmkey);     // shmkey es hSharedFile
 #elif defined(RLUNIX)
   if(fdlock >= 0) close(fdlock);
 #endif
@@ -228,9 +408,8 @@ int rlSharedMemory::deleteSharedMemory()
   //rlwthread_mutex_destroy(mutex);
   UnmapViewOfFile(base_adr);
   CloseHandle((HANDLE) id);
-  CloseHandle((HANDLE) shmkey);
   UnlockFile(hSharedFile,0,0,_size,0); // Changed by FMakkinga 18-03-2013
-  CloseHandle(hSharedFile);           // Changed by FMakkinga 18-03-2013
+  CloseHandle(hSharedFile);           // Nestor: una sola vez (shmkey es el mismo handle)
   status = ~OK;
   return 0;
 #endif
@@ -241,7 +420,7 @@ int rlSharedMemory::write(unsigned long offset, const void *buf, int len)
   void *ptr;
   if(status != OK)       return -1;
   if(len <= 0)           return -1;
-  if(offset+len > _size) return -1;
+  if(offset+len > _size - sizeof(*mutex)) return -1; // Nestor: user_adr ya esta corrido sizeof(*mutex)
   ptr = user_adr + offset;
 #ifdef RLWIN32
   LockFileEx(hSharedFile,LOCKFILE_EXCLUSIVE_LOCK,0,_size,0,&overlapped); // Changed by FMakkinga 18-03-2013
@@ -266,7 +445,7 @@ int rlSharedMemory::read(unsigned long offset, void *buf, int len)
   void *ptr;
   if(status != OK)       return -1;
   if(len <= 0)           return -1;
-  if(offset+len > _size) return -1;
+  if(offset+len > _size - sizeof(*mutex)) return -1; // Nestor: user_adr ya esta corrido sizeof(*mutex)
   ptr = user_adr + offset;
 #ifdef RLWIN32
   LockFileEx(hSharedFile,LOCKFILE_EXCLUSIVE_LOCK,0,_size,0,&overlapped); // Changed by FMakkinga 18-03-2013

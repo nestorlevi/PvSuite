@@ -23,6 +23,8 @@
 #endif
 #include "rlmailbox.h"
 #include "rlcutil.h"
+#include "rlsharedmemory.h"   // rlMkdirParents
+#include <string>
 
 #ifdef RLUNIX
 #include <fcntl.h>
@@ -64,6 +66,7 @@ key_t key;
   name = new char[strlen(mbxname)+1];
   strcpy(name,mbxname);
   // create file
+  rlMkdirParents(name); // Nestor: la carpeta del mailbox (p. ej. automation del proyecto)
   fp = fopen(name,"r");
   if(fp == NULL)
   {
@@ -80,7 +83,7 @@ key_t key;
       if(ret < 0) exit(-1);
       exit(-1);
     }
-    fchmod(fileno(fp),0x0fff);
+    fchmod(fileno(fp),0644); // Nestor: antes 0x0fff (07777: setuid, setgid y escritura para todos); solo sirve para ftok
     if(fp == NULL) { status=COULD_NOT_CREATE_MAILBOX; return; }
   }
   fclose(fp);
@@ -127,8 +130,14 @@ key_t key;
   //rlmurxjan2025 chanid = -1;
   chanid = NULL;
   status = OK;
+  buffer = NULL;      // Nestor: sin esto el destructor hacia delete [] de basura (heap corrupto en Windows)
+  buffer_size = 0;
   name = new char[strlen(mbxname)+1];
   strcpy(name,mbxname);
+  // Nestor: el nombre es el de un mailslot (\\.\mailslot\<name>): CreateMailslot no acepta '/' y fallaba
+  // sin aviso con "automation/mbx/PLC1.mbx" (el daemon no recibia las escrituras). Quien abre si lo acepta,
+  // asi que cambiarlo en los dos lados deja todo igual que antes para los nombres con '\'.
+  for(char *c = name; *c; c++) if(*c == '/') *c = '\\';
 #endif
 }
 
@@ -163,7 +172,8 @@ int rlMailbox::write(const void *buf, int len)
   memcpy(&message[sizeof(long)],buf,len);
   retlen = msgsnd(chanid,(struct msgbuf *) message, len, 0);
   delete [] message;
-  return retlen;
+  // Nestor: msgsnd devuelve 0 si escribio: se devuelven los bytes, como dice rlmailbox.h y como en Windows
+  return (retlen == 0) ? len : MAILBOX_ERROR;
 #endif
 
 #ifdef __VMS
@@ -186,6 +196,11 @@ int rlMailbox::write(const void *buf, int len)
   BOOL bret;
   unsigned long numWritten;
 
+  // Nestor: si el lector se reinicio (daemon levantado de nuevo) el handle guardado es del mailslot viejo
+  // y la escritura falla: se reabre y se reintenta una vez (antes se perdia ese pedido)
+  for(int attempt = 0; attempt < 2; attempt++)
+  {
+  bool cached = (chanid != NULL);
   int imurx = 0; // rlmurxjan2025
 #ifdef WIN32
   if(chanid == NULL) imurx = -1;
@@ -197,10 +212,10 @@ int rlMailbox::write(const void *buf, int len)
   if(imurx == -1)
   {
     HANDLE h;
-    char   mbxname[1024];
-    strcpy(mbxname,"\\\\.\\mailslot\\"); strcat(mbxname,name);
+    std::string mbxname = "\\\\.\\mailslot\\";   // Nestor: sin limite fijo (antes char[1024] con strcpy/strcat)
+    mbxname += name;
     h = CreateFileA(
-              mbxname,                             // pointer to name of the file
+              mbxname.c_str(),                     // pointer to name of the file
               GENERIC_READ | GENERIC_WRITE,        // access (read-write) mode
               FILE_SHARE_READ | FILE_SHARE_WRITE,  // share mode
               NULL,                                // pointer to security attributes
@@ -236,9 +251,12 @@ int rlMailbox::write(const void *buf, int len)
 #else
     chanid = -1;
 #endif
+    if(cached) continue;   // handle viejo: se abre de nuevo
     return MAILBOX_ERROR;
   }
   return numWritten;
+  }
+  return MAILBOX_ERROR;
 #endif
 }
 
@@ -256,12 +274,13 @@ int rlMailbox::read(void *buf, int maxlen, int wait)
     else
         len = msgrcv(chanid, (struct msgbuf *)message, maxlen, 0, IPC_NOWAIT);
 
-    if (len < maxlen && len >= 0)
+    if (len >= 0)
     {
+        // Nestor: antes (len < maxlen) un mensaje de exactamente maxlen bytes se perdia (devolvia len sin copiarlo)
         memcpy(buf, &message[sizeof(long)], len);
-        cbuf[len] = '\0';
+        if (len < maxlen) cbuf[len] = '\0';
     }
-    else
+    else if (maxlen > 0)
     {
         cbuf[0] = '\0';
     }
@@ -315,12 +334,13 @@ int rlMailbox::read(void *buf, int maxlen, int wait)
 
     if (chanid == NULL)
     {
-        wcscpy(mbxname, L"\\\\.\\mailslot\\");
-
-        // Convertir name (char*) a wchar_t* para concatenar
-        wchar_t wname[256];
-        MultiByteToWideChar(CP_ACP, 0, name, -1, wname, 256);
-        wcscat(mbxname, wname);
+        // Nestor: el nombre convertido entero (antes wchar_t[256]: un nombre largo quedaba sin terminar)
+        int nw = MultiByteToWideChar(CP_ACP, 0, name, -1, NULL, 0);
+        std::wstring wname(nw > 0 ? nw : 1, L'\0');
+        if(nw > 0) MultiByteToWideChar(CP_ACP, 0, name, -1, &wname[0], nw);
+        std::wstring full = std::wstring(L"\\\\.\\mailslot\\") + wname.c_str();
+        if(full.size() >= sizeof(mbxname) / sizeof(mbxname[0])) { status = ERROR_FILENAME_EXCED_RANGE; return MAILBOX_ERROR; }
+        wcscpy(mbxname, full.c_str());
 
         h = CreateMailslotW(mbxname, MAX_MAILBOX, MAILSLOT_WAIT_FOREVER, NULL);
         if (h == INVALID_HANDLE_VALUE) {
@@ -339,9 +359,18 @@ int rlMailbox::read(void *buf, int maxlen, int wait)
     {
         bret = SetMailslotInfo(chanid, 0);
         if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
-        bret = ReadFile(chanid, buf, maxlen, &lenRead, NULL);
+        lenRead = 0;
+        BOOL rret = ReadFile(chanid, buf, maxlen, &lenRead, NULL);
+        DWORD rerr = rret ? 0 : GetLastError();
         bret = SetMailslotInfo(chanid, MAILSLOT_WAIT_FOREVER);
-        if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
+        // Nestor: antes el resultado de ReadFile se pisaba con el de SetMailslotInfo: un error se
+        // informaba como 0 bytes. Vacio = MAILBOX_ERROR, como msgrcv con IPC_NOWAIT en Linux.
+        if (!rret)
+        {
+            if (maxlen > 0) cbuf[0] = '\0';
+            if (rerr != ERROR_SEM_TIMEOUT) status = rerr;
+            return MAILBOX_ERROR;
+        }
         if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
         if ((int)lenRead < maxlen && (int)lenRead >= 0) cbuf[lenRead] = '\0';
         return lenRead;

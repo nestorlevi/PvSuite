@@ -125,6 +125,7 @@ int rlexec(const char *command)
     if(buf[i] == '\"')
     {
       i++;
+      if(iarg >= 511) break;   // Nestor: arg[512] (con el NULL final)
       arg[iarg++] = &buf[i];
       while(buf[i] != '\"' && buf[i] != '\0') i++;
       if(buf[i] == '\0') break;
@@ -132,6 +133,7 @@ int rlexec(const char *command)
     }
     else if(buf[i] != ' ' || i == 0)
     {
+      if(iarg >= 511) break;
       arg[iarg++] = &buf[i];
       while(buf[i] != ' ' && buf[i] != '\0') i++;
       if(buf[i] == '\0') break;
@@ -205,6 +207,7 @@ int rlvsnprintf(char *text, int len, const char *format, va_list ap)
     return 1;
   }
   ret = _vsnprintf(text, len, format, ap);
+  if(len > 0 && (ret < 0 || ret >= len)) text[len-1] = '\0'; // Nestor: _vsnprintf no termina la cadena al truncar
 #endif
 #ifdef __VMS
   static char vms_is_deprecated[rl_PRINTF_LENGTH];
@@ -236,6 +239,7 @@ int rlsnprintf(char *text, int len, const char *format, ...)
   va_start(ap,format);
 #ifdef RLWIN32
   ret = _vsnprintf(text, len, format, ap);
+  if(len > 0 && (ret < 0 || ret >= len)) text[len-1] = '\0'; // Nestor: _vsnprintf no termina la cadena al truncar
 #endif
 #ifdef __VMS
   static char vms_is_deprecated[rl_PRINTF_LENGTH];
@@ -551,6 +555,7 @@ static int mysystem(const char *command)
                            , FALSE, CREATE_NO_WINDOW
                            , NULL, NULL
                            , &si, &pi);
+  if(ret) { CloseHandle(pi.hThread); CloseHandle(pi.hProcess); } // Nestor: antes se perdian dos handles por llamada
   return ret;
 }
 #endif

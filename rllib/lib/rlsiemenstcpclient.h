@@ -24,6 +24,7 @@
 #include "rlsiemenstcp.h"
 #include "rlmailbox.h"
 #include "rlsharedmemory.h"
+#include "rltag.h"
 
 /*! <pre>
 This class is for data acquisition within pvserver according to the pvbrowser principle.
@@ -60,7 +61,19 @@ class rlSiemensTCPClient : public rlMailbox, rlSharedMemory
     unsigned int UDword(int index);
     unsigned int UShort(int index);
     unsigned char buf[2048]; // after calling read, the data is here
+
+    // Tags por nombre (los "tag" del .mksiemens; ver rltag.h): S7.getBool(S7_Motor)
+    int          getBool(const rlTag &tag);
+    int          getInt(const rlTag &tag);
+    unsigned int getUInt(const rlTag &tag);
+    double       getReal(const rlTag &tag);              // con la escala del tag
+    int          quality(const rlTag &tag);              // 1 = leido bien, 0 = error
+    int          daemonAlive(const rlTag &ciclo, int seconds = 5); // el daemon esta vivo: TARGET_SYS.Ciclo avanzo hace menos de "seconds" s
+    int          setBool(const rlTag &tag, int value);
+    int          setInt(const rlTag &tag, int value);
+    int          setReal(const rlTag &tag, double value);// con la escala del tag
   private:
+    int          writeTag(const rlTag &tag, double raw);
     int have_to_swap;
 };
 
