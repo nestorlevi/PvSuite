@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="pv-producto" content="PV Suite">
-<meta name="pv-version" content="1.0.0-beta.2">
+<meta name="pv-version" content="1.0.0-beta.3">
 <meta name="generator" content="doc/herramientas/estilo_manual.py">
 <title>PV Suite - User manual</title>
 <style>
@@ -321,7 +321,7 @@ section.cap[data-n="17"] { page: c17; }
 <div class="sub">User manual</div>
 <div class="lema">Free SCADA/HMI based on pvbrowser</div>
 </div>
-<div class="pie"><div><b>Néstor Palomeque</b><br>Free software · GPL / LGPL · 2026</div><div class="mono" style="text-align:right">Version 1.0.0-beta.2<br>2026</div></div>
+<div class="pie"><div><b>Néstor Palomeque</b><br>Free software · GPL / LGPL · 2026</div><div class="mono" style="text-align:right">Version 1.0.0-beta.3<br>2026</div></div>
 </section>
 <!--[/portada]-->
 
@@ -382,7 +382,7 @@ block the screens and that several pvservers can use the same data.</p>
 <tr><th>Component</th><th>Content</th><th>Folder</th></tr>
 <tr><td>pvbrowser (client)</td><td>pvbrowser with web browser (Qt WebEngine). It is all a PC that only connects to pvservers needs.</td><td><code>&lt;target&gt;\win-msvc\bin</code></td></tr>
 <tr><td>Development suite (pvdevelop)</td><td>pvdevelop, rllib tools, libraries to compile pvservers (MinGW and Visual Studio), documentation and examples.</td><td><code>&lt;target&gt;\win-mingw\bin</code></td></tr>
-<tr><td>Libraries for MinGW 8.1 (Qt 5.15) <i>(optional)</i></td><td><code>librllib</code> and <code>libserverlib</code> compiled with MinGW 8.1, to keep compiling older projects with MinGW 8.1 and Qt 5.15.2. The compiler and Qt are not included: install them with the Qt installer.</td><td><code>&lt;target&gt;\win-mingw</code></td></tr>
+<tr><td>Libraries for MinGW 8.1 (Qt 5.15) <i>(optional)</i></td><td><code>librllib</code> and <code>libserverlib</code> built with MinGW 8.1 for <b>64 bits</b> (<code>mingw81_64</code>) and <b>32 bits</b> (<code>mingw81_32</code>), to keep building older projects (Qt 5, 32 or 64 bits) with MinGW 8.1 and Qt 5.15.2, and then move them to the Qt 6 MinGW. It does not include the compiler or Qt: they are installed with the Qt installer.</td><td><code>&lt;target&gt;\win-mingw\bin\mingw81_64</code>, <code>mingw81_32</code></td></tr>
 <tr><td>Common files</td><td>Documentation, examples and headers of pvserver and rllib.</td><td><code>&lt;target&gt;\doc</code>, <code>ejemplos</code></td></tr>
 </table>
 <p>On a PC that only connects to pvservers (operator station) the development suite can be unchecked.
@@ -399,8 +399,8 @@ week at start-up (it can be switched off in the same menu).</p>
 <ul>
 <li><b>MinGW</b> (default): the one of Qt 6.9, <code>C:\Qt\Tools\mingw1310_64</code> (installed with the Qt installer).</li>
 <li><b>Visual Studio 2022</b> (optional): Build Tools or Community.</li>
-<li><b>MinGW 8.1 with Qt 5.15.2</b> (optional, for older projects): <code>C:\Qt\Tools\mingw810_64</code> and <code>C:\Qt\5.15.2\mingw81_64</code>.
-Check the component "Libraries for MinGW 8.1" when installing and choose that MinGW in pvdevelop.</li>
+<li><b>MinGW 8.1 with Qt 5.15.2</b> (optional, for older projects): 64 bits <code>C:\Qt\Tools\mingw810_64</code> and <code>C:\Qt\5.15.2\mingw81_64</code>; 32 bits <code>C:\Qt\Tools\mingw810_32</code> and <code>C:\Qt\5.15.2\mingw81_32</code>.
+Check the component "Libraries for MinGW 8.1" when installing and choose that MinGW in pvdevelop. The project's <code>.pro</code> picks the libraries by itself (<code>mingw81_64</code> or <code>mingw81_32</code>) according to the compiler, with one more line (<code>equals(QMAKE_GCC_MAJOR_VERSION, 8):contains(QT_ARCH, i386):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_32</code>), which pvdevelop adds by itself to projects that already had the <code>mingw81_64</code> one. When the MinGW is changed (for example from GCC 13 to MinGW 8.1 32 bits), <code>pvb_build.bat</code> deletes the leftovers of the previous build (<code>.qmake.stash</code>, the <code>Makefile.win*</code>, the <code>.o</code> files and the project's <code>.exe</code>) and builds again.</li>
 <li>If the pvserver uses Qt (for example <code>QT += sql</code>), also the <b>Qt kit</b> of the same compiler
 (<code>C:\Qt\6.9.2\mingw_64</code> or <code>msvc2022_64</code>).</li>
 </ul>
