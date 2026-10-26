@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: acciones y animaciones de los widgets (ver pvbindgen.h y pvserver/pvbind.h)
 ****************************************************************************/
 #include "pvbindgen.h"
@@ -11,6 +27,7 @@
 #include <QRegularExpression>
 #include <QMap>
 #include <QVariant>
+#include <QSet>
 
 static const char *PROP = "pvbBind";
 
@@ -161,6 +178,11 @@ struct Gen
   {
     QString text = text0.trimmed();
     if(text.startsWith('!')) text = text.mid(1).trimmed();
+    if(text.startsWith('@'))   // @user, @automation: de la version completa
+    {
+      errors << QString("%1: no esta en esta version de PV Suite (se conserva, no hace nada)").arg(text0.trimmed());
+      return false;
+    }
     if(text.startsWith('$'))
     {
       QString pn = text.mid(1).section('.', 0, 0), member = text.section('.', 1);
@@ -246,6 +268,27 @@ struct Gen
     o.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
     return "\"" + o + "\"";
   }
+  // Nestor: un numero en lugar del tag (valor fijo): "0" oculta, "1" muestra, "50" deja una barra en 50
+  static bool constant(const QString &spec, QString *expr)
+  {
+    QString v = spec.trimmed();
+    v.replace(',', '.');
+    bool ok;
+    const double d = v.toDouble(&ok);
+    if(!ok || !qIsFinite(d)) return false;
+    if(expr) *expr = QString("(double) %1").arg(v);
+    return true;
+  }
+  // el valor de una animacion: un tag (expr = su lectura, isTag) o una constante (expr = el numero)
+  bool source(const QString &spec, PvbTag *t, QString *expr, bool *isTag)
+  {
+    *isTag = false;
+    if(constant(spec, expr)) return true;
+    if(!tag(spec, t)) return false;
+    *expr = get(*t);
+    *isTag = true;
+    return true;
+  }
   QString num(const QString &v)
   {
     QString s = v.trimmed();
@@ -264,6 +307,10 @@ struct Gen
   QString action(const QString &spec, const QString &vmin, const QString &vmax)
   {
     QString kind = spec.section(':', 0, 0).trimmed().toLower(), arg = spec.section(':', 1).trimmed();
+    // Nestor: acciones de la version completa (usuarios, alarmas, recetas, automatizacion, bloques): el enlace
+    // se conserva tal cual, pero aca no hacen nada
+    static const QStringList full = { "login", "logout", "users", "ack", "recipes", "automation", "faceplate", "close" };
+    if(full.contains(kind)) { errors << QString("%1: no esta en esta version de PV Suite (se conserva, no hace nada)").arg(spec); return QString(); }
     if(kind == "goto")
     {
       bool ok;
@@ -301,6 +348,7 @@ struct Gen
 
   // condicion -> expresion de C: "PLC1:Marcha" (distinto de 0), "!PLC1:Marcha", "PLC1:Estado == 2",
   // "PLC1:Temp > 80", "PLC1:Estado.3" (un bit); operadores == != >= <= > < (= es ==).
+  // Nestor: un numero en lugar del tag es una constante: "0" falso, otro numero verdadero ("1", "5 > 3")
   // Si no es valida: el error y "fail" (las acciones siguen permitidas con "1", una animacion no anima con "0")
   QString cond(const QString &c, const char *fail = "1")
   {
@@ -308,9 +356,11 @@ struct Gen
     QRegularExpressionMatch m = rx.match(c);
     PvbTag t;
     if(!m.hasMatch()) { errors << QString("condicion no valida: %1 (TAG, !TAG, TAG == 2, TAG > 80, TAG.3)").arg(c.trimmed()); return fail; }
-    if(!tag(m.captured(2), &t)) return fail;
+    QString v;
+    bool isTag;
+    if(!source(m.captured(2), &t, &v, &isTag)) return fail;
     QString op = (m.captured(3) == "=") ? "==" : m.captured(3);
-    QString e = op.isEmpty() ? QString("(%1 != 0)").arg(get(t)) : QString("(%1 %2 %3)").arg(get(t), op, num(m.captured(4)));
+    QString e = op.isEmpty() ? QString("(%1 != 0)").arg(v) : QString("(%1 %2 %3)").arg(v, op, num(m.captured(4)));
     return m.captured(1).isEmpty() ? e : "!" + e;
   }
 
@@ -411,33 +461,36 @@ void genBindings(Gen &g, const QList<QWidget *> &bound, QString &actions, QStrin
     bool useQ = kv.value("quality", "1") != "0";
     QString qExpr;
     PvbTag t;
-    if(!kv.value("text").isEmpty() && g.tag(kv.value("text"), &t))
+    QString vx;          // Nestor: el valor: la lectura del tag o una constante (sin calidad)
+    bool isTag = false;
+    if(!kv.value("text").isEmpty() && g.source(kv.value("text"), &t, &vx, &isTag))
     {
       QString fmt = kv.value("fmt");
       if(!pvbValidTextFormat(fmt))
         g.errors << QString("%1: fmt=%2 no es una lista (A|B) ni un printf con una sola conversion de double (%.1f, %g): se usa %g").arg(id, fmt);
-      qExpr = useQ ? g.quality(t) : QString("1");
+      qExpr = (useQ && isTag) ? g.quality(t) : QString();
+      const QString q = qExpr.isEmpty() ? QString("1") : qExpr;
       if(fmt.contains('|') && !fmt.contains('%'))
         an << QString("  { int q = %1; pvbSetText(p, mask, %2, q ? pvbChoice(%3, %4).c_str() : \"---\"); }\n")
-              .arg(qExpr, id, Gen::cstr(fmt), g.get(t));
+              .arg(q, id, Gen::cstr(fmt), vx);
       else
-        an << QString("  pvbText(p, mask, %1, %2, %3, %4);\n").arg(id, Gen::cstr(fmt), g.get(t), qExpr);
+        an << QString("  pvbText(p, mask, %1, %2, %3, %4);\n").arg(id, Gen::cstr(fmt), vx, q);
     }
-    if(!kv.value("value").isEmpty() && g.tag(kv.value("value"), &t))
+    if(!kv.value("value").isEmpty() && g.source(kv.value("value"), &t, &vx, &isTag))
     {
-      if(qExpr.isEmpty() && useQ) qExpr = g.quality(t);
-      if(type == "TQLCDNumber")                    an << QString("  pvbFloat(p, mask, %1, %2);\n").arg(id, g.get(t));
-      else if(type == "TQCheck" || type == "TQRadio") an << QString("  pvbChecked(p, mask, %1, %2 != 0);\n").arg(id, g.get(t));
-      else                                         an << QString("  pvbValue(p, mask, %1, (int) lround(%2));\n").arg(id, g.get(t));
+      if(qExpr.isEmpty() && useQ && isTag) qExpr = g.quality(t);
+      if(type == "TQLCDNumber")                    an << QString("  pvbFloat(p, mask, %1, %2);\n").arg(id, vx);
+      else if(type == "TQCheck" || type == "TQRadio") an << QString("  pvbChecked(p, mask, %1, %2 != 0);\n").arg(id, vx);
+      else                                         an << QString("  pvbValue(p, mask, %1, (int) lround(%2));\n").arg(id, vx);
     }
     QString part = (kv.value("colorpart") == "fg") ? "PVB_A_FG" : "PVB_A_BG";
     QString blinkExpr = "0";
     if(!kv.value("blink").isEmpty()) blinkExpr = g.cond(kv.value("blink"), "0");   // TAG, !TAG, TAG > 80, TAG.3
-    if(!kv.value("color").isEmpty() && g.tag(kv.value("color"), &t))
+    if(!kv.value("color").isEmpty() && g.source(kv.value("color"), &t, &vx, &isTag))
     {
-      QString q = useQ ? g.quality(t) : QString("1");
+      QString q = (useQ && isTag) ? g.quality(t) : QString("1");
       an << QString("  { double v = %1; const char *c = \"\"; %2 if(!%3) c = PVB_BAD_COLOR; pvbColor(p, mask, %4, %5, pvbBlink(%6, c)); }\n")
-            .arg(g.get(t), g.colorRules(kv.value("colors"), "v"), q, id, part, blinkExpr);
+            .arg(vx, g.colorRules(kv.value("colors"), "v"), q, id, part, blinkExpr);
     }
     else if(blinkExpr != "0")
       an << QString("  pvbColor(p, mask, %1, %2, %3 ? pvbBlink(1, \"#FF0000\") : \"\");\n").arg(id, part, blinkExpr);
@@ -447,9 +500,9 @@ void genBindings(Gen &g, const QList<QWidget *> &bound, QString &actions, QStrin
       an << QString("  pvbVisible(p, mask, %1, %2);\n").arg(id, g.cond(kv.value("visible"), "1"));
     // imagen segun el valor y animacion (la hace pvbrowser)
     QString imageExpr;
-    if(!kv.value("image").isEmpty() && !kv.value("images").isEmpty() && g.tag(kv.value("image"), &t))
+    if(!kv.value("image").isEmpty() && !kv.value("images").isEmpty() && g.source(kv.value("image"), &t, &vx, &isTag))
     {
-      imageExpr = QString("pvbChoice(%1, %2).c_str()").arg(Gen::cstr(kv.value("images")), g.get(t));
+      imageExpr = QString("pvbChoice(%1, %2).c_str()").arg(Gen::cstr(kv.value("images")), vx);
       for(const QString &f : kv.value("images").split('|', Qt::SkipEmptyParts)) if(!downloads.contains(f.trimmed())) downloads << f.trimmed();
     }
     if(!kv.value("anim").isEmpty() && !kv.value("frames").isEmpty())   // animar mientras: TAG, !TAG, TAG == 2, TAG > 80, TAG.3
@@ -536,9 +589,20 @@ int pvbSaveBindings(const QString &maskCpp, QWidget *root)
 
   Gen g;
   g.tags = pvbProjectTags();
+  g.errors << pvbEnsureDaemonClients();   // Nestor: PLC1... declarado en pvapp.h y main.cpp
   g.mask = QRegularExpression("(\\d+)$").match(base).captured(1).toInt();
   QString head, actions, anim;
   QStringList downloads;          // imagenes de las animaciones (se descargan una vez por mascara)
+  // Nestor: las copias de bloques de la version completa (//pvbblock:) se conservan mientras el widget exista
+  {
+    QFile old(pvbFile);
+    if(old.open(QIODevice::ReadOnly))
+      for(const QString &l0 : QString::fromUtf8(old.readAll()).split('\n'))
+      {
+        QString l = l0.trimmed();
+        if(l.startsWith("//pvbblock: ") && root->findChild<QWidget *>(l.mid(12).section(' ', 0, 0))) head += l + "\n";
+      }
+  }
   for(QWidget *w : bound) head += "//pvb: " + w->objectName() + " " + pvbBinding(w) + "\n";
   genBindings(g, bound, actions, anim, downloads);
 
@@ -605,4 +669,219 @@ int pvbSaveBindings(const QString &maskCpp, QWidget *root)
     if(code != before) pvbWriteIfChanged(sf.fileName(), code.toUtf8());
   }
   return g.errors.isEmpty() ? 0 : 1;
+}
+
+// ---------------------------------------------------------------------------
+// Nestor: clientes de los daemons del proyecto (rlModbusClient PLC1(...) en main.cpp y su extern en pvapp.h).
+// Antes habia que descomentar a mano las lineas de ejemplo (con nombres genericos: modbus, modbusdaemon.h) y
+// cambiarles el nombre; si faltaban, maskN_pvb.h no compilaba ("PLC1 was not declared").
+
+namespace {
+
+struct DaemonKind { const char *ext, *cls, *inc, *protocol, *menu; };
+static const DaemonKind daemonKinds[] = {
+  { ".mkmodbus",  "rlModbusClient",     "rlmodbusclient.h",     "modbus",  "Daemon > Modbus" },
+  { ".mksiemens", "rlSiemensTCPClient", "rlsiemenstcpclient.h", "siemens", "Daemon > Siemens TCP" },
+  { ".mkppi",     "rlPPIClient",        "rlppiclient.h",        "ppi",     "Daemon > PPI" },
+};
+
+const char clientsMark[] = "// clientes de los daemons (los agrega pvdevelop)";
+
+// el bloque que agrega pvdevelop: la marca y las lineas #include/extern/rl... que la siguen ([m, fin))
+int markBlockEnd(const QStringList &all, int m)
+{
+  int j = m + 1;
+  // solo lo que escribe pvdevelop (no las lineas propias del usuario que esten justo debajo, p.ej. rlThread hilo;)
+  static const QRegularExpression ours("^(#include\\s|extern\\s+rl\\w+\\s+\\w+\\s*;|rl\\w+\\s+\\w+\\s*\\(\\s*\\w+_MAILBOX)");
+  while(j < all.size() && ours.match(all[j]).hasMatch()) j++;
+  return j;
+}
+
+// el codigo de un archivo sin los comentarios (las lineas de ejemplo comentadas no cuentan).
+// withoutMark: tambien sin el bloque que agrego pvdevelop (para saber si el proyecto usa un daemon)
+QString codeWithoutComments(const QString &file, bool withoutMark = false)
+{
+  QFile f(file);
+  if(!f.open(QIODevice::ReadOnly)) return QString();
+  QString t = QString::fromUtf8(f.readAll());
+  if(withoutMark)
+  {
+    QStringList all = t.remove('\r').split('\n');
+    const int m = all.indexOf(clientsMark);
+    if(m >= 0) { const int end = markBlockEnd(all, m); all.erase(all.begin() + m, all.begin() + end); }
+    t = all.join('\n');
+  }
+  static const QRegularExpression block("/\\*.*?\\*/", QRegularExpression::DotMatchesEverythingOption);
+  static const QRegularExpression line("//[^\\n]*");
+  t.remove(line);    // antes que los /* */: "//****" no abre un comentario
+  t.remove(block);
+  return t;
+}
+
+// agrega lines al bloque de la marca. El bloque va despues de la ultima linea (no comentada) que cumple anchor:
+// los #include que necesitan sus extern (rlmodbusclient.h, PLC1.h...). Si ya estaba antes de alguna (version
+// anterior de pvdevelop, o el usuario agrego despues el #include), se mueve.
+bool addAfterMark(const QString &file, const QRegularExpression &anchor, const QStringList &lines)
+{
+  QFile f(file);
+  if(!f.open(QIODevice::ReadOnly)) return false;
+  QString text = QString::fromUtf8(f.readAll());
+  f.close();
+  const QString nl = text.contains("\r\n") ? "\r\n" : "\n";
+  QStringList all = text.split(nl);
+  int m = all.indexOf(clientsMark);
+  int end = (m >= 0) ? markBlockEnd(all, m) : -1;
+  int last = -1;
+  for(int i=0; i<all.size(); i++)
+    if((i < m || i >= end) && !all[i].trimmed().startsWith("//") && anchor.match(all[i]).hasMatch()) last = i;
+  if(m < 0)
+  {
+    if(lines.isEmpty()) return true;
+    m = last + 1;
+    all.insert(m, clientsMark);
+    end = m + 1;
+  }
+  else if(last > m)
+  {
+    const QStringList block = all.mid(m, end - m);
+    all.erase(all.begin() + m, all.begin() + end);
+    m = last - int(block.size()) + 1;
+    for(int k=0; k<block.size(); k++) all.insert(m + k, block[k]);
+    end = m + int(block.size());
+  }
+  for(int k=0; k<lines.size(); k++) all.insert(end + k, lines[k]);
+  return pvbWriteIfChanged(file, all.join(nl).toUtf8());
+}
+
+// rllib en el .pro (como Rllib > Descomentar rllib): las lineas "#...rllib..." sin el #
+bool ensureRllib(const QString &pro)
+{
+  QFile f(pro);
+  if(!f.open(QIODevice::ReadOnly)) return false;
+  QString text = QString::fromUtf8(f.readAll());
+  f.close();
+  const QString nl = text.contains("\r\n") ? "\r\n" : "\n";
+  QStringList all = text.split(nl);
+  for(const QString &l : all) if(!l.startsWith('#') && l.contains("rllib", Qt::CaseInsensitive)) return true;   // ya esta
+  bool changed = false;
+  for(QString &l : all)
+  {
+    if(l.startsWith('#') && (l.contains("rllib") || l.contains("RLLIB") || l.contains("rldefine.h"))) { l.remove(0, 1); changed = true; }
+  }
+  return changed && pvbWriteIfChanged(pro, all.join(nl).toUtf8());
+}
+
+} // namespace
+
+QStringList pvbEnsureDaemonClients(const QString &project, QStringList *added)
+{
+  QStringList warnings;
+  QDir dir = QDir::current();
+  if(!QFile::exists(dir.filePath("pvapp.h")) || !QFile::exists(dir.filePath("main.cpp"))) return warnings;
+
+  // los daemons: sus archivos .mk* y las fuentes de los .tagmap (las que usa el codigo generado)
+  QMap<QString, int> daemons;                // nombre -> indice en daemonKinds
+  QSet<QString> used;
+  const int nkinds = int(sizeof(daemonKinds) / sizeof(daemonKinds[0]));
+  for(int k=0; k<nkinds; k++)
+    for(const QString &f : dir.entryList(QStringList() << QString("*") + daemonKinds[k].ext, QDir::Files, QDir::Name))
+      daemons.insert(QFileInfo(f).completeBaseName(), k);
+  for(const PvbTag &t : pvbProjectTags())
+  {
+    if(t.source.startsWith('$') || t.source.isEmpty()) continue;
+    used.insert(t.source);
+    if(daemons.contains(t.source)) continue;
+    for(int k=0; k<nkinds; k++) if(t.protocol == daemonKinds[k].protocol) daemons.insert(t.source, k);
+  }
+  if(daemons.isEmpty()) return warnings;
+
+  // el codigo del proyecto (sin comentarios)
+  const QString appCode = codeWithoutComments(dir.filePath("pvapp.h"));
+  QMap<QString, QString> others;             // archivo -> codigo (todo menos pvapp.h y los fuentes de los daemons)
+  QString usage = codeWithoutComments(dir.filePath("pvapp.h"), true);   // sin lo que agrego pvdevelop
+  for(const QString &f : dir.entryList(QStringList() << "*.cpp" << "*.h", QDir::Files, QDir::Name))
+  {
+    if(f == "pvapp.h" || daemons.contains(QFileInfo(f).completeBaseName())) continue;
+    others.insert(f, codeWithoutComments(dir.filePath(f)));
+    usage += codeWithoutComments(dir.filePath(f), true);
+  }
+
+  QStringList appLines, mainLines, mainIncludes;
+  bool needRllib = false;
+  for(auto it = daemons.constBegin(); it != daemons.constEnd(); ++it)
+  {
+    const QString d = it.key();
+    const DaemonKind &kind = daemonKinds[it.value()];
+    const QString cls = kind.cls;
+    const QString ed = QRegularExpression::escape(d);
+    // solo los daemons que usa el servidor: sus tags o el cliente en el codigo (PLC1.readShort...). Un .mkmodbus
+    // que no usa (otro daemon, p.ej. un simulador) no lleva cliente
+    if(!used.contains(d) && !QRegularExpression("\\b" + ed + "\\b").match(usage).hasMatch()) continue;
+    if(!QFile::exists(dir.filePath(d + ".h")))
+    {
+      if(used.contains(d)) warnings << QString("%1: falta %1.h (compilar el daemon: %2)").arg(d, kind.menu);
+      continue;
+    }
+    const QRegularExpression def("\\b" + QRegularExpression::escape(cls) + "\\s+" + ed + "\\s*\\(");
+    const QRegularExpression anyClient("\\(\\s*" + ed + "_MAILBOX\\s*,");
+    const QRegularExpression inc("#\\s*include\\s*\"" + ed + "\\.h\"");
+    static const QRegularExpression appInclude("#\\s*include\\s*\"pvapp\\.h\"");
+    bool defined = def.match(appCode).hasMatch(), otherName = false, includedElsewhere = false, mainHasInc = false;
+    for(auto o = others.constBegin(); o != others.constEnd(); ++o)
+    {
+      if(o.key().endsWith(".cpp") && def.match(o.value()).hasMatch()) defined = true;
+      if(o.key().endsWith(".cpp") && anyClient.match(o.value()).hasMatch()) otherName = true;
+      // dos veces en la misma unidad: un .h, o un .cpp que tambien incluye pvapp.h (pvbscada.cpp no lo incluye)
+      if(inc.match(o.value()).hasMatch())
+      {
+        if(o.key() == "main.cpp") mainHasInc = true;
+        if(o.key().endsWith(".h") || appInclude.match(o.value()).hasMatch()) includedElsewhere = true;
+      }
+    }
+    // proyecto viejo con su propio nombre (rlModbusClient modbus(modbusdaemon_MAILBOX...)): se deja como esta
+    if(!defined && otherName && !used.contains(d)) continue;
+    needRllib = true;
+    QStringList what;
+    if(!QRegularExpression("#\\s*include\\s*[<\"]" + QRegularExpression::escape(kind.inc) + "[>\"]").match(appCode).hasMatch()
+       && !appLines.contains(QString("#include \"%1\"").arg(kind.inc)))
+      appLines << QString("#include \"%1\"").arg(kind.inc);
+    const bool appHasInc = inc.match(appCode).hasMatch();
+    // dos veces en la misma mascara no compila (el .h define estructuras): si ya lo incluye otro archivo, no en pvapp.h
+    const bool addInc = !appHasInc && !includedElsewhere;
+    if(addInc) { appLines << QString("#include \"%1.h\"").arg(d); what << "#include"; }
+    if(!QRegularExpression("\\bextern\\s+\\w+\\s+" + ed + "\\s*;").match(appCode).hasMatch() && !def.match(appCode).hasMatch())
+    {
+      appLines << QString("extern %1 %2;").arg(cls, d);
+      what << "extern";
+    }
+    if(!defined)
+    {
+      if(!appHasInc && !addInc && !mainHasInc) mainIncludes << QString("#include \"%1.h\"").arg(d);
+      mainLines << QString("%1 %2(%2_MAILBOX, %2_SHARED_MEMORY, %2_SHARED_MEMORY_SIZE);").arg(cls, d);
+      what << "main.cpp";
+    }
+    if(added && !what.isEmpty()) *added << QString("%1 (%2): %3").arg(d, cls, what.join(", "));
+  }
+  // el bloque va despues de los #include que necesita: el del servidor, los de las clases de los clientes y los .h
+  // de los daemons (si el proyecto ya los incluia mas abajo)
+  QStringList incs{ "processviewserver\\.h", "pvapp\\.h" };
+  for(int k=0; k<nkinds; k++) incs << QRegularExpression::escape(daemonKinds[k].inc);
+  for(auto it = daemons.constBegin(); it != daemons.constEnd(); ++it) incs << QRegularExpression::escape(it.key() + ".h");
+  const QRegularExpression anchor("^\\s*#\\s*include\\s*[<\"](" + incs.join('|') + ")[>\"]");
+  if(!addAfterMark(dir.filePath("pvapp.h"), anchor, appLines))
+    warnings << "no se pudo escribir pvapp.h";
+  if(!addAfterMark(dir.filePath("main.cpp"), anchor, mainIncludes + mainLines))
+    warnings << "no se pudo escribir main.cpp";
+  if(needRllib)
+  {
+    QString pro = project.isEmpty() ? QString() : dir.filePath(project + ".pro");
+    if(pro.isEmpty() || !QFile::exists(pro))
+    {
+      const QStringList pros = dir.entryList(QStringList() << "*.pro", QDir::Files);
+      if(pros.size() == 1) pro = dir.filePath(pros.first());
+    }
+    if(!pro.isEmpty() && !ensureRllib(pro))
+      warnings << QString("%1: no tiene rllib (agregarla con Rllib > Descomentar rllib)").arg(QFileInfo(pro).fileName());
+  }
+  return warnings;
 }

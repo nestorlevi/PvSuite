@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: ventana "Compilador" (ver dlgcompiler.h)
 ****************************************************************************/
 #include "dlgcompiler.h"
@@ -70,7 +86,7 @@ DlgCompiler::DlgCompiler(QWidget *parent) : QDialog(parent)
   QGroupBox *groupCompiler = new QGroupBox(tr("Compilador de los proyectos pvserver"), this);
   QGridLayout *grid = new QGridLayout(groupCompiler);
   editQtMingw = addPath(grid, 0, tr("Qt (opcional):"),
-                        tr("Kit de Qt, p. ej. ~/Qt/6.9.2/gcc_64. Hace falta si el proyecto usa Qt (QT += ..., p. ej. el historiador).\n"
+                        tr("Kit de Qt, p. ej. ~/Qt/6.9.2/gcc_64. Hace falta si el proyecto usa Qt (QT += ...).\n"
                            "Vacio: el qmake de Qt 6 de la distribucion (Debian/Ubuntu: qt6-base-dev; Fedora: qt6-qtbase-devel);\n"
                            "si no esta, fake_qmake genera el Makefile (alcanza para un pvserver sin Qt)."),
                         true, &statusQtMingw);
@@ -86,6 +102,13 @@ DlgCompiler::DlgCompiler(QWidget *parent) : QDialog(parent)
   gridBuild->addWidget(spinJobs, 0, 1, Qt::AlignLeft);
   checkAutocomplete = new QCheckBox(tr("Texto predictivo en el editor (Ctrl+Espacio)"), groupBuild);
   gridBuild->addWidget(checkAutocomplete, 1, 0, 1, 2);
+  gridBuild->addWidget(new QLabel(tr("Sangría del editor:"), groupBuild), 2, 0);
+  comboIndent = new QComboBox(groupBuild);
+  for(int n : {2, 3, 4, 8}) comboIndent->addItem(tr("%1 espacios").arg(n), n);
+  comboIndent->addItem(tr("Tabulación"), 0);
+  comboIndent->setToolTip(tr("Lo que inserta Tab (Shift+Tab lo quita), Enter después de '{' y Formatear código.\n"
+                             "Las tabulaciones que ya tenga un archivo se ven de ese ancho."));
+  gridBuild->addWidget(comboIndent, 2, 1, Qt::AlignLeft);
   main->addWidget(groupBuild);
 
   QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -138,6 +161,7 @@ void DlgCompiler::setConfig(const CompilerConfig &c)
 #endif
   spinJobs->setValue(c.jobs);
   checkAutocomplete->setChecked(c.autocomplete);
+  comboIndent->setCurrentIndex(qMax(0, comboIndent->findData(c.indent)));
   slotValidate();
 }
 
@@ -156,6 +180,7 @@ CompilerConfig DlgCompiler::config() const
 #endif
   c.jobs         = spinJobs->value();
   c.autocomplete = checkAutocomplete->isChecked();
+  c.indent       = comboIndent->currentData().toInt();
   return c;
 }
 

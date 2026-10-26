@@ -18,11 +18,16 @@
 #include <QFile>
 
 #include "mainwindow.h"
+#include "doctabs.h"
+#include <QTimer>
 #include "dlgopt.h"
 #include "dlgnewprj.h"
 #include "dlginsertfunction.h"
 #include "dlgpastewidget.h"
 #include "dlgtextbrowser.h"
+#include "dlghelp.h"   // Nestor: ayuda integrada
+#include <QDesktopServices>
+#include <QUrl>
 #include "dlgdaemon.h"
 #include "../pvbrowser/pvblanguage.h"
 #include "../pvbrowser/pvbupdate.h"
@@ -137,6 +142,7 @@ MainWindow::MainWindow()
   readSettings();
   buildConsole = NULL;
   createBuildConsole();
+  createDocTabs();   // Nestor: pestanas (en su propia fila, debajo de las barras)
 
   editor   = NULL;
   designer = NULL;
@@ -148,6 +154,9 @@ MainWindow::MainWindow()
   setCurrentFile("");
 
   dlgtextbrowser = new dlgTextBrowser(opt_develop.manual);
+  // Nestor: F1 en cualquier ventana de pvdevelop abre la ayuda en el tema de esa ventana
+  qApp->installEventFilter(new HelpKeyFilter(this, [this]() { return designer != NULL ? QString("designer") : QString("pvdevelop"); },
+                                             [this](const QString &topic, QWidget *from) { showHelp(topic, from); }, this));
 
   if(opt_develop.arg_project[0] != '\0')
   {
@@ -181,6 +190,23 @@ MainWindow::MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+  // Nestor: cambios sin guardar (el documento que se ve y las otras pestanas): Guardar, Cerrar sin guardar o Cancelar
+  QStringList dirty = pendingText.keys();
+  const bool curDirty = currentDocModified();
+  if(curDirty)
+  {
+    const QString t = docTitle(currentDocKey());
+    dirty.prepend(t.isEmpty() ? tr("(sin nombre)") : t);
+  }
+  if(!dirty.isEmpty())
+  {
+    const int r = askSave(dirty);
+    if(r == QMessageBox::Cancel) { event->ignore(); return; }
+    if(r == QMessageBox::Save && (!writePendingDocs() || (curDirty && !save()))) { event->ignore(); return; }
+    pendingText.clear();
+    if(designer != NULL) designer->root->modified = 0;
+    else if(editor != NULL) editor->edit->document()->setModified(false);
+  }
   if(editor == NULL) viewEditor();
   if(maybeSave())
   {
@@ -482,6 +508,7 @@ void MainWindow::about()
 void MainWindow::documentWasModified()
 {
   setWindowModified(editor->edit->document()->isModified());
+  updateDocMarks();   // Nestor: el punto de su pestana
 }
 
 void MainWindow::createActions()
@@ -619,6 +646,9 @@ void MainWindow::createActions()
   compilerAct = new QAction(QIcon(":/images/option.png"), tr("&Compilador..."), this); // Nestor
   compilerAct->setStatusTip(tr("Compilador (MSVC / MinGW), carpetas, procesadores y texto predictivo"));
   connect(compilerAct, &QAction::triggered, this, &MainWindow::slotCompilerDialog);
+  cleanProjectAct = new QAction(tr("&Limpiar proyecto..."), this); // Nestor
+  cleanProjectAct->setStatusTip(tr("Borra lo compilado del proyecto (release, debug, Makefile, .o); los fuentes no se tocan"));
+  connect(cleanProjectAct, &QAction::triggered, this, &MainWindow::slotCleanProject);
 
   actionStartPvbrowserAct = new QAction(QIcon(":/images/app.png"), tr("&pvbrowser"), this);
   actionStartPvbrowserAct->setShortcut(tr("Ctrl+P"));
@@ -655,10 +685,6 @@ void MainWindow::createActions()
   daemonPpiAct = new QAction(tr("&PPI"), this);
   daemonPpiAct->setStatusTip(tr("PPI daemon"));
   //connect(daemonPpiAct, SIGNAL(triggered()), this, SLOT(slotDaemonPpi()));
-
-  linuxWriteStartscriptAct = new QAction(tr("&Write Startscript"), this);
-  linuxWriteStartscriptAct->setStatusTip(tr("Write Startscript for daemon"));
-  //connect(linuxWriteStartscriptAct, SIGNAL(triggered()), this, SLOT(slotLinuxWriteStartscript()));
 
   aboutManualAct = new QAction(tr("&Manual"), this);
   aboutManualAct->setShortcut(tr("Ctrl+H"));
@@ -701,7 +727,6 @@ void MainWindow::connectActions()
   connect(daemonModbusAct, SIGNAL(triggered()), this, SLOT(slotDaemonModbus()), Qt::UniqueConnection);   // Nestor: tambien en el Designer
   connect(daemonSiemenstcpAct, SIGNAL(triggered()), this, SLOT(slotDaemonSiemenstcp()), Qt::UniqueConnection);   // Nestor: tambien en el Designer
   connect(daemonPpiAct, SIGNAL(triggered()), this, SLOT(slotDaemonPpi()), Qt::UniqueConnection);   // Nestor: tambien en el Designer
-  connect(linuxWriteStartscriptAct, SIGNAL(triggered()), this, SLOT(slotLinuxWriteStartscript()));
   connect(cutAct, SIGNAL(triggered()), editor->edit, SLOT(cut()));
   connect(copyAct, SIGNAL(triggered()), editor->edit, SLOT(copy()));
   connect(pasteAct, SIGNAL(triggered()), editor->edit, SLOT(paste()));
@@ -727,7 +752,6 @@ void MainWindow::connectActions()
   daemonModbusAct->setEnabled(true);
   daemonSiemenstcpAct->setEnabled(true);
   daemonPpiAct->setEnabled(true);
-  linuxWriteStartscriptAct->setEnabled(true);
   cutAct->setEnabled(true);
   copyAct->setEnabled(true);
   pasteAct->setEnabled(true);
@@ -762,6 +786,7 @@ void MainWindow::connectActions()
 
   connect(editor->widgetname, SIGNAL(itemClicked( QListWidgetItem*)), this, SLOT(slotWidgetname(QListWidgetItem *)));
   connect(editor->masklist, &QListWidget::itemClicked, this, &MainWindow::slotMaskList);
+  connect(editor->masklist, &QListWidget::customContextMenuRequested, this, &MainWindow::slotMaskMenu);
   if(opt_develop.arg_debug) printf("connectActions end\n");
 }
 
@@ -781,7 +806,6 @@ void MainWindow::disconnectActions()
   disconnect(rllibUncommentModbusAct, SIGNAL(triggered()), this, SLOT(slotRllibUncommentModbus()));
   disconnect(rllibUncommentSiemenstcpAct, SIGNAL(triggered()), this, SLOT(slotRllibUncommentSiemenstcp()));
   disconnect(rllibUncommentPpiAct, SIGNAL(triggered()), this, SLOT(slotRllibUncommentPpi()));
-  disconnect(linuxWriteStartscriptAct, SIGNAL(triggered()), this, SLOT(slotLinuxWriteStartscript()));
   disconnect(cutAct, SIGNAL(triggered()), editor->edit, SLOT(cut()));
   disconnect(copyAct, SIGNAL(triggered()), editor->edit, SLOT(copy()));
   disconnect(pasteAct, SIGNAL(triggered()), editor->edit, SLOT(paste()));
@@ -802,7 +826,6 @@ void MainWindow::disconnectActions()
   rllibUncommentModbusAct->setEnabled(false);
   rllibUncommentSiemenstcpAct->setEnabled(false);
   rllibUncommentPpiAct->setEnabled(false);
-  linuxWriteStartscriptAct->setEnabled(false);
   cutAct->setEnabled(false);
   copyAct->setEnabled(false);
   pasteAct->setEnabled(false);
@@ -830,6 +853,7 @@ void MainWindow::disconnectActions()
 
   disconnect(editor->widgetname, SIGNAL(itemClicked( QListWidgetItem*)), this, SLOT(slotWidgetname(QListWidgetItem *)));
   disconnect(editor->masklist, &QListWidget::itemClicked, this, &MainWindow::slotMaskList);
+  disconnect(editor->masklist, &QListWidget::customContextMenuRequested, this, &MainWindow::slotMaskMenu);
   if(opt_develop.arg_debug) printf("disconnectActions end\n");;
 }
 
@@ -868,6 +892,7 @@ void MainWindow::createMenus()
   actionMenu->addAction(actionImportUIAct);
   actionMenu->addAction(actionInsertMaskAct);
   actionMenu->addAction(actionMakeAct);
+  actionMenu->addAction(cleanProjectAct);
   actionMenu->addAction(actionStartServerAct);
   actionMenu->addAction(actionStartPvbrowserAct);
   actionMenu->addSeparator();
@@ -875,9 +900,8 @@ void MainWindow::createMenus()
 
   rllibMenu = menuBar()->addMenu(tr("&RLlib"));
   rllibMenu->addAction(rllibUncommentRllibAct);
-  rllibMenu->addAction(rllibUncommentModbusAct);
-  rllibMenu->addAction(rllibUncommentSiemenstcpAct);
-  rllibMenu->addAction(rllibUncommentPpiAct);
+  // Nestor: los clientes de Modbus, Siemens TCP y PPI los agrega pvdevelop (pvbEnsureDaemonClients);
+  // descomentar las lineas de ejemplo dejaba nombres genericos. Quedan -action=uncommentModbus... (main.cpp)
 
   daemonMenu = menuBar()->addMenu(tr("&Daemon"));
   daemonMenu->addAction(daemonModbusAct);
@@ -886,16 +910,15 @@ void MainWindow::createMenus()
   daemonMenu->addSeparator();
   daemonMenu->addAction(tagMonitorAct);
 
-#ifdef PVUNIX
-  linuxMenu = menuBar()->addMenu(tr("&Linux"));
-  linuxMenu->addAction(linuxWriteStartscriptAct);
-#endif
-
   menuBar()->addSeparator();
 
   menuBar()->addMenu(pvbLanguageMenu(this, "pvdevelop")); // Nestor: Idioma
   helpMenu = menuBar()->addMenu(tr("&Help"));
   helpMenu->addAction(aboutManualAct);
+  // Nestor: el manual en PDF, la referencia de las funciones del pvserver y los atajos de teclado
+  helpMenu->addAction(tr("Manual en &PDF"), this, &MainWindow::slotHelpPdf);
+  helpMenu->addAction(tr("&Referencia de las funciones del pvserver"), this, &MainWindow::slotHelpReference);
+  helpMenu->addAction(tr("&Atajos de teclado"), this, [this]() { showHelp("s3-2"); });
   pvbAddUpdateActions(helpMenu, this, "pvdevelop", true); // Nestor: Buscar actualizaciones (y una vez por semana)
   helpMenu->addSeparator();
   helpMenu->addAction(aboutAct);
@@ -1029,22 +1052,33 @@ void MainWindow::slotProjectMinGW(int index)
 
 // Nestor: con MinGW 8.1 (GCC 8, Qt 5.15) el pvserver se enlaza con las bibliotecas de win-mingw/bin/mingw81_64
 // (componente "Bibliotecas para MinGW 8.1"). Si el .pro enlaza siempre las de la suite (GCC 13) se ofrece,
-// una sola vez por proyecto, agregarle PVB_MINGWLIB (elige la carpeta por QMAKE_GCC_MAJOR_VERSION).
+// agregarle PVB_MINGWLIB (elige la carpeta por QMAKE_GCC_MAJOR_VERSION). Si se responde que no, se vuelve a
+// preguntar cuando se cambie de compilador.
 void MainWindow::offerMinGWLibDir(const QString &project)
 {
 #ifdef PVWIN32
   const CompilerConfig c = CompilerConfig::load();
-  if(project.isEmpty() || c.compiler != "mingw" || CompilerConfig::minGWMajor(c.mingwDir) != 8) return;
-  const QByteArray pname = project.toUtf8();
-  if(!proNeedsMinGWLibDir(pname.constData())) return;
+  if(project.isEmpty()) return;
   const QString pro = QFileInfo(project + ".pro").absoluteFilePath();
   QSettings s("pvbrowser", "pvdevelop");
   QStringList declined = s.value("build/mingw81Declined").toStringList();
+  // el compilador con el que se compilo la ultima vez: si cambio, se olvida el "no"
+  const QString compilerNow = (c.compiler == "mingw") ? CompilerConfig::minGWLabel(c.mingwDir) : c.compiler;
+  QVariantMap last = s.value("build/lastCompiler").toMap();
+  if(last.value(pro).toString() != compilerNow)
+  {
+    last.insert(pro, compilerNow);
+    s.setValue("build/lastCompiler", last);
+    if(declined.removeAll(pro) > 0) s.setValue("build/mingw81Declined", declined);
+  }
+  if(c.compiler != "mingw" || CompilerConfig::minGWMajor(c.mingwDir) != 8) return;
+  const QByteArray pname = project.toUtf8();
+  if(!proNeedsMinGWLibDir(pname.constData())) return;
   if(declined.contains(pro, Qt::CaseInsensitive)) return;
   const QString libs = QDir::cleanPath(QString::fromLocal8Bit(qgetenv("PVBDIR")) + "/win-mingw/bin/mingw81_64");
   QString text = tr("El proyecto usa %1, pero %2.pro enlaza las bibliotecas de pvserver de la suite (otro GCC).\n\n"
                     "¿Adaptarlo para que con GCC 8 use las de %3? Con el MinGW de la suite sigue igual.\n"
-                    "(Se pregunta una sola vez.)").arg(CompilerConfig::minGWLabel(c.mingwDir), project, QDir::toNativeSeparators(libs));
+                    "(Si no, se vuelve a preguntar al cambiar de compilador.)").arg(CompilerConfig::minGWLabel(c.mingwDir), project, QDir::toNativeSeparators(libs));
   if(!QFileInfo::exists(libs + "/libserverlib.a"))
     text += "\n\n" + tr("Falta el componente \"Bibliotecas para MinGW 8.1\" de la instalacion de PV Suite.");
   if(QMessageBox::question(this, tr("MinGW 8.1"), text, QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes)
@@ -1077,6 +1111,79 @@ void MainWindow::slotQuickBuildSettings()
 #endif
 }
 
+// Nestor: Action > Limpiar proyecto: borra lo compilado (del proyecto y sus subproyectos) despues de confirmar.
+// La proxima compilacion compila todo de nuevo; los fuentes no se tocan.
+void MainWindow::slotCleanProject()
+{
+  if(name.isEmpty()) { statusBar()->showMessage(tr("No hay un proyecto abierto"), 5000); return; }
+  if(buildConsole->running())
+  {
+    QMessageBox::information(this, tr("Limpiar proyecto"), tr("Hay una compilacion en curso: esperar o Detener."));
+    return;
+  }
+  const QString dir = QDir::currentPath();
+  const QStringList targets = pvbCleanTargets(dir, name);
+  if(targets.isEmpty())
+  {
+    QMessageBox::information(this, tr("Limpiar proyecto"), tr("No hay nada compilado para borrar."));
+    return;
+  }
+  QStringList shown = targets.mid(0, 15);
+  if(targets.size() > shown.size()) shown << tr("... y %1 mas").arg(targets.size() - shown.size());
+  for(QString &f : shown) f = QDir::toNativeSeparators(f);
+  if(QMessageBox::question(this, tr("Limpiar proyecto"),
+                           tr("Se borra lo compilado de %1 (la proxima compilacion compila todo de nuevo). "
+                              "Los fuentes no se tocan.\n\n%2\n\n¿Borrar?").arg(QDir::toNativeSeparators(dir), shown.join('\n')),
+                           QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) return;
+  buildConsole->stopServer();   // el pvserver que corria en el panel usa el ejecutable
+  const QStringList failed = pvbRemoveTargets(dir, targets);
+  if(failed.isEmpty())
+  {
+    statusBar()->showMessage(tr("Proyecto limpio: %1 elementos borrados").arg(targets.size()), 10000);
+    return;
+  }
+  QMessageBox::warning(this, tr("Limpiar proyecto"),
+                       tr("No se pudieron borrar (¿el pvserver sigue abierto?):\n\n%1").arg(failed.mid(0, 15).join('\n')));
+}
+
+// Nestor: lo compilado (.o) es de otra arquitectura que el compilador elegido (p.ej. se paso de MinGW 32 a 64 bits):
+// make no recompila esos .o (son mas nuevos que los fuentes), el enlazador los descarta y faltan funciones.
+// Se ofrece limpiar el proyecto. Devuelve false si se cancela la compilacion; log: lo que se borro.
+bool MainWindow::checkBuiltBits(const QString &project, QString *log)
+{
+#ifdef PVWIN32
+  const CompilerConfig c = CompilerConfig::load();
+  const int bits = (c.compiler == "mingw") ? CompilerConfig::minGWBits(c.mingwDir) : 64;
+  const QString dir = QDir::currentPath();
+  int other = 0;
+  const QStringList objs = pvbObjectsOfOtherBits(dir, bits, &other);
+  if(objs.isEmpty()) return true;
+  const QString compiler = (c.compiler == "mingw") ? CompilerConfig::minGWLabel(c.mingwDir) : QString("MSVC (64 bits)");
+  QMessageBox box(QMessageBox::Warning, tr("Lo compilado es de otra arquitectura"),
+                  tr("%1 archivos compilados del proyecto (por ejemplo %2) son de %3 bits, pero ahora se compila con %4.\n"
+                     "El enlazador no los puede usar y faltarian funciones.\n\n"
+                     "¿Borrar lo compilado (Action > Limpiar proyecto) y compilar todo de nuevo?")
+                  .arg(objs.size()).arg(QDir::toNativeSeparators(objs.first())).arg(other).arg(compiler),
+                  QMessageBox::NoButton, this);
+  QPushButton *clean = box.addButton(tr("Borrar y compilar"), QMessageBox::AcceptRole);
+  QPushButton *keep = box.addButton(tr("Compilar igual"), QMessageBox::DestructiveRole);
+  box.addButton(QMessageBox::Cancel);
+  box.setDefaultButton(clean);
+  box.exec();
+  if(box.clickedButton() == keep) return true;
+  if(box.clickedButton() != clean) return false;
+  const QStringList targets = pvbCleanTargets(dir, project);
+  const QStringList failed = pvbRemoveTargets(dir, targets);
+  if(log) *log = failed.isEmpty() ? tr("Proyecto limpio (de %1 a %2 bits): %3 elementos borrados").arg(other).arg(bits).arg(targets.size())
+                                  : tr("No se pudieron borrar: %1").arg(failed.join(", "));
+  return true;
+#else
+  (void) project;
+  (void) log;
+  return true;
+#endif
+}
+
 // Nestor: ventana "Compilador" (carpetas, procesadores, texto predictivo)
 void MainWindow::slotCompilerDialog()
 {
@@ -1086,6 +1193,7 @@ void MainWindow::slotCompilerDialog()
   c.save();
   syncBuildToolBar(); // aplica el entorno con el MinGW del proyecto, si tiene
   if(editor != NULL && editor->completer != NULL) editor->completer->setEnabled(c.autocomplete);
+  if(editor != NULL) static_cast<CodeTextEdit *>(editor->edit)->setIndent(c.indent);
 }
 
 // Nestor: cada barra solo en su vista: "Align" en el Designer, "Compilacion" en el editor de codigo
@@ -1246,6 +1354,17 @@ QString MainWindow::strippedName(const QString &fullFileName)
   return QFileInfo(fullFileName).fileName();
 }
 
+// Nestor: algunos gestores de ventanas de Linux (Openbox de Lubuntu, LXQt) borran el estado
+// maximizado al esconder la ventana, y el show() siguiente la mostraba achicada
+void MainWindow::showAsBefore(Qt::WindowStates state)
+{
+  if(state & Qt::WindowFullScreen)     showFullScreen();
+  else if(state & Qt::WindowMaximized) showMaximized();
+  else                                 showNormal();
+  raise();
+  activateWindow();   // Openbox a veces la deja sin activar (el Designer no tomaba los clics)
+}
+
 void MainWindow::viewEditor()
 {
   if(editor != NULL) return;
@@ -1262,10 +1381,14 @@ void MainWindow::viewEditor()
   designer = NULL;
   blockFile.clear();
   editor = new Editor();
+  editor->setDocument(new QTextDocument(this));   // Nestor: los documentos son de MainWindow (pestanas)
+  editor->edit->viewport()->installEventFilter(this);   // Nestor: clic en el codigo: se quitan las advertencias marcadas
+  const Qt::WindowStates state = windowState();
   hide();
   //setCentralWidget(editor->edit);
   setCentralWidget(editor->root);
-  show();
+  scheduleBuildDockRestore();   // Nestor: al cambiar de vista la consola mantiene su tamanio
+  showAsBefore(state);
   centralWidget()->show();
   disconnect(designerCopy);    // Nestor: Copiar y Pegar vuelven a ser del editor de texto
   disconnect(designerPaste);
@@ -1310,6 +1433,7 @@ void MainWindow::viewDesigner()
   if(editor != NULL) imask = editor->spinBoxMask->value();
   if(editor != NULL || designer != NULL) centralWidget()->hide();
   disconnectActions();
+  if(editor != NULL) stashEditorDoc(curFile);   // Nestor: su deshacer queda para cuando se vuelva
   if(editor != NULL) delete editor;
   editor = NULL;
   scroll = new QScrollArea;
@@ -1324,10 +1448,12 @@ void MainWindow::viewDesigner()
   scroll->setWidget(designer->root);
   designer->root->setScroll(scroll);
   designer->root->statusBar = statusBar();
+  const Qt::WindowStates state = windowState();
   hide();
   setCentralWidget(scroll);
+  scheduleBuildDockRestore();
   if(opt_develop.arg_debug) printf("viewDesigner before show\n");;
-  show();
+  showAsBefore(state);
   if(opt_develop.arg_debug) printf("viewDesigner before centralWidget->show\n");;
   centralWidget()->show();
   if(opt_develop.arg_debug) printf("viewDesigner after centralWidget->show\n");;
@@ -1351,6 +1477,7 @@ void MainWindow::viewDesigner()
   setWindowTitle(tr("%1[*]").arg(shownName));
 
   drawDrawWidgets(designer->root);
+  noteDocShown();   // Nestor: pestanas
   if(opt_develop.arg_debug) printf("viewDesigner end\n");;
 }
 
@@ -1409,6 +1536,7 @@ void MainWindow::slotQtDesigner()
   }
 
   int mymask = editor->spinBoxMask->value();
+  const Qt::WindowStates state = windowState();
   hide();
 #ifdef PVWIN32
   sprintf(cmd,"wait pvdevelop -action=designerUi:%d %s", mymask, (const char *) name.toUtf8());
@@ -1420,7 +1548,7 @@ void MainWindow::slotQtDesigner()
   if(opt_develop.arg_debug) printf("cmd=%s\n",cmd);
   system(cmd);
 #endif
-  show();
+  showAsBefore(state);
 }
 
 void MainWindow::slotExportUI()
@@ -1558,6 +1686,7 @@ void MainWindow::load( const QString &fileName )
   }
   if(opt_develop.arg_debug) printf("load(%s)\n",(const char *) fileName.toUtf8());
   if(curFile != fileName) filePos[curFile] = editor->edit->textCursor().position(); // remember file pos
+  const QString prevFile = curFile;   // Nestor: abajo se guarda su documento (setCurrentFile cambia curFile)
   if(opt_develop.arg_debug) printf("curFile=%s pos=%d\n", (const char *) curFile.toUtf8(), filePos[curFile]);
   QFile f(fileName);
   if(!f.open(QIODevice::ReadOnly))
@@ -1609,7 +1738,15 @@ void MainWindow::load( const QString &fileName )
   if(fileName.contains(".py"))  editor->setSyntax(PYTHON_SYNTAX);
   if(fileName.contains(".lua")) editor->setSyntax(LUA_SYNTAX);
 
-  editor->edit->setPlainText( ts.readAll() );
+  // Nestor: el documento que se dejaba de ver queda guardado con su deshacer; el de este archivo vuelve si el
+  // archivo no cambio en el disco
+  stashEditorDoc(prevFile);
+  QTextDocument *doc = takeCachedDoc(fileName);
+  const bool kept = doc != nullptr;
+  if(!kept) doc = new QTextDocument(this);
+  showEditorDoc(doc);
+  doc->setProperty("pvbFile", fileName);   // de que archivo es (stashEditorDoc)
+  if(!kept) editor->edit->setPlainText( ts.readAll() );
   editor->edit->document()->setModified( false );
   setCurrentFile(fileName);
   f.close();
@@ -1634,6 +1771,15 @@ void MainWindow::load( const QString &fileName )
   if(opt_develop.script == PV_LUA)         editor->radioProject->hide();
   else                             editor->radioProject->show();
   statusBar()->showMessage( tr("Loaded document %1").arg(fileName), 2000 );
+
+  if(pendingText.contains(curFile))   // Nestor: los cambios sin guardar que tenia en su pestana
+  {
+    const QString pending = pendingText.take(curFile);
+    if(!kept) editor->edit->setPlainText(pending);   // el documento guardado ya los tiene
+    editor->edit->document()->setModified(true);
+    setWindowModified(true);
+  }
+  noteDocShown();
 
   int file_pos = filePos[fileName]; // position cursor
   if(opt_develop.arg_debug) printf("set to filePos=%d\n", file_pos);
@@ -1812,6 +1958,26 @@ void MainWindow::syncMaskList()
   const QString label = QString("mask%1").arg(current);
   editor->maskName->setText(editor->maskName->fontMetrics().elidedText(label, Qt::ElideRight, editor->maskName->width()));
   editor->maskName->setToolTip(maskTitle(current));
+  if(docTabs != nullptr) docTabs->refreshTitles();   // Nestor: el nombre de la pantalla pudo cambiar
+}
+
+// Nestor: clic derecho en la lista de pantallas del editor: abrir en nueva pestana (si ya esta abierta, no)
+void MainWindow::slotMaskMenu(const QPoint &pos)
+{
+  if(editor == NULL || name.isEmpty() || docTabs == nullptr) return;
+  QListWidgetItem *item = editor->masklist->itemAt(pos);
+  if(item == NULL) return;
+  const int mask = item->data(Qt::UserRole).toInt();
+  const QString maskFile = QString("mask%1.cpp").arg(mask);
+  const QString slotsFile = QString(opt_develop.script == PV_LUA ? "mask%1_slots.lua" : "mask%1_slots.h").arg(mask);
+  QMenu menu(this);
+  QAction *tabD = menu.addAction(style()->standardIcon(QStyle::SP_DesktopIcon), tr("Abrir en nueva pestaña (Designer)"));
+  QAction *tabS = menu.addAction(style()->standardIcon(QStyle::SP_FileIcon), tr("Abrir %1 en nueva pestaña").arg(slotsFile));
+  tabD->setEnabled(!docTabs->contains(DocTabs::designerKey(maskFile)));
+  tabS->setEnabled(!docTabs->contains(DocTabs::editorKey(slotsFile)));
+  QAction *a = menu.exec(editor->masklist->viewport()->mapToGlobal(pos));
+  if(a == tabD)      openDocInNewTab(DocTabs::designerKey(maskFile));
+  else if(a == tabS) openDocInNewTab(DocTabs::editorKey(slotsFile));
 }
 
 void MainWindow::slotMaskList(QListWidgetItem *item)
@@ -1895,33 +2061,62 @@ void MainWindow::slotDaemonPpi()
   }
 }
 
-void MainWindow::slotLinuxWriteStartscript()
-{
-  if(opt_develop.arg_debug) printf("slotLinuxWriteStartscript()\n");
-  if(beginMenu())
-  {
-    int ret;
-    ret = writeStartscript(QDir::current().path().toUtf8(), name.toUtf8());
-    if(ret != 0)
-    {
-      QMessageBox::information(this,"pvdevelop",tr("Could not write startscript"),QMessageBox::Ok);
-    }
-    else
-    {
-      QMessageBox::information(this,"pvdevelop",
-                                    tr("traditional startscript written to project directory\n"
-                                    "please review it, copy it to /etc/init.d/ and activate it through runlevel editor\n"
-                                    "\n"
-                                    "systemd <name>.service startscript also written to project directory"),
-                                    QMessageBox::Ok);
-    }
-  }
-}
-
 void MainWindow::slotAboutManual()
 {
   if(opt_develop.arg_debug) printf("slotAboutManual()\n");
-  if(dlgtextbrowser != NULL) dlgtextbrowser->show();
+  showHelp(designer != NULL ? "designer" : "pvdevelop");
+}
+
+// Nestor: ayuda integrada (dlghelp.h). Sin las paginas de doc/ayuda queda el visor viejo (doc/index.html)
+void MainWindow::showHelp(const QString &topic, QWidget *from)
+{
+  const QString configured = QFileInfo(QString::fromUtf8(opt_develop.manual)).absolutePath();
+  const QString docDir = DlgHelp::findDocDir(configured);   // la configurada o, si no tiene doc/ayuda, otra instalada o de desarrollo
+  if(docDir.isEmpty())
+  {
+    // sin paginas de ayuda (doc/ayuda): la portada de la documentacion en el navegador del sistema
+    const QString index = configured + "/index.html";
+    if(QFileInfo::exists(index)) QDesktopServices::openUrl(QUrl::fromLocalFile(index));
+    else QMessageBox::information(this, "pvdevelop", tr("No se encontró la documentación (carpeta doc de la instalación)."), QMessageBox::Ok);
+    return;
+  }
+  if(helpWindow != nullptr && helpWindow->docDirectory() != docDir) delete helpWindow;
+  // con un dialogo modal abierto, la ayuda tiene que ser hija de ese dialogo para recibir el mouse y el teclado
+  QWidget *modal = QApplication::activeModalWidget();
+  QWidget *owner = (from != nullptr && from == modal) ? from : static_cast<QWidget *>(this);
+  if(helpWindow == nullptr) helpWindow = new DlgHelp(docDir, owner);
+  else if(helpWindow->parentWidget() != owner) helpWindow->setParent(owner, helpWindow->windowFlags());
+  helpWindow->showTopic(topic);
+  helpWindow->show();
+  helpWindow->raise();
+  helpWindow->activateWindow();
+}
+
+void MainWindow::slotHelpPdf()
+{
+  showHelp(QString());
+  const QString f = (helpWindow != nullptr) ? helpWindow->pdfFile() : QString();
+  if(f.isEmpty())
+  {
+    QMessageBox::information(this, "pvdevelop", tr("No se encontró el manual en PDF (carpeta doc/manual de la instalación)."), QMessageBox::Ok);
+    return;
+  }
+  QDesktopServices::openUrl(QUrl::fromLocalFile(f));
+}
+
+void MainWindow::slotHelpReference()
+{
+  QString f;
+  const QString configured = QFileInfo(QString::fromUtf8(opt_develop.manual)).absolutePath();
+  const QString found = DlgHelp::findDocDir(configured);
+  for(const QString &d : QStringList{configured, found})
+    if(!d.isEmpty() && QFileInfo::exists(d + "/pvslib/index.html")) { f = d + "/pvslib/index.html"; break; }
+  if(f.isEmpty())
+  {
+    QMessageBox::information(this, "pvdevelop", tr("No se encontró la referencia de funciones (carpeta doc/pvslib de la instalación)."), QMessageBox::Ok);
+    return;
+  }
+  QDesktopServices::openUrl(QUrl::fromLocalFile(f));
 }
 
 void MainWindow::slotInsertFunction()
@@ -2146,28 +2341,31 @@ void MainWindow::createBuildConsole()
   actionMenu->addAction(toggle);
   connect(buildConsole, &BuildConsole::started, buildDock, &QDockWidget::show);
   connect(buildConsole, &BuildConsole::openLocation, this, &MainWindow::openLocation);
-  connect(buildConsole, &BuildConsole::finished, this, [this](bool) { applyErrorMarks(); });
+  connect(buildConsole, &BuildConsole::finished, this, [this](bool) { hideWarningMarks = false; applyErrorMarks(); });
   // agrandar / achicar (tambien se arrastra su borde) y separar en una ventana; la altura se recuerda
   connect(buildConsole, &BuildConsole::resizeRequested, this, [this](int delta) {
     if(buildDock->isFloating()) { buildDock->resize(buildDock->width(), qMax(80, buildDock->height() + delta)); return; }
-    resizeDocks(QList<QDockWidget *>() << buildDock, QList<int>() << qMax(40, buildDock->height() + delta), Qt::Vertical);
+    QSettings st("pvbrowser", "pvdevelop");
+    if(dockWidgetArea(buildDock) == Qt::BottomDockWidgetArea)
+    {
+      const int h = qMax(40, buildDock->height() + delta);
+      st.setValue("build/dockheight", h);
+      resizeDocks(QList<QDockWidget *>() << buildDock, QList<int>() << h, Qt::Vertical);
+    }
+    else
+    {
+      const int w = qMax(150, buildDock->width() + delta);
+      st.setValue("build/dockwidth", w);
+      resizeDocks(QList<QDockWidget *>() << buildDock, QList<int>() << w, Qt::Horizontal);
+    }
   });
   connect(buildConsole, &BuildConsole::floatRequested, this, [this]() { buildDock->setFloating(!buildDock->isFloating()); });
   buildDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
   // el tamanio se guarda cada vez que cambia (arrastrar el borde, agrandar/achicar) y se vuelve a poner
   // al mostrarla, despues de que Qt la ubica (si no, al compilar aparecia con la mitad de la ventana)
   buildDock->installEventFilter(this);
-  connect(buildDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
-    if(!visible) return;
-    buildDockRestoring = true;
-    QTimer::singleShot(0, this, [this]() { restoreBuildDockSize(); });
-    QTimer::singleShot(300, this, [this]() { buildDockRestoring = false; });
-  });
-  connect(buildDock, &QDockWidget::topLevelChanged, this, [this](bool) {
-    buildDockRestoring = true;
-    QTimer::singleShot(0, this, [this]() { restoreBuildDockSize(); });
-    QTimer::singleShot(300, this, [this]() { buildDockRestoring = false; });
-  });
+  connect(buildDock, &QDockWidget::visibilityChanged, this, [this](bool visible) { if(visible) scheduleBuildDockRestore(); });
+  connect(buildDock, &QDockWidget::topLevelChanged, this, [this](bool) { scheduleBuildDockRestore(); });
 
   // Nestor: barra del proyecto (entre la vista y alinear): el monitor de tags
   tagMonitorAct->setIcon(toolIcon(8));
@@ -2180,7 +2378,16 @@ void MainWindow::createBuildConsole()
 // Nestor: la consola de compilacion recuerda su tamanio (abajo: alto; a un costado: ancho; separada: tamanio)
 bool MainWindow::eventFilter(QObject *o, QEvent *e)
 {
-  if(o == buildDock && e->type() == QEvent::Resize && buildDock->isVisible() && !buildDockRestoring)
+  // Nestor: el primer clic en el codigo quita el color de las advertencias; los errores quedan hasta corregirlos
+  if(editor != NULL && o == editor->edit->viewport() && e->type() == QEvent::MouseButtonPress && !hideWarningMarks)
+  {
+    hideWarningMarks = true;
+    applyErrorMarks();
+  }
+  // solo lo que hace el usuario (arrastrar el borde: boton del mouse apretado); no lo que cambia Qt al pasar
+  // del editor al Designer o al cambiar el tamanio de la ventana (si no, se guardaba media pantalla)
+  if(o == buildDock && e->type() == QEvent::Resize && buildDock->isVisible() && !buildDockRestoring
+     && (QGuiApplication::mouseButtons() & Qt::LeftButton))
   {
     QSettings st("pvbrowser", "pvdevelop");
     if(buildDock->isFloating()) st.setValue("build/floatsize", buildDock->size());
@@ -2188,6 +2395,14 @@ bool MainWindow::eventFilter(QObject *o, QEvent *e)
     else if(buildDock->width() > 60) st.setValue("build/dockwidth", buildDock->width());
   }
   return QMainWindow::eventFilter(o, e);
+}
+
+void MainWindow::scheduleBuildDockRestore()
+{
+  if(buildDock == NULL || !buildDock->isVisible()) return;
+  buildDockRestoring = true;
+  QTimer::singleShot(0, this, [this]() { restoreBuildDockSize(); });
+  QTimer::singleShot(300, this, [this]() { buildDockRestoring = false; });
 }
 
 void MainWindow::restoreBuildDockSize()
@@ -2341,11 +2556,23 @@ QIcon MainWindow::toolIcon(int kind)
 void MainWindow::buildProject(bool startServer)
 {
   const QString project = name;
+  writePendingDocs();   // Nestor: los cambios de las otras pestanas tambien se compilan
   // Nestor: con una compilacion en curso no se mata nada (antes se cerraba el servidor y run() la rechazaba igual)
+  buildConsole->stopServer();   // Nestor: el pvserver que corria en el panel (Linux sin terminal)
   if(buildConsole->running()) { buildConsole->appendLine(tr("Ya hay una compilacion en curso: esperar o Detener"), "#b00000"); return; }
+  QString cleanLog;
+  if(!checkBuiltBits(project, &cleanLog)) return;   // Nestor: .o de otra arquitectura
+#ifndef PVWIN32
+  // Nestor: como taskkill en Windows: si el anterior sigue abierto, el nuevo no consigue el puerto
+  if(startServer && pvbKillProgram(serverExePath(project)) > 0)
+    buildConsole->appendLine(tr("Se cerro el %1 anterior").arg(project), "#606060");
+#endif
   std::function<void(bool)> done = [this, project, startServer](bool ok) {
     if(ok && startServer) startServerProcess(project);
   };
+  // Nestor: los clientes de los daemons (PLC1...) en pvapp.h y main.cpp; se muestra despues de run() (lo limpia)
+  QStringList clientsAdded;
+  const QStringList clientWarnings = pvbEnsureDaemonClients(project, &clientsAdded);
 #ifdef PVWIN32
   offerMinGWLibDir(project);
   perhapsAddMsvcScope(project.toUtf8().constData());
@@ -2358,6 +2585,9 @@ void MainWindow::buildProject(bool startServer)
   QString cmd = QString("fake_qmake %1 '%2.pro' && make -j%3").arg(opt_develop.fake_qmake).arg(QString(project).replace("'", "'\\''")).arg(buildJobs());
   buildConsole->run(project, "sh", QStringList() << "-c" << cmd, done);
 #endif
+  for(const QString &a : clientsAdded) buildConsole->appendLine(tr("Cliente del daemon agregado: %1").arg(a), "#606060");
+  for(const QString &w : clientWarnings) buildConsole->appendLine(w, "#b06000");
+  if(!cleanLog.isEmpty()) buildConsole->appendLine(cleanLog, "#606060");
 }
 
 // Nestor: el ejecutable del pvserver del proyecto (en la carpeta actual)
@@ -2377,6 +2607,12 @@ void MainWindow::startServerProcess(const QString &project)
 {
   // Nestor: pvbStartInConsole (buildconsole.cpp): sin cmd /C start ni xterm fijo (macOS no lo trae)
   const QString exe = serverExePath(project);
+  if(!pvbHasTerminal())   // Nestor: sin terminal (macOS sin XQuartz): dentro del panel, Detener lo cierra
+  {
+    bool ok = buildConsole->runServer(project, exe);
+    if(!ok) buildConsole->appendLine(tr("No se pudo iniciar %1").arg(project), "#b00000");
+    return;
+  }
   bool ok = pvbStartInConsole(QDir::toNativeSeparators(exe), QStringList(), QDir::currentPath(), project);
   buildConsole->appendLine(ok ? tr("%1 iniciado").arg(project) : tr("No se pudo iniciar %1").arg(project), ok ? "#006000" : "#b00000");
 }
@@ -2390,6 +2626,7 @@ void MainWindow::applyErrorMarks()
   QTextDocument *doc = editor->edit->document();
   for(QMap<int, bool>::const_iterator i = marks.constBegin(); i != marks.constEnd(); ++i)
   {
+    if(!i.value() && hideWarningMarks) continue;   // advertencia ya vista
     QTextBlock b = doc->findBlockByNumber(i.key() - 1);
     if(!b.isValid()) continue;
     QTextEdit::ExtraSelection s;
@@ -2409,6 +2646,7 @@ void MainWindow::applyErrorMarks()
 void MainWindow::openLocation(const QString &file, int line, int column)
 {
   if(editor == NULL) viewEditor();
+  hideWarningMarks = false;   // Nestor: se vuelven a marcar hasta el proximo clic en el codigo
   if(!QFile::exists(file) || QFileInfo(file).isAbsolute())
   {
     statusBar()->showMessage(tr("%1 no es un archivo del proyecto").arg(file), 4000);
@@ -2433,7 +2671,259 @@ void MainWindow::openLocation(const QString &file, int line, int column)
   if(!b.isValid()) return;
   QTextCursor c(b);
   if(column > 1) c.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, qMin(column - 1, b.length() - 1));
+  applyErrorMarks();
   editor->edit->setTextCursor(c);
   editor->edit->ensureCursorVisible();
   editor->edit->setFocus();
+}
+
+//------------------------------------------------------------------------------------------------
+// Nestor: pestanas de documentos (doctabs.h). Al dejar el Designer por otra pestana la pantalla se guarda (no
+// puede quedar abierta); un archivo del editor con cambios queda en memoria (pendingText) con un punto en su pestana
+// y se guarda con Guardar todo, al compilar o al cerrar pvdevelop (pregunta)
+void MainWindow::createDocTabs()
+{
+  docTabs = new DocTabs(this);
+  docTabs->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  docTabs->title = [this](const QString &key) { return docTitle(key); };
+  addToolBarBreak();
+  QToolBar *tb = addToolBar(tr("Pestañas"));
+  tb->setObjectName("docTabsToolBar");
+  tb->setMovable(false);
+  tb->addWidget(docTabs);
+  connect(docTabs, &DocTabs::activate, this, [this](const QString &key) { openDoc(key); });
+  connect(docTabs, &DocTabs::closeRequested, this, [this](const QString &key) { closeDoc(key); });
+  connect(docTabs, &DocTabs::saveAllRequested, this, [this]() { saveAllDocs(); });
+  // el Designer marca sus cambios en root->modified desde muchos lugares: se mira cada tanto
+  QTimer *marks = new QTimer(this);
+  connect(marks, &QTimer::timeout, this, [this]() { updateDocMarks(); });
+  marks->start(300);
+  connect(docTabs, &DocTabs::openFileRequested, this, [this]() {
+    if(name.isEmpty()) return;
+    const QString f = QFileDialog::getOpenFileName(this, tr("Abrir en una pestaña nueva"), QDir::currentPath(),
+                        tr("Codigo (*.cpp *.h *.c *.pro *.lua *.py *.txt *.ini *.mk* *.tagmap);;Todos (*)"));
+    if(f.isEmpty()) return;
+    openDocInNewTab(DocTabs::editorKey(QDir::current().relativeFilePath(f)));
+  });
+}
+
+QString MainWindow::currentDocKey() const
+{
+  if(designer != NULL) return DocTabs::designerKey(blockFile.isEmpty() ? QString("mask%1.cpp").arg(imask) : blockFile);
+  return DocTabs::editorKey(curFile);
+}
+
+QString MainWindow::docTitle(const QString &key)
+{
+  const QString f = DocTabs::fileOf(key);
+  if(!DocTabs::isDesigner(key)) return f;
+  int mask = 0;
+  if(sscanf(f.toUtf8().constData(), "mask%d.cpp", &mask) == 1 && f == QString("mask%1.cpp").arg(mask)) return maskTitle(mask);
+  return tr("bloque %1").arg(QFileInfo(f).completeBaseName());
+}
+
+void MainWindow::noteDocShown()
+{
+  if(docTabs == nullptr || docSwitching || name.isEmpty() || (designer == NULL && curFile.isEmpty())) return;
+  if(docTabsDir != QDir::currentPath())   // otro proyecto
+  {
+    docTabs->clear();
+    pendingText.clear();
+    for(const QString &f : docCache.keys()) dropCachedDoc(f);
+    docTabsDir = QDir::currentPath();
+  }
+  docTabs->shown(currentDocKey());
+}
+
+void MainWindow::openDocInNewTab(const QString &key)
+{
+  if(docTabs == nullptr || name.isEmpty()) return;
+  docTabs->openNew(key);   // si ya esta abierta pasa a esa; emite activate -> openDoc
+}
+
+void MainWindow::openDoc(const QString &key)
+{
+  const QString cur = currentDocKey();
+  if(key == cur || name.isEmpty()) return;
+  const QString f = DocTabs::fileOf(key);
+  int mask = 0;
+  const bool isMask = DocTabs::isDesigner(key) && sscanf(f.toUtf8().constData(), "mask%d.cpp", &mask) == 1;
+  const bool exists = DocTabs::isDesigner(key) && isMask ? (QFile::exists(f) || QFile::exists(QString("mask%1.lua").arg(mask))) : QFile::exists(f);
+  if(!exists && !pendingText.contains(f))
+  {
+    statusBar()->showMessage(tr("%1 ya no existe: se cierra su pestaña").arg(f), 5000);
+    docTabs->remove(key);
+    docTabs->shown(cur);
+    return;
+  }
+  docSwitching = true;
+  if(designer != NULL)
+  {
+    if(designer->root->modified == 1) designer->root->modified = -1;   // -1: se guarda sin preguntar
+    viewEditor();
+  }
+  else if(editor != NULL && editor->edit->document()->isModified() && !curFile.isEmpty())
+  {
+    filePos[curFile] = editor->edit->textCursor().position();
+    pendingText[curFile] = editor->edit->toPlainText();   // queda en su pestana
+    editor->edit->document()->setModified(false);
+    setWindowModified(false);
+    docTabs->setModifiedMark(cur, true);
+  }
+  if(DocTabs::isDesigner(key))
+  {
+    blockFile = isMask ? QString() : f;
+    if(isMask && editor != NULL) editor->spinBoxMask->setValue(mask);
+    viewDesigner();
+  }
+  else
+  {
+    if(editor == NULL) viewEditor();
+    if(editor != NULL) load(f);
+  }
+  docSwitching = false;
+  updateDocMarks();
+  docTabs->shown(currentDocKey());
+}
+
+void MainWindow::closeDoc(const QString &key)
+{
+  const QString next = docTabs->neighbor(key);
+  if(next.isEmpty()) return;   // la ultima pestana queda
+  const QString f = DocTabs::fileOf(key);
+  const bool current = key == currentDocKey();
+  if(current ? currentDocModified() : pendingText.contains(f))
+  {
+    const int r = askSave({ docTitle(key) });
+    if(r == QMessageBox::Cancel) return;
+    if(current)
+    {
+      if(r == QMessageBox::Save && !save()) return;
+      if(r == QMessageBox::Discard)
+      {
+        if(designer != NULL) designer->root->modified = 0;
+        else if(editor != NULL) { editor->edit->document()->setModified(false); setWindowModified(false); }
+      }
+    }
+    else if(r == QMessageBox::Save)
+    {
+      QFile out(f);
+      if(!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) { QMessageBox::warning(this, "pvdevelop", tr("Cannot write file %1").arg(f)); return; }
+      out.write(pendingText.value(f).toUtf8());
+      out.close();
+      if(docCache.contains(f)) { docCache[f].doc->setModified(false); docCache[f].stamp = QFileInfo(f).lastModified(); }
+    }
+  }
+  if(current)
+  {
+    openDoc(next);
+    if(currentDocKey() == key) return;   // no se pudo cambiar
+  }
+  pendingText.remove(f);
+  dropCachedDoc(f);
+  docTabs->remove(key);
+}
+
+// Nestor: deshacer y rehacer de cada pestana: al dejar de ver un archivo su QTextDocument queda en docCache
+void MainWindow::stashEditorDoc(const QString &file)
+{
+  if(editor == NULL) return;
+  QTextDocument *doc = editor->edit->document();
+  if(doc->parent() != this) return;
+  // otro texto (editor recien creado, loadFile) o cambios descartados: no se guarda
+  if(file.isEmpty() || doc->property("pvbFile").toString() != file || (doc->isModified() && !pendingText.contains(file)))
+  {
+    doc->deleteLater();   // todavia se ve: se borra despues de cambiar
+    return;
+  }
+  dropCachedDoc(file);
+  docCache.insert(file, CachedDoc{ doc, QFileInfo(file).lastModified() });
+}
+
+QTextDocument *MainWindow::takeCachedDoc(const QString &file)
+{
+  if(!docCache.contains(file)) return nullptr;
+  const CachedDoc c = docCache.take(file);
+  if(c.stamp == QFileInfo(file).lastModified()) return c.doc;
+  c.doc->deleteLater();   // el archivo cambio (lo genero pvdevelop o se edito afuera): se lee de nuevo
+  return nullptr;
+}
+
+void MainWindow::dropCachedDoc(const QString &file)
+{
+  if(!docCache.contains(file)) return;
+  QTextDocument *doc = docCache.take(file).doc;
+  if(editor == NULL || editor->edit->document() != doc) doc->deleteLater();
+}
+
+void MainWindow::showEditorDoc(QTextDocument *doc)
+{
+  QTextDocument *old = editor->edit->document();
+  if(old == doc) return;
+  disconnect(old, SIGNAL(contentsChanged()), this, SLOT(documentWasModified()));
+  editor->setDocument(doc);
+  connect(doc, SIGNAL(contentsChanged()), this, SLOT(documentWasModified()));
+}
+
+MainWindow::~MainWindow()
+{
+  delete editor;   // antes que los documentos (hijos de MainWindow) que puede estar mostrando
+  editor = NULL;
+}
+
+bool MainWindow::currentDocModified() const
+{
+  if(designer != NULL) return designer->root->modified != 0;
+  return editor != NULL && editor->edit->document()->isModified();
+}
+
+void MainWindow::updateDocMarks()
+{
+  if(docTabs == nullptr || docSwitching) return;
+  const QString cur = currentDocKey();
+  for(const QString &k : docTabs->keys())
+    docTabs->setModifiedMark(k, k == cur ? currentDocModified() : (!DocTabs::isDesigner(k) && pendingText.contains(DocTabs::fileOf(k))));
+}
+
+int MainWindow::askSave(const QStringList &docs)
+{
+  QMessageBox box(QMessageBox::Warning, "pvdevelop",
+                  docs.size() == 1 ? tr("%1 tiene cambios sin guardar.").arg(docs.first())
+                                   : tr("Hay cambios sin guardar en:\n%1").arg(docs.join("\n")),
+                  QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, this);
+  box.button(QMessageBox::Save)->setText(tr("Guardar"));
+  box.button(QMessageBox::Discard)->setText(tr("Cerrar sin guardar"));
+  box.button(QMessageBox::Cancel)->setText(tr("Cancelar"));
+  box.setDefaultButton(QMessageBox::Save);
+  box.setEscapeButton(QMessageBox::Cancel);
+  return box.exec();
+}
+
+bool MainWindow::writePendingDocs()
+{
+  bool ok = true;
+  for(const QString &f : pendingText.keys())
+  {
+    QFile out(f);
+    if(!out.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+      QMessageBox::warning(this, "pvdevelop", tr("Cannot write file %1").arg(f));
+      ok = false;
+      continue;
+    }
+    out.write(pendingText.take(f).toUtf8());
+    out.close();
+    if(docCache.contains(f)) { docCache[f].doc->setModified(false); docCache[f].stamp = QFileInfo(f).lastModified(); }
+    if(docTabs != nullptr) docTabs->setModifiedMark(DocTabs::editorKey(f), false);
+  }
+  return ok;
+}
+
+bool MainWindow::saveAllDocs()
+{
+  if(name.isEmpty()) return false;
+  bool ok = writePendingDocs();
+  if(designer != NULL || (editor != NULL && editor->edit->document()->isModified())) ok = save() && ok;
+  statusBar()->showMessage(ok ? tr("Todo guardado") : tr("No se pudo guardar todo"), 3000);
+  return ok;
 }

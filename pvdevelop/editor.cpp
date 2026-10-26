@@ -126,7 +126,8 @@ Editor::Editor()
   pushButtonInsertFunction->setGeometry( QRect(0,305,170,25) );
 
   masklist = new QListWidget(t);   // Nestor: las pantallas del proyecto (clic: abrir)
-  masklist->setToolTip(QCoreApplication::translate("Editor", "Clic: abrir la pantalla"));
+  masklist->setToolTip(QCoreApplication::translate("Editor", "Clic: abrir la pantalla. Clic derecho: abrir en nueva pestaña"));
+  masklist->setContextMenuPolicy(Qt::CustomContextMenu);
   t->addItem( masklist, QCoreApplication::translate("Editor", "Pantallas"));
 
   page2 = new QWidget(t);
@@ -143,10 +144,18 @@ Editor::Editor()
   edit = new CodeTextEdit(root); // Nestor: QTextEdit con texto predictivo
   edit->setFont(QFont("Courier", 12));
   edit->setLineWrapMode( QTextEdit::NoWrap );
+  { // Nestor: la palabra buscada se ve igual con el foco en la ventana Buscar (el gris de la seleccion inactiva casi no se notaba)
+    QPalette pal = edit->palette();
+    pal.setColor(QPalette::Inactive, QPalette::Highlight, pal.color(QPalette::Active, QPalette::Highlight));
+    pal.setColor(QPalette::Inactive, QPalette::HighlightedText, pal.color(QPalette::Active, QPalette::HighlightedText));
+    edit->setPalette(pal);
+  }
   highlighter = new syntax(edit);
   completer = new CodeCompleter(edit); // Nestor: texto predictivo (Ctrl+Espacio)
   static_cast<CodeTextEdit *>(edit)->completer = completer;
-  completer->setEnabled(CompilerConfig::load().autocomplete);
+  const CompilerConfig cfg = CompilerConfig::load();
+  completer->setEnabled(cfg.autocomplete);
+  static_cast<CodeTextEdit *>(edit)->setIndent(cfg.indent);   // Nestor: sangria elegida
 
   viewLayout->addWidget(left);
   viewLayout->addWidget(edit);
@@ -160,6 +169,14 @@ Editor::~Editor()
   else                              opt_develop.su = 0;
   delete highlighter;
   delete root;
+}
+
+// Nestor: cada pestana del editor tiene su documento (con su deshacer y rehacer)
+void Editor::setDocument(QTextDocument *doc)
+{
+  static_cast<CodeTextEdit *>(edit)->showDocument(doc);
+  highlighter->setDocument(doc);
+  completer->documentReplaced();
 }
 
 int Editor::setSyntax(int language)

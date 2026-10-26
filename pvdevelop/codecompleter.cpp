@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: texto predictivo para el editor de pvdevelop (ver codecompleter.h)
 ****************************************************************************/
 #include "codecompleter.h"
@@ -10,6 +26,8 @@
 #include <QAbstractItemView>
 #include <QScrollBar>
 #include <QKeyEvent>
+#include <QContextMenuEvent>
+#include <QMenu>
 #include <QRegularExpression>
 #include <QFile>
 #include <QDir>
@@ -107,9 +125,68 @@ CodeCompleter::CodeCompleter(QTextEdit *e) : QObject(e), edit(e), enabled(true),
   completer->setWrapAround(false);
   completer->setMaxVisibleItems(12);
   connect(completer, QOverload<const QString &>::of(&QCompleter::activated), this, &CodeCompleter::insertCompletion);
-  connect(edit->document(), &QTextDocument::contentsChanged, this, &CodeCompleter::slotDocumentChanged);
-  connect(edit->document(), &QTextDocument::contentsChange, this, &CodeCompleter::slotContentsChange);
+  documentReplaced();
   edit->installEventFilter(this);
+}
+
+void CodeCompleter::documentReplaced()
+{
+  if(doc != nullptr) disconnect(doc, nullptr, this, nullptr);
+  doc = edit->document();
+  connect(doc, &QTextDocument::contentsChanged, this, &CodeCompleter::slotDocumentChanged);
+  connect(doc, &QTextDocument::contentsChange, this, &CodeCompleter::slotContentsChange);
+  documentChanged = true;
+}
+
+void CodeTextEdit::setIndent(int spaces)
+{
+  unit = spaces > 0 ? QString(spaces, ' ') : QString("\t");
+  setTabStopDistance(fontMetrics().horizontalAdvance(' ') * (spaces > 0 ? spaces : 4));
+}
+
+void CodeTextEdit::showDocument(QTextDocument *doc)
+{
+  const qreal tab = tabStopDistance();   // es del documento: se le pasa al nuevo
+  doc->setDefaultFont(font());
+  setDocument(doc);
+  setTabStopDistance(tab);
+}
+
+// lineas de la seleccion (o la del cursor): Tab agrega un nivel a las que tienen texto, Shift+Tab quita uno
+void CodeTextEdit::shiftLines(bool right)
+{
+  QTextCursor tc = textCursor();
+  const QTextBlock first = document()->findBlock(tc.selectionStart());
+  QTextBlock last = document()->findBlock(tc.selectionEnd());
+  if(last != first && last.position() == tc.selectionEnd()) last = last.previous();   // termina al principio de una linea
+  const int width = unit == "\t" ? 4 : unit.size();
+  QTextCursor c(document());
+  c.beginEditBlock();   // se deshace todo junto
+  for(QTextBlock b = first; b.isValid(); b = b.next())
+  {
+    const QString t = b.text();
+    c.setPosition(b.position());
+    if(right)
+    {
+      if(!t.trimmed().isEmpty()) c.insertText(unit);
+    }
+    else
+    {
+      int k = 0;
+      if(t.startsWith('\t')) k = 1;
+      else while(k < width && k < t.size() && t.at(k) == ' ') k++;
+      c.setPosition(b.position() + k, QTextCursor::KeepAnchor);
+      c.removeSelectedText();
+    }
+    if(b == last) break;
+  }
+  c.endEditBlock();
+  if(tc.hasSelection())
+  {
+    tc.setPosition(first.position());
+    tc.setPosition(last.position() + last.length() - 1, QTextCursor::KeepAnchor);
+    setTextCursor(tc);
+  }
 }
 
 void CodeTextEdit::keyPressEvent(QKeyEvent *event)
@@ -129,7 +206,148 @@ void CodeTextEdit::keyPressEvent(QKeyEvent *event)
         break;
     }
   }
+  const bool plain = !(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier));
+  // Nestor: Tab inserta la sangria elegida (no una tabulacion); con varias lineas seleccionadas las corre todas.
+  // Shift+Tab les quita un nivel
+  if(plain && !isReadOnly() && (event->key() == Qt::Key_Tab || event->key() == Qt::Key_Backtab))
+  {
+    QTextCursor tc = textCursor();
+    const bool back = event->key() == Qt::Key_Backtab || (event->modifiers() & Qt::ShiftModifier);
+    if(back || document()->findBlock(tc.selectionStart()) != document()->findBlock(tc.selectionEnd())) shiftLines(!back);
+    else { tc.insertText(unit); setTextCursor(tc); }
+    return;
+  }
+  // Nestor: Enter conserva la sangria de la linea (sus tabulaciones pasan a la sangria elegida); despues de '{'
+  // un nivel mas. '}' al principio de una linea (solo sangria antes) le quita un nivel
+  if(plain && !isReadOnly() && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter || event->text() == "}"))
+  {
+    QTextCursor tc = textCursor();
+    const QString line = tc.block().text();
+    const int pos = tc.positionInBlock();
+    int n = 0;
+    while(n < line.size() && (line.at(n) == ' ' || line.at(n) == '\t')) n++;
+    const QString indent = line.left(qMin(n, pos));
+    if(event->text() == "}")
+    {
+      if(tc.hasSelection() || pos == 0 || pos > n) { QTextEdit::keyPressEvent(event); return; }
+      tc.beginEditBlock();
+      if(indent.endsWith('\t')) tc.deletePreviousChar();
+      else
+      {
+        const int width = unit == "\t" ? 4 : unit.size();
+        for(int k = 0; k < width && k < indent.size() && indent.at(indent.size() - 1 - k) == ' '; k++) tc.deletePreviousChar();
+      }
+      tc.insertText("}");
+      tc.endEditBlock();
+      setTextCursor(tc);
+      return;
+    }
+    const bool open = line.left(pos).trimmed().endsWith('{');
+    tc.beginEditBlock();
+    QString keep = indent;
+    if(unit != "\t") keep.replace('\t', unit);
+    tc.insertText("\n" + keep + (open ? unit : QString()));
+    tc.endEditBlock();
+    setTextCursor(tc);
+    ensureCursorVisible();
+    return;
+  }
   QTextEdit::keyPressEvent(event);
+}
+
+QStringList pvbFormatCode(const QStringList &lines, const QString &unit)
+{
+  QString base;
+  for(const QString &l : lines)
+  {
+    int n = 0;
+    while(n < l.size() && (l.at(n) == ' ' || l.at(n) == '\t')) n++;
+    if(n < l.size() && l.at(n) != '#') { base = l.left(n); break; }
+  }
+  if(unit != "\t") base.replace('\t', unit);
+  static const QRegularExpression single("^(?:(?:if|for|while)\\b.*\\)|else(?:\\s+if\\b.*\\))?)$");
+  QStringList out;
+  int depth = 0, paren = 0;
+  bool comment = false, pending = false;
+  for(const QString &l : lines)
+  {
+    const QString t = l.trimmed();
+    if(t.isEmpty()) { out << QString(); continue; }
+    const bool keep = comment || paren > 0 || t.startsWith('#');
+    // llaves, parentesis y comentarios de la linea (sin contar lo que esta en textos, caracteres y comentarios)
+    int opens = 0, closes = 0, leading = 0;
+    bool code = false;
+    QString bare;   // la linea sin comentarios
+    for(int i = 0; i < t.size(); i++)
+    {
+      const QChar c = t.at(i);
+      if(comment) { if(c == '*' && i + 1 < t.size() && t.at(i + 1) == '/') { comment = false; i++; } continue; }
+      if(c == '/' && i + 1 < t.size() && t.at(i + 1) == '/') break;
+      if(c == '/' && i + 1 < t.size() && t.at(i + 1) == '*') { comment = true; i++; continue; }
+      bare += c;
+      if(c == '"' || c == '\'')
+      {
+        for(i++; i < t.size() && t.at(i) != c; i++) { bare += t.at(i); if(t.at(i) == '\\' && i + 1 < t.size()) bare += t.at(++i); }
+        if(i < t.size()) bare += t.at(i);
+        code = true;
+        continue;
+      }
+      if(c == '{') opens++;
+      else if(c == '}') { closes++; if(!code) leading++; }
+      else if(c == '(') paren++;
+      else if(c == ')') paren = qMax(0, paren - 1);
+      if(c != '}' && !c.isSpace()) code = true;
+    }
+    if(keep) out << l;
+    else
+    {
+      const int level = qMax(0, depth - leading) + ((pending && !t.startsWith('{')) ? 1 : 0);
+      out << base + unit.repeated(level) + t;
+    }
+    if(!keep || paren == 0)
+    {
+      const QString b = bare.trimmed();
+      if(!b.isEmpty()) pending = single.match(b).hasMatch() && !b.endsWith('{') && !b.endsWith(';');
+    }
+    depth = qMax(0, depth + opens - closes);
+  }
+  return out;
+}
+
+void CodeTextEdit::contextMenuEvent(QContextMenuEvent *event)
+{
+  QMenu *menu = createStandardContextMenu(event->pos());
+  menu->addSeparator();
+  const bool sel = textCursor().hasSelection();
+  QAction *format = menu->addAction(sel ? tr("Formatear código (lineas seleccionadas)") : tr("Formatear código (todo el archivo)"));
+  format->setEnabled(!isReadOnly());
+  QAction *a = menu->exec(event->globalPos());
+  delete menu;
+  if(a != format) return;
+  QTextCursor tc = textCursor();
+  int start = 0, end = document()->blockCount() - 1;
+  if(sel)
+  {
+    start = document()->findBlock(tc.selectionStart()).blockNumber();
+    end = document()->findBlock(tc.selectionEnd()).blockNumber();
+    // la seleccion que termina al principio de una linea no la incluye
+    if(end > start && document()->findBlock(tc.selectionEnd()).position() == tc.selectionEnd()) end--;
+  }
+  QStringList lines;
+  for(int b = start; b <= end; b++) lines << document()->findBlockByNumber(b).text();
+  const QStringList formatted = pvbFormatCode(lines, unit);
+  if(formatted == lines) return;
+  QTextCursor r(document()->findBlockByNumber(start));
+  r.setPosition(document()->findBlockByNumber(end).position() + document()->findBlockByNumber(end).length() - 1, QTextCursor::KeepAnchor);
+  r.beginEditBlock();
+  r.insertText(formatted.join('\n'));   // se deshace con Ctrl+Z
+  r.endEditBlock();
+  if(sel)
+  {
+    QTextCursor s(document()->findBlockByNumber(start));
+    s.setPosition(document()->findBlockByNumber(end).position() + document()->findBlockByNumber(end).length() - 1, QTextCursor::KeepAnchor);
+    setTextCursor(s);
+  }
 }
 
 bool CodeCompleter::popupVisible() const

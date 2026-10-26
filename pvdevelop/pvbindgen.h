@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: acciones y animaciones de los widgets (Designer > Propiedades > Accion y animacion).
 **
 ** Cada widget guarda sus enlaces en la propiedad dinamica "pvbBind" (clave=valor):
@@ -43,5 +59,9 @@ int     pvbSaveBindings(const QString &maskCpp, QWidget *root);   // al guardarl
 bool    pvbValidTextFormat(const QString &fmt);
 // clave=valor separados por espacios ("" = una comilla): devuelve clave, valor, clave, valor...
 QStringList pvbSplitPairs(const QString &line, QString *err = nullptr);
+
+// Nestor: los clientes de los daemons (rlModbusClient PLC1...) en pvapp.h y main.cpp, y rllib en el .pro: agrega
+// lo que falta sin tocar lo que ya esta. Devuelve los avisos; added = lo que agrego (para la consola)
+QStringList pvbEnsureDaemonClients(const QString &project = QString(), QStringList *added = nullptr);
 
 #endif

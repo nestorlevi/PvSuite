@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: configuracion de compilacion de pvdevelop (ver compilerconfig.h)
 ****************************************************************************/
 #include "compilerconfig.h"
@@ -210,6 +226,17 @@ int CompilerConfig::minGWMajor(const QString &mingwDir)
   return minGWVersion(mingwDir).major;
 }
 
+int CompilerConfig::minGWBits(const QString &mingwDir)
+{
+  // por el compilador que trae (i686 = 32 bits); si no, por el nombre de la carpeta (mingw810_32)
+  if(fileExists(mingwDir + "/bin/i686-w64-mingw32-gcc.exe")) return 32;
+  if(fileExists(mingwDir + "/bin/x86_64-w64-mingw32-gcc.exe")) return 64;
+  const QString n = QFileInfo(QDir::cleanPath(mingwDir)).fileName();
+  if(n.endsWith("32")) return 32;
+  if(n.endsWith("64")) return 64;
+  return 0;
+}
+
 QString CompilerConfig::qtKitForMinGW(const QString &mingwDir)
 {
 #ifdef _WIN32
@@ -341,6 +368,7 @@ CompilerConfig CompilerConfig::load(bool withProject)
     c.jom          = s.value("jom").toString();
     c.jobs         = s.value("jobs", maxJobs()).toInt();
     c.autocomplete = s.value("autocomplete", true).toBool();
+    c.indent       = qBound(0, s.value("indent", 2).toInt(), 8);
   }
   else
   {
@@ -391,6 +419,7 @@ void CompilerConfig::save() const
   s.setValue("jom", jom);
   s.setValue("jobs", jobs);
   s.setValue("autocomplete", autocomplete);
+  s.setValue("indent", indent);
   s.endGroup();
 }
 

@@ -25,6 +25,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QDir>
+#include <QImageReader>
 #include "pvimages.h"   // Nestor: pvbPickImages
 
 extern OPT_DEVELOP opt_develop;
@@ -291,9 +292,12 @@ QWidget *dlgInsertWidget::newWidget(QWidget *root, QWidget *parent, int x, int y
     {
       image->setWhatsThis(filename);
     }
-    //qt3 image->setBackgroundMode(Qt::FixedColor);
-    image->setAutoFillBackground(true);
-    image->setPalette(QPalette(QColor(128,0,0)));
+    else
+    {
+      // Nestor: sin imagen, un rectangulo para verlo; con imagen, fondo transparente (como al leer la mascara)
+      image->setAutoFillBackground(true);
+      image->setPalette(QPalette(QColor(128,0,0)));
+    }
     w->setStatusTip("TQImage:");
   }
   else if(form->wDraw->isChecked())
@@ -435,6 +439,9 @@ QWidget *dlgInsertWidget::newWidget(QWidget *root, QWidget *parent, int x, int y
     height = (30/opt_develop.yGrid)*opt_develop.yGrid;
     if(width  < opt_develop.xGrid) width  = opt_develop.xGrid;
     if(height < opt_develop.yGrid) height = opt_develop.yGrid;
+    // Nestor: una imagen toma su tamanio
+    const QSize isize = w->statusTip().startsWith("TQImage:") ? pvbImageFileSize(w->whatsThis()) : QSize();
+    if(isize.isValid()) { width = isize.width(); height = isize.height(); }
     mySetGeometry(w,x,y,width,height);
     setDefaultObjectName(root,w);
     w->show();
@@ -467,6 +474,16 @@ void myResize(QWidget *w, int width, int height)
   {
     w->resize(width,height);
   }
+}
+
+// Nestor: tamanio de una imagen del proyecto (gif animado: el del primer cuadro)
+QSize pvbImageFileSize(const QString &file)
+{
+  const QString f = file.trimmed();
+  if(f.isEmpty() || !QFileInfo(f).isFile()) return QSize();
+  QSize s = QImageReader(f).size();
+  if(!s.isValid()) s = QImage(f).size();
+  return (s.width() > 0 && s.height() > 0) ? s : QSize();
 }
 
 void mySetGeometry(QWidget *w, int x, int y, int width, int height)

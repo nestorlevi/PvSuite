@@ -20,7 +20,7 @@
       <string notr="true">color: #b00000</string>
      </property>
      <property name="text">
-      <string>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA) para que se genere su .tagmap</string>
+      <string>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP) para que se genere su .tagmap</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

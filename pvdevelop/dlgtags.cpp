@@ -1,5 +1,21 @@
 /****************************************************************************
 **
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
+**
 ** Nestor: editor de tags de los daemons (ver dlgtags.h)
 **
 ****************************************************************************/
@@ -163,6 +179,10 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   form->tableMembers->horizontalHeaderItem(M_HON)->setToolTip(tr("Marcado: el miembro aparece en la pestania Historial y alarmas "
                                                                  "(vale para todas las variables de esta estructura)"));
   form->tableMembers->horizontalHeader()->moveSection(M_HON, M_TYPE + 1);
+  // PV Suite no trae el historiador: las columnas quedan ocultas, pero las claves de historial y alarmas
+  // de un .mk hecho con la version completa se conservan al guardar
+  form->table->setColumnHidden(C_HIST, true);
+  form->tableMembers->setColumnHidden(M_HON, true);
   if(protocol == rlTagList::MQTT)   // Nestor: opciones de cada tag MQTT (ver rltagdef.h)
   {
     const char *heads[] = { QT_TR_NOOP("Formato"), QT_TR_NOOP("Ruta JSON"), QT_TR_NOOP("Topico de comando"),
@@ -186,6 +206,9 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
     h->moveSection(h->visualIndex(C_DESC), form->table->columnCount() - 1);
   }
   buildHistTab();
+  form->tabs->removeTab(form->tabs->indexOf(tabHist));   // sin historiador (ver arriba): la pestania no se muestra
+  tabHist->setParent(this);
+  tabHist->hide();
   // texto centrado en todas las columnas
   CenterDelegate *center = new CenterDelegate(this);
   form->table->setItemDelegate(center);

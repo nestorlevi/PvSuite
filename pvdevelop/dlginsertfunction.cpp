@@ -872,7 +872,7 @@ dlgInsertFunction::dlgInsertFunction()
   if(subsubitem == NULL) return; // suppress warning
 }
 
-// Nestor: tags, tags de sistema, clientes de los daemons, historiador y planillas.
+// Nestor: tags, tags de sistema y clientes de los daemons.
 // Usa el primer daemon del proyecto (TARGET.tagmap) y uno de sus tags como ejemplo.
 void dlgInsertFunction::addProjectFunctions()
 {
@@ -924,43 +924,6 @@ void dlgInsertFunction::addProjectFunctions()
   add(item, "rlModbusClient PLC1(PLC1_MAILBOX, PLC1_SHARED_MEMORY, PLC1_SHARED_MEMORY_SIZE);");
   add(item, "#include \"rlsiemenstcpclient.h\"");
   add(item, "rlSiemensTCPClient PLC1(PLC1_MAILBOX, PLC1_SHARED_MEMORY, PLC1_SHARED_MEMORY_SIZE);");
-  add(item, "#include \"rlopcuaclient.h\"");
-  add(item, "rlOpcUaClient PLC1(PLC1_MAILBOX, PLC1_SHARED_MEMORY, PLC1_SHARED_MEMORY_SIZE);");
-  add(item, "#include \"rlmqttclient.h\"");
-  add(item, "rlMqttClient MQTT1(MQTT1_MAILBOX, MQTT1_SHARED_MEMORY, MQTT1_SHARED_MEMORY_SIZE);");
-
-  item = top("rlHistClient (historiador: alarmas, eventos, tendencias)");
-  add(item, "#include \"rlhistclient.h\"");
-  add(item, "rlHistClient hist;   // lee historian.mkhist");
-  add(item, "if(!hist.historianRunning()) { /* el historiador no esta guardando datos */ }");
-  add(item, "std::vector<rlHistEvent> alarms; hist.activeAlarms(alarms);");
-  add(item, "int active, unacked, prio; hist.alarmCount(&active, &unacked, &prio);");
-  add(item, "hist.ack(alarms[i].id, \"operador\");");
-  add(item, "hist.ackAll(\"operador\");");
-  add(item, "std::vector<rlHistEvent> list; hist.events(list, rlHistClient::now() - 24LL*3600*1000, rlHistClient::now());");
-  add(item, "hist.logOperator(\"Bomba 1 parada desde la pantalla\", \"operador\");");
-  add(item, "std::vector<rlHistPoint> points; hist.values(\"PLC1\", \"TAG\", rlHistClient::now() - 3600*1000, rlHistClient::now(), points);");
-  add(item, "hist.exportEvents(\"alarmas.xlsx\", list);");
-  add(item, "std::vector<std::string> tags; tags.push_back(\"TAG\"); hist.exportValues(\"tendencias.xlsx\", tags, desde, hasta);");
-  add(item, "std::string t = rlHistClient::timeText(rlHistClient::now());");
-
-  item = top("rlSheet (planillas .xlsx / .csv)");
-  add(item, "#include \"rlsheet.h\"");
-  add(item, "rlSheet sheet; sheet.addColumn(\"Fecha\", rlSheet::TIME); sheet.addColumn(\"Valor\", rlSheet::NUMBER);");
-  add(item, "sheet.addRow(); sheet.setTime(0, rlHistClient::now()); sheet.setNumber(1, valor);");
-  add(item, "sheet.save(\"reporte.xlsx\");   // o \"reporte.csv\"");
-
-  item = top("pvbusers.h (usuarios con niveles, auditoria)");
-  add(item, "#include \"pvbusers.h\"");
-  add(item, "pvbLoginDialog(p, pvbAnimateBase);");
-  add(item, "pvbLogout(p);");
-  add(item, "pvbUsersDialog(p, pvbAnimateBase);");
-  add(item, "int nivel = pvbLevel();");
-  add(item, "const char *usuario = pvbUserName();");
-  add(item, "if(pvbAllowed(p, nivel, pvbAnimateBase)) { /* el usuario tiene el nivel */ }");
-  add(item, "pvbAudit(p, mask, \"PLC1:Tag\", anterior, nuevo);");
-  add(item, "pvbAuditText(p, mask, \"texto\");");
-  add(item, "pvbAckAll(p);");
 }
 
 dlgInsertFunction::~dlgInsertFunction()

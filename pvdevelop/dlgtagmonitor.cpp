@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: monitor de tags para depurar (ver dlgtagmonitor.h)
 ****************************************************************************/
 #include "dlgtagmonitor.h"
@@ -125,7 +141,7 @@ DlgTagMonitor::DlgTagMonitor(QWidget *parent) : QDialog(parent), shm(nullptr), s
 
   const QStringList maps = QDir::current().entryList(QStringList() << "*.tagmap", QDir::Files, QDir::Name | QDir::IgnoreCase);
   for(const QString &m : maps) comboSource->addItem(QFileInfo(m).completeBaseName(), m);
-  if(maps.isEmpty()) labelStatus->setText(tr("No hay archivos .tagmap: compile un daemon (Daemon > Modbus / Siemens TCP / OPC UA)"));
+  if(maps.isEmpty()) labelStatus->setText(tr("No hay archivos .tagmap: compile un daemon (Daemon > Modbus / Siemens TCP)"));
   else slotSource(0);
   timer->start(500);
 }

@@ -17,7 +17,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QDateTime>
+#include <QPointer>
 #include "editor.h"
+#include "dlghelp.h"   // Nestor: ayuda integrada
 #include "designer.h"
 #include "dlgsearchreplace.h"
 
@@ -36,6 +39,7 @@ class MainWindow : public QMainWindow
 
 public:
   MainWindow();
+  ~MainWindow();
 
 protected:
   void closeEvent(QCloseEvent *event);
@@ -59,6 +63,7 @@ private slots:
   void slotStartServer();
   void slotStartPvbrowser();
   void slotCompilerDialog();      // Nestor: ventana "Compilador"
+  void slotCleanProject();        // Nestor: Action > Limpiar proyecto (borra lo compilado, con confirmacion)
   void slotQuickBuildSettings();  // Nestor: barra "Compilacion"
   void slotProjectMinGW(int index); // Nestor: version de MinGW del proyecto
   void slotRllibUncommentRllib();
@@ -68,8 +73,10 @@ private slots:
   void slotDaemonModbus();
   void slotDaemonSiemenstcp();
   void slotDaemonPpi();
-  void slotLinuxWriteStartscript();
   void slotAboutManual();
+  void showHelp(const QString &topic = QString(), QWidget *from = nullptr);   // Nestor: Ayuda > Manual y F1
+  void slotHelpPdf();
+  void slotHelpReference();
   void about();
   void documentWasModified();
   void slotRadioProject(bool checked);
@@ -93,11 +100,13 @@ private:
   void startServerProcess(const QString &project);
   static QString serverExePath(const QString &project);
   void applyErrorMarks();
+  bool hideWarningMarks = false;   // Nestor: un clic en el codigo quita las advertencias marcadas (los errores quedan)
   void openLocation(const QString &file, int line, int column);
-  QDockWidget  *buildDock;
+  QDockWidget  *buildDock = nullptr;
   BuildConsole *buildConsole;
   bool buildDockRestoring = false;   // Nestor: no guardar el tamanio mientras se restaura
   void restoreBuildDockSize();
+  void scheduleBuildDockRestore();   // restaura despues de que Qt reubica los docks
   QToolBar *projectToolBar;          // Nestor: procesos, bloques, recursos, usuarios y simulacion
   static QIcon toolIcon(int kind);
   void createActions();
@@ -129,7 +138,6 @@ private:
   QMenu *actionMenu;
   QMenu *rllibMenu;
   QMenu *daemonMenu;
-  QMenu *linuxMenu;
   QMenu *helpMenu;
   QToolBar *fileToolBar;
   QToolBar *editToolBar;
@@ -138,6 +146,7 @@ private:
   QAction *alignLeftAct, *alignRightAct, *alignTopAct, *alignBottomAct, *spaceHorAct, *spaceVerAct;
   QAction *alignHCenterAct, *alignVCenterAct;
   void setDesignerMode(bool designerMode); // Nestor: barras segun la vista (Designer / editor)
+  void showAsBefore(Qt::WindowStates state); // Nestor: show() despues de hide() sin perder el maximizado
   void syncMaskList();                      // Nestor: lista de pantallas y nombre en el editor
   QString maskTitle(int mask);              // "Alarmas (mask3)" o "mask3"
   QToolBar  *buildToolBar;   // Nestor: compilador y procesadores
@@ -145,7 +154,9 @@ private:
   class QComboBox *comboMingw;   // Nestor: version de MinGW del proyecto (se guarda en el .pvproject)
   QAction   *compilerAct;
   void syncBuildToolBar();
-  void offerMinGWLibDir(const QString &project); // Nestor: MinGW 8.1: adaptar el .pro (una sola vez)
+  void offerMinGWLibDir(const QString &project); // Nestor: MinGW 8.1: adaptar el .pro (se vuelve a preguntar al cambiar de compilador)
+  QAction   *cleanProjectAct;
+  bool checkBuiltBits(const QString &project, QString *log); // Nestor: .o de otra arquitectura: limpiar? false = cancelar
   QAction *optAct;
   QAction *newAct;
   QAction *openAct;
@@ -178,7 +189,6 @@ private:
   QAction *daemonSiemenstcpAct;
   QAction *daemonPpiAct;
   QAction *tagMonitorAct;     // Nestor: monitor de tags (depurar)
-  QAction *linuxWriteStartscriptAct;
   QAction *aboutManualAct;
   QAction *aboutAct;
   QAction *aboutQtAct;
@@ -189,10 +199,37 @@ private:
   Designer *designer;
   QScrollArea *scroll;
   dlgTextBrowser *dlgtextbrowser;
+  QPointer<DlgHelp> helpWindow;          // Nestor: ayuda integrada (dlghelp.h); el visor viejo es el respaldo
   dlgsearchreplace searchreplace;
   int imask;
   QString blockFile;                     // Nestor: el bloque que esta en el Designer (vacio: maskN)
   QMap<QString, int> filePos;
+  // Nestor: pestanas de documentos (doctabs.h): un solo editor y un solo Designer, cada pestana dice que mostrar
+  class DocTabs *docTabs = nullptr;
+  QString docTabsDir;                    // carpeta del proyecto de las pestanas (otro proyecto: se vacian)
+  QMap<QString, QString> pendingText;    // archivos del editor con cambios sin guardar que estan en otra pestana
+  bool docSwitching = false;
+  // el documento de cada archivo del editor que no se esta viendo, con su deshacer y rehacer; vale mientras el
+  // archivo en el disco no cambie (stamp)
+  struct CachedDoc { class QTextDocument *doc = nullptr; QDateTime stamp; };
+  QMap<QString, CachedDoc> docCache;
+  void stashEditorDoc(const QString &file);
+  class QTextDocument *takeCachedDoc(const QString &file);
+  void dropCachedDoc(const QString &file);
+  void showEditorDoc(class QTextDocument *doc);
+  void createDocTabs();
+  QString currentDocKey() const;
+  QString docTitle(const QString &key);
+  void noteDocShown();                   // al final de load() y viewDesigner()
+  void openDoc(const QString &key);
+  void openDocInNewTab(const QString &key);
+  void closeDoc(const QString &key);
+  bool saveAllDocs();
+  bool writePendingDocs();               // los de las otras pestanas (antes de compilar y con Guardar todo)
+  bool currentDocModified() const;       // la pantalla o el archivo que se ve tiene cambios sin guardar
+  void updateDocMarks();                 // el punto de "sin guardar" de cada pestana
+  int askSave(const QStringList &docs);  // QMessageBox::Save (Guardar), Discard (Cerrar sin guardar) o Cancel
+  void slotMaskMenu(const QPoint &pos);  // Nestor: clic derecho en la lista de pantallas: abrir en nueva pestana
 };
 
 int readProject();

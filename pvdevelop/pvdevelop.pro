@@ -136,10 +136,11 @@ win32-msvc*:LIBS += $$PWD/../rllib/lib/rllib.lib ws2_32.lib iphlpapi.lib advapi3
 unix:LIBS        += -L$$PWD/../rllib/lib -lrllib
 unix:!macx:QMAKE_RPATHDIR += $$PWD/../rllib/lib
 
-HEADERS      += dlgtags.h dlgtagmonitor.h buildconsole.h pvbindgen.h dlgbind.h pvtablesort.h pvimages.h
-SOURCES      += dlgtags.cpp dlgtagmonitor.cpp buildconsole.cpp pvbindgen.cpp dlgbind.cpp pvtablesort.cpp pvimages.cpp
+HEADERS      += dlgtags.h dlgtagmonitor.h buildconsole.h pvbindgen.h dlgbind.h pvtablesort.h pvimages.h doctabs.h dlghelp.h
+SOURCES      += dlgtags.cpp dlgtagmonitor.cpp buildconsole.cpp pvbindgen.cpp dlgbind.cpp pvtablesort.cpp pvimages.cpp doctabs.cpp dlghelp.cpp
 FORMS        += dlgtags.ui
 FORMS        += dlgbind.ui   # Nestor
+FORMS        += dlghelp.ui
 
 # Nestor: idiomas (Qt Linguist: translations/*.ts; los .qm van dentro del ejecutable, :/i18n/)
 HEADERS      += ../pvbrowser/pvblanguage.h ../pvbrowser/pvbupdate.h

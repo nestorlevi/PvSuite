@@ -1449,8 +1449,8 @@ Para cambiar de ToolBox: suelte el mouse y vuelva a tomarlo.</translation>
     </message>
     <message>
         <location filename="../dlgbind.ui" line="23"/>
-        <source>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA) para que se genere su .tagmap</source>
-        <translation>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA) para que se genere su .tagmap</translation>
+        <source>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP) para que se genere su .tagmap</source>
+        <translation>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP) para que se genere su .tagmap</translation>
     </message>
     <message>
         <location filename="../dlgbind.ui" line="43"/>
@@ -2741,8 +2741,8 @@ Vacío: fake_qmake genera el Makefile (alcanza para un pvserver sin Qt).</transl
     </message>
     <message>
         <location filename="../dlghistorian.cpp" line="145"/>
-        <source>No hay archivos .tagmap: compile los daemons (Daemon &gt; Modbus / Siemens TCP / OPC UA) despues de marcar en sus tags que se registran o tienen alarmas.</source>
-        <translation>No hay archivos .tagmap: compile los daemons (Daemon &gt; Modbus / Siemens TCP / OPC UA) después de marcar en sus tags que se registran o tienen alarmas.</translation>
+        <source>No hay archivos .tagmap: compile los daemons (Daemon &gt; Modbus / Siemens TCP) despues de marcar en sus tags que se registran o tienen alarmas.</source>
+        <translation>No hay archivos .tagmap: compile los daemons (Daemon &gt; Modbus / Siemens TCP) después de marcar en sus tags que se registran o tienen alarmas.</translation>
     </message>
     <message>
         <location filename="../dlghistorian.cpp" line="155"/>
@@ -5007,8 +5007,8 @@ Si no se copia, el pvserver la busca en esa ruta (solo sirve en esta PC, salvo q
     </message>
     <message>
         <location filename="../dlgtagmonitor.cpp" line="129"/>
-        <source>No hay archivos .tagmap: compile un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA)</source>
-        <translation>No hay archivos .tagmap: compile un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA)</translation>
+        <source>No hay archivos .tagmap: compile un daemon (Daemon &gt; Modbus / Siemens TCP)</source>
+        <translation>No hay archivos .tagmap: compile un daemon (Daemon &gt; Modbus / Siemens TCP)</translation>
     </message>
     <message>
         <location filename="../dlgtagmonitor.cpp" line="246"/>

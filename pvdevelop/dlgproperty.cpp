@@ -52,6 +52,12 @@ dlgProperty::dlgProperty(QWidget *_widget)
   buf = widget->whatsThis();
   form->lineEditWhatsThis->setText(buf);
   if(type.startsWith("TQImage")) pvbAddImageButton(form->lineEditWhatsThis, false);   // Nestor: de cualquier carpeta (copia a Image/)
+  // Nestor: al elegir otra imagen el widget toma su tamanio (se puede cambiar antes de Aceptar)
+  if(type.startsWith("TQImage"))
+    connect(form->lineEditWhatsThis, &QLineEdit::textChanged, this, [this](const QString &f) {
+      const QSize s = pvbImageFileSize(f);
+      if(s.isValid()) { form->spinBoxW->setValue(s.width()); form->spinBoxH->setValue(s.height()); }
+    });
   buf = widget->toolTip();
   form->lineEditToolTip->setText(buf);
 
@@ -457,6 +463,9 @@ void dlgProperty::slotUpdate()
       widget->setStatusTip(st);
     }
   }
+
+  // Nestor: una imagen sin color de fondo queda transparente (con la paleta por defecto se pintaba gris claro)
+  if(type.contains("TQImage:")) widget->setAutoFillBackground(bgR != -1 && bgG != -1 && bgB != -1);
 
   if(fgR != -1 && fgG != -1 && fgB != -1)
   {

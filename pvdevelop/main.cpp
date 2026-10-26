@@ -51,7 +51,6 @@ void usage()
   printf("-action=uncommentModbus\n");
   printf("-action=uncommentSiemensTCP\n");
   printf("-action=uncommentPPI\n");
-  printf("-action=writeStartscript\n");
   printf("-action=writeDimension:<xmax>:<ymax>\n");
   printf("-action=importUi:<masknumber>\n");
   printf("-action=exportUi:<masknumber>\n");
@@ -204,10 +203,6 @@ void  perhapsDoAction()
   else if(strcmp(opt_develop.arg_action,"uncommentPPI") == 0)
   {
     uncommentPpi();
-  }
-  else if(strcmp(opt_develop.arg_action,"writeStartscript") == 0)
-  {
-    ret = writeStartscript(".", opt_develop.arg_project);
   }
   else if(strncmp(opt_develop.arg_action,"writeDimension:",15) == 0)
   {

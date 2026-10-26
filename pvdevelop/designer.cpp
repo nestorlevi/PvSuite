@@ -587,7 +587,11 @@ int MyRootWidget::aboveDesignArea(int x, int y, int gx, int gy)
 {
   if(x < 0) return 0;
   if(y < 0) return 0;
-  if(isActiveWindow())
+  // Nestor: en X11 (Openbox de Lubuntu) la ventana puede no figurar como activa despues de pasar del editor al
+  // Designer y no se podia mover ningun widget hasta abrir y cerrar un dialogo. X manda el evento a la ventana
+  // que esta bajo el mouse (o a la que lo capturo, y con la captura no se puede pasar a otra): si llego, es la nuestra
+  static const bool xcb = (QGuiApplication::platformName() == "xcb");
+  if(isActiveWindow() || (xcb && window()->isVisible()))
   {
     int dx = 0;
     int dy = 0;
@@ -1520,6 +1524,12 @@ void MyRootWidget::pasteWidget() {
         QWidget *w = pasted.at(i);
         int x = ((w->x() + 20*pasteCount) / opt_develop.xGrid) * opt_develop.xGrid;
         int y = ((w->y() + 20*pasteCount) / opt_develop.yGrid) * opt_develop.yGrid;
+        // Nestor: dentro de un contenedor (frame, groupbox, pestana) no puede quedar afuera: no se veria
+        QWidget *pw = w->parentWidget();
+        if (pw != NULL && pw != this) {
+            if (x + w->width()  > pw->width())  x = qMax(0, pw->width()  - w->width());
+            if (y + w->height() > pw->height()) y = qMax(0, pw->height() - w->height());
+        }
         myMove(w, x, y);
         w->show();
         if (w->statusTip().startsWith("TQDraw:")) hasDraw = true;

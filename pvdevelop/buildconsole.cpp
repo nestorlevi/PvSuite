@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: consola de compilacion de pvdevelop (ver buildconsole.h)
 ****************************************************************************/
 #include "buildconsole.h"
@@ -17,6 +33,7 @@
 #include <QScrollBar>
 #include <QDir>
 #include <QFileInfo>
+#include <QFile>
 #include <QDateTime>
 #include <QMouseEvent>
 #include <QStandardPaths>
@@ -29,7 +46,42 @@ static QPoint mousePos(const QMouseEvent *e) { return e->pos(); }
 
 #ifdef PVWIN32
 #include <windows.h>
+#else
+#include <QTemporaryFile>
+#include <QThread>
+#include <signal.h>
 #endif
+
+#ifndef PVWIN32
+// 'texto' para sh
+static QString shellQuote(const QString &s)
+{
+  return "'" + QString(s).replace("'", "'\\''") + "'";
+}
+
+// la primera terminal instalada y la opcion con la que ejecuta un programa
+static bool terminalFor(QString *term, QString *opt)
+{
+  struct T { const char *name; const char *opt; };
+#ifdef PVMAC
+  static const T terms[] = { {"xterm", "-e"} };   // Terminal.app no recibe un programa: solo XQuartz
+#else
+  static const T terms[] = { {"x-terminal-emulator", "-e"}, {"qterminal", "-e"}, {"konsole", "-e"},
+                             {"gnome-terminal", "--"}, {"xfce4-terminal", "-x"}, {"lxterminal", "-e"},
+                             {"mate-terminal", "-x"}, {"xterm", "-e"} };
+#endif
+  for(const T &t : terms)
+  {
+    const QString path = QStandardPaths::findExecutable(t.name);
+    if(path.isEmpty()) continue;
+    if(term) *term = path;
+    if(opt) *opt = t.opt;
+    return true;
+  }
+  return false;
+}
+#endif
+
 
 bool pvbStartInConsole(const QString &program, const QStringList &args, const QString &dir,
                        const QString &title, qint64 *pid)
@@ -50,21 +102,78 @@ bool pvbStartInConsole(const QString &program, const QStringList &args, const QS
     a->startupInfo->lpTitle = (LPWSTR) t.c_str();
   });
 #else
-  if(QStandardPaths::findExecutable("xterm").isEmpty())   // Nestor: macOS (sin XQuartz) o Linux sin xterm: sin ventana propia
+  // Nestor: la terminal que haya (Lubuntu no trae xterm). Cada una recibe el programa de otra forma:
+  // se le pasa un script de un solo argumento sin espacios, que pone el titulo y ejecuta el programa
+  QString term, opt;
+  if(!terminalFor(&term, &opt))
   {
-    p.setProgram(program);
+    p.setProgram(program);   // sin terminal: sin ventana propia
     p.setArguments(args);
+    return p.startDetached(pid);
   }
-  else
-  {
-    p.setProgram("xterm");
-    p.setArguments(QStringList() << "-T" << title << "-e" << program << args);
-  }
+  QTemporaryFile script(QDir::tempPath() + "/pvb_XXXXXX.sh");
+  script.setAutoRemove(false);
+  if(!script.open()) return false;
+  QString cmd = shellQuote(program);
+  for(const QString &a : args) cmd += " " + shellQuote(a);
+  QString text = "#!/bin/sh\nrm -f \"$0\"\n";
+  text += "printf '\\033]0;%s\\007' " + shellQuote(title) + "\n";
+  text += "cd " + shellQuote(dir) + " || exit 1\n";
+  text += "exec " + cmd + "\n";
+  script.write(text.toUtf8());
+  script.close();
+  script.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+  p.setProgram(term);
+  p.setArguments(QStringList() << opt << script.fileName());
 #endif
   return p.startDetached(pid);
 }
 
-BuildConsole::BuildConsole(QWidget *parent) : QWidget(parent), proc(nullptr), startMs(0)
+
+bool pvbHasTerminal()
+{
+#ifdef PVWIN32
+  return true;
+#else
+  return terminalFor(nullptr, nullptr);
+#endif
+}
+
+int pvbKillProgram(const QString &exe)
+{
+  int n = 0;
+#if defined(PVWIN32)
+  Q_UNUSED(exe);
+#elif defined(__linux__)
+  // el ejecutable de cada proceso (/proc/<pid>/exe); si se volvio a enlazar figura como "<ruta> (deleted)"
+  QFileInfo fi(exe);
+  const QString target = fi.exists() ? fi.canonicalFilePath() : fi.absoluteFilePath();
+  QList<qint64> pids;
+  for(const QString &d : QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+  {
+    bool ok = false;
+    const qint64 pid = d.toLongLong(&ok);
+    if(!ok) continue;
+    QString t = QFileInfo("/proc/" + d + "/exe").symLinkTarget();
+    if(t.endsWith(" (deleted)")) t.chop(10);
+    if(t == target && ::kill((pid_t) pid, SIGTERM) == 0) pids << pid;
+  }
+  // que suelten el puerto antes de iniciar el nuevo
+  for(int i = 0; i < 20 && !pids.isEmpty(); i++)
+  {
+    QThread::msleep(100);
+    for(int k = pids.size() - 1; k >= 0; k--)
+      if(!QFileInfo::exists("/proc/" + QString::number(pids[k]))) { pids.removeAt(k); n++; }
+  }
+  for(qint64 pid : pids) if(::kill((pid_t) pid, SIGKILL) == 0) n++;
+#else
+  // macOS: sin /proc
+  n = (QProcess::execute("pkill", QStringList() << "-f" << QRegularExpression::escape(exe)) == 0) ? 1 : 0;
+#endif
+  return n;
+}
+
+BuildConsole::BuildConsole(QWidget *parent) : QWidget(parent), proc(nullptr), startMs(0), serverMode(false)
 {
   QVBoxLayout *lay = new QVBoxLayout(this);
   lay->setContentsMargins(2, 2, 2, 2);
@@ -118,6 +227,7 @@ bool BuildConsole::run(const QString &title, const QString &program, const QStri
   }
   clear();
   emit started();
+  serverMode = false;
   doneFn = done;
   currentTitle = title;
   startMs = QDateTime::currentMSecsSinceEpoch();
@@ -140,9 +250,40 @@ bool BuildConsole::run(const QString &title, const QString &program, const QStri
   return true;
 }
 
+bool BuildConsole::runServer(const QString &title, const QString &program)
+{
+  if(running()) return false;
+  serverMode = true;
+  doneFn = nullptr;
+  currentTitle = title;
+  startMs = QDateTime::currentMSecsSinceEpoch();
+  if(proc) proc->deleteLater();   // se llama desde el final de la compilacion (senal de ese mismo proc)
+  proc = new QProcess(this);
+  proc->setProcessChannelMode(QProcess::MergedChannels);
+  proc->setWorkingDirectory(QDir::currentPath());
+  connect(proc, &QProcess::readyReadStandardOutput, this, &BuildConsole::slotOutput);
+  connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, [this](int code, QProcess::ExitStatus st) {
+    slotFinished(st == QProcess::NormalExit ? code : -1);
+  });
+  label->setText(tr("%1: en ejecucion (Detener lo cierra)").arg(title));
+  buttonStop->setEnabled(true);
+  appendLine(QString("> %1").arg(program), "#606060");
+  proc->start(program, QStringList());
+  if(!proc->waitForStarted(3000)) { serverMode = false; buttonStop->setEnabled(false); return false; }
+  return true;
+}
+
+void BuildConsole::stopServer()
+{
+  if(!serverRunning()) return;
+  proc->terminate();
+  if(!proc->waitForFinished(2000)) { proc->kill(); proc->waitForFinished(1000); }
+}
+
 void BuildConsole::stop()
 {
   if(!running()) return;
+  if(serverMode) { stopServer(); return; }
 #ifdef PVWIN32
   // cmd.exe y lo que lanzo (make, g++...): todo el arbol
   QProcess::execute("taskkill", QStringList() << "/F" << "/T" << "/PID" << QString::number(proc->processId()));
@@ -155,6 +296,7 @@ void BuildConsole::clear()
 {
   out->clear();
   msgs.clear();
+  places.clear();
   pending.clear();
 }
 
@@ -170,13 +312,23 @@ void BuildConsole::slotOutput()
     // la salida de g++ es UTF-8; la de cmd, de la pagina de codigos local
     QString line = QString::fromUtf8(raw);
     if(line.contains(QChar::ReplacementCharacter)) line = QString::fromLocal8Bit(raw);
-    parseLine(line);
+    if(serverMode) appendLine(line);   // la salida del pvserver no son errores de compilacion
+    else           parseLine(line);
   }
 }
 
 void BuildConsole::slotFinished(int exitCode)
 {
   if(!pending.isEmpty()) { parseLine(QString::fromLocal8Bit(pending)); pending.clear(); }
+  if(serverMode)
+  {
+    serverMode = false;
+    const QString summary = tr("%1: terminado (codigo %2)").arg(currentTitle).arg(exitCode);
+    label->setText(summary);
+    appendLine(summary, "#606060");
+    buttonStop->setEnabled(false);
+    return;
+  }
   bool ok = (exitCode == 0);
   int errors = 0, warnings = 0;
   for(const BuildMessage &m : msgs) (m.error ? errors : warnings)++;
@@ -241,6 +393,59 @@ void BuildConsole::parseLine(const QString &line)
     out->document()->lastBlock().setUserState(msgs.size() - 1);
     return;
   }
+  // Nestor: el contexto del error tambien lleva al codigo con doble clic: "In file included from mask1.cpp:12",
+  // "mask1_slots.h:40:5:   required from here", "x.h:8:6: note: declared here", MSVC "x.cpp(8): note: ...".
+  // No cuenta como error ni marca el editor. Solo si el archivo existe (no se confunde con las lineas de make)
+  static const QRegularExpression incl("^\\s*(?:In file included from|from)\\s+(.+?):(\\d+)(?::(\\d+))?[,:]?\\s*$");
+  static const QRegularExpression ctx("^(.+?):(\\d+):(?:(\\d+):)?\\s+\\S");
+  static const QRegularExpression msvcCtx("^\\s*(.+?)\\((\\d+)(?:,(\\d+))?\\)\\s*:\\s*(?:note|message)\\b");
+  for(const QRegularExpression *re : { &incl, &ctx, &msvcCtx })
+  {
+    r = re->match(line);
+    if(!r.hasMatch()) continue;
+    QFileInfo fi(r.captured(1).trimmed());
+    QString abs = fi.isAbsolute() ? fi.absoluteFilePath() : QDir::current().absoluteFilePath(fi.filePath());
+    if(!QFileInfo(abs).isFile()) continue;
+    BuildMessage p;
+    QString rel = QDir::current().relativeFilePath(abs);
+    p.file = rel.startsWith("..") ? abs : QDir::cleanPath(rel);
+    p.line = r.captured(2).toInt();
+    p.column = r.captured(3).toInt();
+    p.error = false;
+    places.append(p);
+    appendLine(line, "#2a5d9f");
+    out->document()->lastBlock().setUserState(-2 - (places.size() - 1));   // -1 = sin ubicacion
+    return;
+  }
+  // "mask1_slots.h: In function 'int slotInit(PARAM*, DATA*)':" no trae la linea: la de la definicion
+  static const QRegularExpression inFunc("^(.+?): In (?:static )?(?:member )?function '(?:[^']*?\\s)?([\\w:~]+)\\(");
+  r = inFunc.match(line);
+  if(r.hasMatch())
+  {
+    QFileInfo fi(r.captured(1).trimmed());
+    QString abs = fi.isAbsolute() ? fi.absoluteFilePath() : QDir::current().absoluteFilePath(fi.filePath());
+    QFile f(abs);
+    if(f.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+      const QRegularExpression def("(?:^|[\\s*&:])" + QRegularExpression::escape(r.captured(2).section("::", -1)) + "\\s*\\(");
+      const QStringList lines = QString::fromUtf8(f.readAll()).split('\n');
+      for(int i=0; i<lines.size(); i++)
+      {
+        const QString s = lines[i].trimmed();
+        if(!def.match(lines[i]).hasMatch() || s.endsWith(';') || s.startsWith("//")) continue;   // no las llamadas ni las declaraciones
+        BuildMessage p;
+        QString rel = QDir::current().relativeFilePath(abs);
+        p.file = rel.startsWith("..") ? abs : QDir::cleanPath(rel);
+        p.line = i + 1;
+        p.column = 0;
+        p.error = false;
+        places.append(p);
+        appendLine(line, "#2a5d9f");
+        out->document()->lastBlock().setUserState(-2 - (places.size() - 1));
+        return;
+      }
+    }
+  }
   appendLine(line);
 }
 
@@ -267,6 +472,102 @@ bool BuildConsole::eventFilter(QObject *obj, QEvent *event)
       emit openLocation(m.file, m.line, m.column);
       return true;
     }
+    const int k = -2 - index;   // contexto (ver parseLine)
+    if(index <= -2 && k < places.size())
+    {
+      const BuildMessage &m = places[k];
+      emit openLocation(m.file, m.line, m.column);
+      return true;
+    }
   }
   return QWidget::eventFilter(obj, event);
+}
+
+/***************************************************************************
+** Nestor: lo compilado del proyecto (Limpiar proyecto y cambio de arquitectura)
+***************************************************************************/
+// el proyecto y sus subproyectos (subcarpetas con un .pro, p.ej. una biblioteca propia)
+static QStringList buildRoots(const QString &dir)
+{
+  QStringList roots{ QDir(dir).absolutePath() };
+  for(const QFileInfo &sub : QDir(dir).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot))
+    if(!QDir(sub.filePath()).entryList(QStringList{ "*.pro" }, QDir::Files).isEmpty()) roots << sub.filePath();
+  return roots;
+}
+
+// 32 o 64 segun el encabezado del objeto (COFF de MinGW/MSVC o ELF); 0 si no se sabe
+static int objectBits(const QString &file)
+{
+  QFile f(file);
+  if(!f.open(QIODevice::ReadOnly)) return 0;
+  const QByteArray h = f.read(8);
+  if(h.size() < 5) return 0;
+  if(h.startsWith("\x7f" "ELF")) return h[4] == 1 ? 32 : (h[4] == 2 ? 64 : 0);
+  const unsigned machine = (unsigned char) h[0] | ((unsigned char) h[1] << 8);
+  if(machine == 0x14c) return 32;                       // i386
+  if(machine == 0x8664 || machine == 0xaa64) return 64; // x86-64, ARM64
+  return 0;
+}
+
+QStringList pvbObjectsOfOtherBits(const QString &dir, int bits, int *otherBits)
+{
+  QStringList ret;
+  if(bits != 32 && bits != 64) return ret;
+  for(const QString &root : buildRoots(dir))
+  {
+    for(const QString &sub : { QString(), QString("/release"), QString("/debug") })
+    {
+      QDir d(root + sub);
+      if(!d.exists()) continue;
+      for(const QString &o : d.entryList(QStringList{ "*.o", "*.obj" }, QDir::Files))
+      {
+        const int b = objectBits(d.filePath(o));
+        if(b == 0 || b == bits) continue;
+        if(otherBits) *otherBits = b;
+        ret << QDir(dir).relativeFilePath(d.filePath(o));
+      }
+    }
+  }
+  return ret;
+}
+
+QStringList pvbCleanTargets(const QString &dir, const QString &project)
+{
+  // los Makefile de qmake y de pvb_build.bat (Makefile.win), no los de otros nombres (pueden ser del usuario)
+  static const QStringList files{ "Makefile", "Makefile.Debug", "Makefile.Release", "Makefile.win", "Makefile.win.Debug",
+                                  "Makefile.win.Release", ".qmake.stash", ".pvb_compiler", "object_script.*",
+                                  "*.o", "*.obj", "moc_*.cpp", "moc_predefs.h", "qrc_*.cpp" };
+  QStringList ret;
+  for(const QString &root : buildRoots(dir))
+  {
+    QDir d(root);
+    for(const char *b : { "release", "debug" })
+      if(QFileInfo(d.filePath(b)).isDir()) ret << d.filePath(b);
+    for(const QString &f : d.entryList(files, QDir::Files | QDir::Hidden)) ret << d.filePath(f);
+  }
+#ifdef PVWIN32
+  (void) project;
+#else
+  // Linux/macOS: el pvserver queda en la carpeta del proyecto
+  if(!project.isEmpty())
+  {
+    QFileInfo exe(QDir(dir).filePath(project));
+    if(exe.isFile() && exe.isExecutable()) ret << exe.filePath();
+    if(QFileInfo(QDir(dir).filePath(project + ".app")).isDir()) ret << QDir(dir).filePath(project + ".app");
+  }
+#endif
+  for(QString &t : ret) t = QDir(dir).relativeFilePath(t);
+  return ret;
+}
+
+QStringList pvbRemoveTargets(const QString &dir, const QStringList &targets)
+{
+  QStringList failed;
+  for(const QString &t : targets)
+  {
+    const QString path = QDir(dir).filePath(t);
+    const bool ok = QFileInfo(path).isDir() ? QDir(path).removeRecursively() : QFile::remove(path);
+    if(!ok && QFileInfo::exists(path)) failed << t;
+  }
+  return failed;
 }

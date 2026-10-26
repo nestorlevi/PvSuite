@@ -21,6 +21,7 @@
 
 class QTextEdit;
 class QSyntaxHighlighter;
+class QTextDocument;
 class QHBoxLayout;
 class QVBoxLayout;
 class QToolBox;
@@ -44,6 +45,7 @@ class Editor : public QObject
     Editor();
     ~Editor();
     int setSyntax(int language);
+    void setDocument(QTextDocument *doc);   // Nestor: el de otra pestana
     QWidget *root;
     QTextEdit *edit;
     CodeCompleter *completer;   // Nestor: texto predictivo

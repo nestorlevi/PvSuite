@@ -1,5 +1,21 @@
 /****************************************************************************
 **
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
+**
 ** Nestor: editor de tags de los daemons (modbus, siemensTCP, OPC UA, MQTT).
 ** Lee las variables, estructuras y ajustes del texto del .mk (y el .csv de "tags=") y
 ** devuelve el texto del .mk actualizado; si se eligio CSV, escribe tambien el .csv.

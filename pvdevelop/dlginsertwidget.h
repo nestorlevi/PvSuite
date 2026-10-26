@@ -21,6 +21,7 @@
 void myMove(QWidget *w, int x, int y);
 void myResize(QWidget *w, int width, int height);
 void mySetGeometry(QWidget *w, int x, int y, int width, int height);
+QSize pvbImageFileSize(const QString &file);   // Nestor: tamanio de una imagen (invalido si no se puede leer)
 
 class dlgInsertWidget: public QDialog
 {

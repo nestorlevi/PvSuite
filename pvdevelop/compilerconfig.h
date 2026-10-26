@@ -1,4 +1,20 @@
 /****************************************************************************
+**
+** Copyright (C) 2026 Nestor Palomeque.
+**
+** This file is part of PV Suite, a SCADA suite based on the pvbrowser
+** project (Copyright (C) Lehrig Software Engineering).
+**
+** This file is free software; you can redistribute it and/or modify it
+** under the terms of the GNU General Public License as published by the
+** Free Software Foundation; either version 2 of the License, or (at your
+** option) any later version. See the file LICENSE.GPL.
+**
+** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+****************************************************************************/
+/****************************************************************************
 ** Nestor: configuracion de compilacion de pvdevelop (compilador, carpetas,
 ** cantidad de procesadores) y del editor (texto predictivo).
 ** Se guarda con QSettings y se pasa a los .bat (pvb_build.bat, pvb_make.bat,
@@ -19,6 +35,7 @@ struct CompilerConfig
   QString jom;        // jom.exe (opcional: compila en paralelo con MSVC)
   int     jobs = 1;            // procesadores a usar al compilar
   bool    autocomplete = true; // texto predictivo en el editor
+  int     indent = 2;          // sangria del editor: espacios por nivel (0 = tabulacion)
   bool    projectMinGW = false; // mingwDir/qtMingw vienen del .pvproject (save() no los guarda como predeterminados)
 
   // QSettings (la primera vez: entorno y deteccion automatica). withProject: con el MinGW guardado en el
@@ -37,6 +54,7 @@ struct CompilerConfig
   static QStringList findMinGWs();                     // C:\Qt\Tools\mingw* (32 y 64 bits), la mas nueva primero
   static QString minGWLabel(const QString &mingwDir);  // "MinGW 13.1 (64 bits)"
   static int minGWMajor(const QString &mingwDir);      // version mayor de GCC (13), -1 si no se sabe
+  static int minGWBits(const QString &mingwDir);       // Nestor: 32 o 64 (0 si no se sabe)
   static QString qtKitForMinGW(const QString &mingwDir); // kit de Qt compilado con esa version de GCC ("" si no hay)
   void autodetect(bool overwrite);   // completa las carpetas que esten vacias (o todas)
   QString qtDir() const;             // Qt del compilador elegido

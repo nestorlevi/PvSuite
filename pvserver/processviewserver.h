@@ -21,6 +21,8 @@
 #ifndef PROCESSVIEWSERVER_H
 #define PROCESSVIEWSERVER_H
 
+/** Version del protocolo pvserver <-> pvbrowser (heredada de pvbrowser). NO es la version de PV Suite
+    (esa es PVSUITE_VERSION, pvbrowser/pvbupdate.h): se manda al conectar y no hay que cambiarla. */
 const char pvserver_version[] = "6.0.1f";
 
 // define WIN

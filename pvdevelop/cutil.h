@@ -32,7 +32,6 @@ void uncommentRllib(const char *project);
 void uncommentModbus();
 void uncommentSiemenstcp();
 void uncommentPpi();
-int  writeStartscript(const char *dir, const char *name);
 int  buildJobs();                              // Nestor: procesadores para make -j
 void perhapsAddMsvcScope(const char *name);
 int  proNeedsMinGWLibDir(const char *name);    // Nestor: Windows: el .pro enlaza win-mingw/bin/lib*.a sin PVB_MINGWLIB

@@ -1,3 +1,17 @@
+/***************************************************************************
+                          pvbfile.h  -  description
+                             -------------------
+    begin                : 2026
+    copyright            : (C) Nestor Palomeque, pvbrowser community
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This library is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU LESSER GENERAL PUBLIC LICENSE as        *
+ *   published by the Free Software Foundation                             *
+ *                                                                         *
+ ***************************************************************************/
 /****************************************************************************
 ** Nestor: archivos con nombre UTF-8 (acentos tambien en Windows) sin std::filesystem:
 ** el de MinGW 8.1 (Qt 5.15) no compila en Windows. Las usan pvbusers.h y pvbrecipes.h;

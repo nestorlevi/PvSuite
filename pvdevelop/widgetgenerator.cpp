@@ -2065,7 +2065,8 @@ static int getWidget(FILE *fin, QWidget *root)
       item = (QWidget *) new MyLabel(&s, 0, pw, id);
       itemtype = TQLabel;
       item->setStatusTip("TQLabel:");
-      item->setAutoFillBackground(true);
+      // Nestor: sin relleno, como al insertarlo y en pvbrowser (si no, pegado o al abrir la pantalla tapaba con gris lo de abajo);
+      // con color de fondo lo rellena mySetBackgroundColor
       iitem++;
     }
     else if(isCommand("pvQComboBox(") == 1)
@@ -2152,7 +2153,7 @@ static int getWidget(FILE *fin, QWidget *root)
       item = (QWidget *) new MyRadioButton(&s, 0, pw, id);
       itemtype = TQRadio;
       item->setStatusTip("TQRadio:");
-      item->setAutoFillBackground(true);
+      // Nestor: sin relleno (ver TQLabel)
       iitem++;
     }
     else if(isCommand("pvQCheckBox(") == 1)
@@ -2160,7 +2161,7 @@ static int getWidget(FILE *fin, QWidget *root)
       item = (QWidget *) new MyCheckBox(&s, 0, pw, id);
       itemtype = TQCheck;
       item->setStatusTip("TQCheck:");
-      item->setAutoFillBackground(true);
+      // Nestor: sin relleno (ver TQLabel)
       iitem++;
     }
     else if(isCommand("pvQFrame(") == 1)

@@ -1449,8 +1449,8 @@ Para trocar de ToolBox: libere o mouse e capture-o novamente.</translation>
     </message>
     <message>
         <location filename="../dlgbind.ui" line="23"/>
-        <source>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA) para que se genere su .tagmap</source>
-        <translation>Sem tags: compile um daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA) para gerar o seu .tagmap</translation>
+        <source>No hay tags: compilar un daemon (Daemon &gt; Modbus / Siemens TCP) para que se genere su .tagmap</source>
+        <translation>Sem tags: compile um daemon (Daemon &gt; Modbus / Siemens TCP) para gerar o seu .tagmap</translation>
     </message>
     <message>
         <location filename="../dlgbind.ui" line="43"/>
@@ -2741,8 +2741,8 @@ Vazio: o fake_qmake gera o Makefile (suficiente para um pvserver sem Qt).</trans
     </message>
     <message>
         <location filename="../dlghistorian.cpp" line="145"/>
-        <source>No hay archivos .tagmap: compile los daemons (Daemon &gt; Modbus / Siemens TCP / OPC UA) despues de marcar en sus tags que se registran o tienen alarmas.</source>
-        <translation>Não há arquivos .tagmap: compile os daemons (Daemon &gt; Modbus / Siemens TCP / OPC UA) depois de marcar nos tags o que é registrado ou tem alarmes.</translation>
+        <source>No hay archivos .tagmap: compile los daemons (Daemon &gt; Modbus / Siemens TCP) despues de marcar en sus tags que se registran o tienen alarmas.</source>
+        <translation>Não há arquivos .tagmap: compile os daemons (Daemon &gt; Modbus / Siemens TCP) depois de marcar nos tags o que é registrado ou tem alarmes.</translation>
     </message>
     <message>
         <location filename="../dlghistorian.cpp" line="155"/>
@@ -5007,8 +5007,8 @@ Se não for copiada, o pvserver a procura nesse caminho (só funciona neste PC, 
     </message>
     <message>
         <location filename="../dlgtagmonitor.cpp" line="129"/>
-        <source>No hay archivos .tagmap: compile un daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA)</source>
-        <translation>Não há arquivos .tagmap: compile um daemon (Daemon &gt; Modbus / Siemens TCP / OPC UA)</translation>
+        <source>No hay archivos .tagmap: compile un daemon (Daemon &gt; Modbus / Siemens TCP)</source>
+        <translation>Não há arquivos .tagmap: compile um daemon (Daemon &gt; Modbus / Siemens TCP)</translation>
     </message>
     <message>
         <location filename="../dlgtagmonitor.cpp" line="246"/>
@@ -7637,6 +7637,30 @@ O script systemd &lt;nome&gt;.service também foi gravado na pasta do projeto.</
         <source>Daemon MQTT: lee tags de un broker MQTT (sensores IoT, gateways) y publica tags de los daemons (nube, MES/ERP, Node-RED)</source>
         <translation>Daemon MQTT: lê tags de um broker MQTT (sensores IoT, gateways) e publica tags dos daemons (nuvem, MES/ERP, Node-RED)</translation>
     </message>
+    <message>
+        <source>Manual en &amp;PDF</source>
+        <translation>Manual em &amp;PDF</translation>
+    </message>
+    <message>
+        <source>&amp;Referencia de las funciones del pvserver</source>
+        <translation>&amp;Referência das funções do pvserver</translation>
+    </message>
+    <message>
+        <source>&amp;Atajos de teclado</source>
+        <translation>&amp;Atalhos de teclado</translation>
+    </message>
+    <message>
+        <source>No se encontró el manual en PDF (carpeta doc/manual de la instalación).</source>
+        <translation>O manual em PDF não foi encontrado (pasta doc/manual da instalação).</translation>
+    </message>
+    <message>
+        <source>No se encontró la referencia de funciones (carpeta doc/pvslib de la instalación).</source>
+        <translation>A referência de funções não foi encontrada (pasta doc/pvslib da instalação).</translation>
+    </message>
+    <message>
+        <source>No se encontró la documentación (carpeta doc de la instalación).</source>
+        <translation>Documentação não encontrada (pasta doc da instalação).</translation>
+    </message>
 </context>
 <context>
     <name>MyRootWidget</name>
@@ -8096,6 +8120,49 @@ Se já existir, será substituído. Continuar?</translation>
         <location filename="../pvxref.cpp" line="195"/>
         <source>publica en %1</source>
         <translation>publica em %1</translation>
+    </message>
+</context>
+<context>
+    <name>DlgHelp</name>
+    <message>
+        <source>pvdevelop: ayuda</source>
+        <translation>pvdevelop: ajuda</translation>
+    </message>
+    <message>
+        <source>Atrás (Alt+Izquierda)</source>
+        <translation>Voltar (Alt+Esquerda)</translation>
+    </message>
+    <message>
+        <source>Adelante (Alt+Derecha)</source>
+        <translation>Avançar (Alt+Direita)</translation>
+    </message>
+    <message>
+        <source>Inicio de la ayuda</source>
+        <translation>Início da ajuda</translation>
+    </message>
+    <message>
+        <source>Buscar en la ayuda (Ctrl+F)</source>
+        <translation>Buscar na ajuda (Ctrl+F)</translation>
+    </message>
+    <message>
+        <source>Abrir el manual completo en PDF</source>
+        <translation>Abrir o manual completo em PDF</translation>
+    </message>
+    <message>
+        <source>Ayuda de PV Suite</source>
+        <translation>Ajuda do PV Suite</translation>
+    </message>
+    <message>
+        <source>Sin resultados para «%1»</source>
+        <translation>Sem resultados para “%1”</translation>
+    </message>
+    <message>
+        <source>%1 resultado(s)</source>
+        <translation>%1 resultado(s)</translation>
+    </message>
+    <message>
+        <source>Abrir la carpeta de la documentación (manuales en PDF)</source>
+        <translation>Abrir a pasta da documentação (manuais em PDF)</translation>
     </message>
 </context>
 </TS>

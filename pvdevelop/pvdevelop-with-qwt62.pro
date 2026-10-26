@@ -151,10 +151,11 @@ win32-msvc*:LIBS += $$PWD/../rllib/lib/rllib.lib ws2_32.lib iphlpapi.lib advapi3
 unix:LIBS        += -L$$PWD/../rllib/lib -lrllib
 unix:!macx:QMAKE_RPATHDIR += $$PWD/../rllib/lib
 
-HEADERS      += dlgtags.h dlgtagmonitor.h buildconsole.h pvbindgen.h dlgbind.h pvtablesort.h pvimages.h
-SOURCES      += dlgtags.cpp dlgtagmonitor.cpp buildconsole.cpp pvbindgen.cpp dlgbind.cpp pvtablesort.cpp pvimages.cpp
+HEADERS      += dlgtags.h dlgtagmonitor.h buildconsole.h pvbindgen.h dlgbind.h pvtablesort.h pvimages.h doctabs.h dlghelp.h
+SOURCES      += dlgtags.cpp dlgtagmonitor.cpp buildconsole.cpp pvbindgen.cpp dlgbind.cpp pvtablesort.cpp pvimages.cpp doctabs.cpp dlghelp.cpp
 FORMS        += dlgtags.ui
 FORMS        += dlgbind.ui   # Nestor
+FORMS        += dlghelp.ui
 
 # Nestor: idiomas (Qt Linguist: translations/*.ts; los .qm van dentro del ejecutable, :/i18n/)
 HEADERS      += ../pvbrowser/pvblanguage.h ../pvbrowser/pvbupdate.h
@@ -162,3 +163,8 @@ SOURCES      += ../pvbrowser/pvblanguage.cpp ../pvbrowser/pvbupdate.cpp
 QT           += network   # Nestor: Ayuda > Buscar actualizaciones
 TRANSLATIONS += translations/pvdevelop_es.ts translations/pvdevelop_en.ts translations/pvdevelop_pt.ts translations/pvdevelop_de.ts
 CONFIG       += lrelease embed_translations
+# Nestor: los .qm en qm/ y rcc despues de lrelease (con make -j y una carpeta nueva, rcc empaquetaba
+# los .qm antes de que existieran: qmake no ve la dependencia porque al correr todavia no estan)
+LRELEASE_DIR = qm
+QMAKE_DIR_REPLACE -= LRELEASE_DIR   # tambien con debug_and_release (Windows): qm/, no qm/release/
+for(ts, TRANSLATIONS): rcc.depends += $$OUT_PWD/qm/$$replace($$list($$basename(ts)), \.ts$, .qm)
