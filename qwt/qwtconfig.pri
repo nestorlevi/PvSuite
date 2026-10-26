@@ -162,7 +162,8 @@ QWT_CONFIG     += QwtTests
 # to link frameworks instead of regular libs
 ######################################################################
 
-macx:!static:CONFIG(qt_framework, qt_framework|qt_no_framework) {
+# Nestor: en macOS qwt va como libqwt.dylib comun (los .pro de la suite enlazan -L../qwt/lib -lqwt)
+false:macx:!static:CONFIG(qt_framework, qt_framework|qt_no_framework) {
 
     QWT_CONFIG += QwtFramework
 }

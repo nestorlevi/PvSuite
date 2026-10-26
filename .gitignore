@@ -1,36 +1,19 @@
 ####################
 # git ignore files #
 ####################
-# Compilar: solo los proyectos y scripts de compilacion (lo compilado queda fuera)
-/Compilar/*
-!/Compilar/pvsuite-win64/
-!/Compilar/pvsuite-linux64/
-/Compilar/pvsuite-win64/*
-!/Compilar/pvsuite-win64/*.pro
-!/Compilar/pvsuite-win64/build.bat
-!/Compilar/pvsuite-win64/*-msvc/
-/Compilar/pvsuite-win64/*-msvc/*
-!/Compilar/pvsuite-win64/*-msvc/*.pro
-/Compilar/pvsuite-linux64/*
-!/Compilar/pvsuite-linux64/*.pro
-!/Compilar/pvsuite-linux64/build.sh
-!/Compilar/installer/
-/Compilar/installer/*
-!/Compilar/installer/*.bat
-!/Compilar/installer/*.sh
-!/Compilar/installer/config/
-!/Compilar/installer/plantillas/
-!/Compilar/installer/translations/
-!/Compilar/installer/packages/
-/Compilar/installer/packages/*/data/
-/Compilar/installer/packages/*/meta/*.qm
+# Nestor: Compilar/ (scripts propios e instalador) no va al repo publico; se compila con pvsuite.pro
+/Compilar/
+/build/
+/msvc/qwt-msvc/lib/
 
 # Nestor: documentacion generada (doc/generar_documentacion) y manuales: no hacen falta para compilar
 /doc/pvdevelop/
 /doc/pvslib/
 /doc/rllib/
 /doc/doxygen/gen.log
-/doc/manual/
+# Nestor: el texto del manual (HTML) y las herramientas (doc/herramientas) van en git; los PDF y la ayuda integrada se generan
+/doc/manual/*.pdf
+/doc/ayuda/
 
 # ignore object files
 *.o
@@ -96,4 +79,36 @@ PaxHeaders/
 # Nestor: pvlauncher compilado en Linux / macOS
 pvlauncher/pvlauncher
 pvlauncher/pvlauncher.app/
+
+# Nestor: lo que no va al repo publico (se genera al compilar o es del pvbrowser viejo)
+.directory
+*.exe
+*.EXE
+*.so.*
+*.dylib
+*.mak
+*.qm
+*.pyc
+__pycache__/
+*.log
+*.pro.user*
+*.orig*
+murx*
+*.murx
+.qt/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+cmake-builddir*/
+/qwt/doc/
+/qwt/examples/
+/qwt/playground/
+/qwt/tests/
+/qwt/designer/
+/qwt/lib/
+/pvserver/man/
+/rllib/foreign/
+/designer/
+/spec/
+/template/
 

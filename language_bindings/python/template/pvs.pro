@@ -23,7 +23,7 @@ unix:INCLUDEPATH   += /opt/pvb/rllib/lib
 }
 
 # python not tested on Mac OS X jet. Please try yourself by adding the python lib below.
-macx:LIBS          += /opt/pvb/pvserver/libpvsmt.a /usr/lib/libpthread.dylib
+macx:LIBS          += /opt/pvb/pvserver/libpvsmt.a -lpthread
 #macx:LIBS         += /opt/pvb/pvserver/libpvsid.a
 macx:INCLUDEPATH   += /opt/pvb/pvserver
 macx:LIBS          += /usr/lib/librllib.dylib

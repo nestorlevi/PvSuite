@@ -29,6 +29,6 @@ SOURCES += rlhistory.cpp
     }
 }
 #macx::LIBS    += ../lib/librllib.dylib
-macx::LIBS    += $${PWD}/../lib/librllib.a
+macx:LIBS     += -L$${PWD}/../lib -lrllib   # Nestor: en macOS rllib es librllib.dylib
 
 TARGET = rlhistory

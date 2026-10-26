@@ -37,14 +37,15 @@ SOURCES      += ../../sql/qtdatabase.cpp
     unix:LIBS          += -ldl
 }
 
-macx:LIBS          += $$PWD/../../../pvserver/libpvsmt.a /usr/lib/libpthread.dylib
+macx:LIBS          += -L$$PWD/../lua-5.4.0/src -llua   # Nestor: en macOS tambien hace falta liblua
+macx:LIBS          += $$PWD/../../../pvserver/libpvsmt.a -lpthread
 #macx:LIBS         += ../../../pvserver/libpvsid.a
 macx:INCLUDEPATH   += ../../../pvserver
 macx:LIBS          += $$PWD/../../../rllib/lib/librllib.dylib
 macx:INCLUDEPATH   += ../../../rllib/lib
 
 win32-g++ {
-QMAKE_LFLAGS       += -static-libgcc
+!macx:QMAKE_LFLAGS       += -static-libgcc
 win32:LIBS += $$PWD/../lua-5.4.0/src/liblua.a
 win32:LIBS += $$PWD/../../../rllib/lib/librllib.a
 win32:LIBS += $$PWD/../../../pvserver/libserverlib.a -lws2_32 -ladvapi32

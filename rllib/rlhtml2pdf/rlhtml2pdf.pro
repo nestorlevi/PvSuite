@@ -22,7 +22,7 @@ unix:INCLUDEPATH  += ../lib
 macx:INCLUDEPATH  += ../lib
 
 win32-g++ {
-QMAKE_LFLAGS      += -static-libgcc
+!macx:QMAKE_LFLAGS      += -static-libgcc
 win32:INCLUDEPATH += ../lib
 win32:LIBS        += -lws2_32 -ladvapi32 -lpthread
 }

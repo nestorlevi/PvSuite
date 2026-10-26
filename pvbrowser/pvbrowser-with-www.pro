@@ -184,3 +184,8 @@ HEADERS      += pvblanguage.h pvbupdate.h
 SOURCES      += pvblanguage.cpp pvbupdate.cpp
 TRANSLATIONS += translations/pvbrowser_es.ts translations/pvbrowser_en.ts translations/pvbrowser_pt.ts translations/pvbrowser_de.ts
 CONFIG       += lrelease embed_translations
+# Nestor: los .qm en qm/ y rcc despues de lrelease (con make -j y una carpeta nueva, rcc empaquetaba
+# los .qm antes de que existieran: qmake no ve la dependencia porque al correr todavia no estan)
+LRELEASE_DIR = qm
+QMAKE_DIR_REPLACE -= LRELEASE_DIR   # tambien con debug_and_release (Windows): qm/, no qm/release/
+for(ts, TRANSLATIONS): rcc.depends += $$OUT_PWD/qm/$$replace($$list($$basename(ts)), \.ts$, .qm)

@@ -31,7 +31,7 @@ USE_SYMBIAN {
 macx:DEFINES += PVMAC
 macx:DEFINES += unix
 unix:!symbian:LIBS    += -ldl
-!symbian:!msvc:QMAKE_LFLAGS += -static-libgcc
+!symbian:!msvc:!macx:QMAKE_LFLAGS += -static-libgcc
 
 HEADERS       = mainwindow.h \
                 dlgopt.h \

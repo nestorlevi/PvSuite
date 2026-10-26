@@ -1,0 +1,85 @@
+# Nestor: compilacion de macOS (Apple Silicon) en GitHub Actions.
+# Corre con una etiqueta macos-* (git tag macos-N && git push publico macos-N), con la etiqueta
+# de una version (v*) o desde Actions > macOS > Run workflow.
+# Deja como artefacto PvSuite-<version>-macos-arm64.zip (pvbrowser.app y pvdevelop.app con Qt
+# incluido por macdeployqt, mas herramientas y bibliotecas) y los registros de la compilacion.
+name: macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['macos-*', 'v*']
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Qt 6.9.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.9.2'
+          host: mac
+          target: desktop
+          arch: clang_64
+          modules: 'qtwebengine qtwebchannel qtpositioning qtmultimedia'
+          cache: true
+
+      - name: Compilar
+        run: |
+          mkdir -p build && cd build
+          "$QT_ROOT_DIR/bin/qmake" ../pvsuite.pro CONFIG+=release 2>&1 | tee ../build.log
+          # -i sigue despues de un error (muestra todos de una vez); falla si hubo alguno
+          make -i -j"$(sysctl -n hw.ncpu)" 2>&1 | tee -a ../build.log
+          ! grep -qE "^make.*\*\*\* | error: |^clang: error" ../build.log
+
+      - name: Paquete
+        if: always()
+        run: |
+          set -x
+          VERSION="$(sed -n 's:^#define PVSUITE_VERSION "\(.*\)".*:\1:p' pvbrowser/pvbupdate.h | head -1)"
+          OUT="PvSuite-$VERSION-macos-arm64"
+          B=build
+          mkdir -p "$OUT"
+          for app in pvbrowser pvdevelop; do
+            a="$(find "$B" -maxdepth 4 -name "$app.app" -type d | head -1)"
+            [ -n "$a" ] && cp -R "$a" "$OUT/" || echo "falta $app.app"
+          done
+          for exe in rlsvgcat rlfind rlhistory rlhtml2pdf fake_qmake pvslua pvapplua; do
+            f="$(find "$B" -name "$exe" -type f -perm -u+x | head -1)"
+            [ -n "$f" ] && cp "$f" "$OUT/" || echo "falta $exe"
+          done
+          mkdir -p "$OUT/lib"
+          cp -P rllib/lib/librllib*.dylib pvserver/libpvsmt.a "$OUT/lib/" 2>/dev/null || true
+          cp -P qwt/lib/*qwt* "$OUT/lib/" 2>/dev/null || true
+          for app in "$OUT"/*.app; do
+            "$QT_ROOT_DIR/bin/macdeployqt" "$app" -always-overwrite -libpath="$PWD/qwt/lib" -libpath="$PWD/rllib/lib" || true
+          done
+          ls -la "$OUT" "$OUT/lib"
+          ditto -c -k --keepParent "$OUT" "$OUT.zip"
+          echo "PAQUETE=$OUT" >> "$GITHUB_ENV"
+
+      - name: Prueba basica (arranca sin pantalla)
+        if: always()
+        run: |
+          export QT_QPA_PLATFORM=offscreen
+          for app in pvbrowser pvdevelop; do
+            exe="$PAQUETE/$app.app/Contents/MacOS/$app"
+            [ -x "$exe" ] || { echo "PRUEBA $app: no esta"; continue; }
+            "$exe" > "prueba_$app.log" 2>&1 &
+            pid=$!
+            sleep 8
+            if kill -0 $pid 2>/dev/null; then echo "PRUEBA $app: arranco y sigue corriendo"; kill $pid; else wait $pid; echo "PRUEBA $app: termino con codigo $?"; cat "prueba_$app.log"; fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos
+          path: |
+            ${{ env.PAQUETE }}.zip
+            build.log
+            prueba_*.log
+          retention-days: 7

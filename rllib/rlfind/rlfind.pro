@@ -5,7 +5,7 @@
 TEMPLATE = app
 CONFIG  += warn_on release console 
 CONFIG  -= qt
-!msvc:QMAKE_LFLAGS += -static-libgcc
+!msvc:!macx:QMAKE_LFLAGS += -static-libgcc
 INCLUDEPATH += .
 
 # Input
