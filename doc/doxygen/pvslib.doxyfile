@@ -1,0 +1,26 @@
+# PV Suite 6: referencia de pvserver (pvslib). Generar con generar_documentacion.bat / .sh
+PROJECT_NAME           = "PV Suite 6 - pvserver (pvslib)"
+PROJECT_BRIEF          = "Funciones para programar el pvserver"
+OUTPUT_DIRECTORY       = ..
+HTML_OUTPUT            = pvslib
+INPUT                  = pvslib_main.md ../../pvserver/processviewserver.h ../../pvserver/wthread.h ../../pvserver/pvbthreaddata.h
+USE_MDFILE_AS_MAINPAGE = pvslib_main.md
+STRIP_FROM_PATH        = ../../
+SOURCE_BROWSER         = NO
+PREDEFINED             = PVWIN32 __cplusplus
+OUTPUT_LANGUAGE        = Spanish
+INPUT_ENCODING         = UTF-8
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+EXTRACT_PRIVATE        = NO
+JAVADOC_AUTOBRIEF      = NO
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_LOGFILE           = doxygen_warnings.txt
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = YES
+SEARCHENGINE           = YES
+ENABLE_PREPROCESSING   = YES
+MARKDOWN_SUPPORT       = YES
+HTML_COLORSTYLE        = LIGHT
+FULL_PATH_NAMES        = YES

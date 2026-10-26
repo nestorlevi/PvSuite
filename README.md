@@ -32,10 +32,19 @@ Modbus daemons generated from pvdevelop and no-code actions and animations for t
   parejo); doble clic en un widget abre Propiedades.
 - **Compilación** en un panel de pvdevelop (Ctrl+M / Ctrl+T) con las líneas de error marcadas en el
   editor; los pvservers se compilan con MinGW o con Visual Studio (se elige en pvdevelop).
+  Ctrl+T compila y ejecuta el pvserver; en Linux se abre en una ventana de la terminal del sistema
+  (x-terminal-emulator, qterminal, konsole, gnome-terminal, xfce4-terminal, lxterminal, mate-terminal o
+  xterm) que se cierra como cualquier ventana, y Ctrl+T cierra antes el pvserver anterior del proyecto.
+  Sin terminal instalada, corre dentro del panel de compilación y el botón "Detener" lo cierra.
 - **Editor** con texto predictivo (Ctrl+Espacio).
 - Idiomas: castellano, inglés, portugués y alemán. Ayuda > Buscar actualizaciones.
 
 Los proyectos de pvbrowser siguen funcionando: las funciones nuevas son opcionales.
+
+Los proyectos hechos con la versión completa de PV Suite (que tiene usuarios, recetas, automatización y
+bloques) se abren también aquí: las acciones `login`, `logout`, `users`, `ack`, `recipes`, `automation`,
+`faceplate` y `close`, y los textos `@user` y `@automation`, se conservan en el proyecto pero no hacen
+nada, y pvdevelop avisa al generar.
 
 ## Instalar
 
@@ -48,7 +57,9 @@ Los instaladores están en [Releases](https://github.com/nestorlevi/PvSuite/rele
   avisa; `sudo sh /opt/pvb/terceros/preparar_linux.sh` las instala (apt, dnf o zypper).
 
 Para compilar los pvservers hace falta un compilador: en Windows, el MinGW de Qt 6.9 o Visual Studio 2022;
-en Linux, g++ y make (`sudo sh /opt/pvb/terceros/preparar_linux.sh -compilar`).
+en Linux, g++ y make (`sudo sh /opt/pvb/terceros/preparar_linux.sh -compilar`). Los proyectos anteriores
+se pueden seguir compilando con MinGW 8.1 y Qt 5.15.2: marcar el componente opcional "Bibliotecas para
+MinGW 8.1" al instalar y elegir ese MinGW en pvdevelop.
 
 ## Primeros pasos
 
@@ -61,28 +72,53 @@ en Linux, g++ y make (`sudo sh /opt/pvb/terceros/preparar_linux.sh -compilar`).
 El ejemplo [ejemplos/01_modbus](ejemplos/01_modbus) muestra todo esto armado, con un
 [simulador Modbus](ejemplos/simulador) para probarlo sin PLC.
 
+## Documentación
+
+- **Ayuda integrada**: en pvdevelop, **Ayuda > Manual** (Ctrl+H) abre el manual en un visor con índice, búsqueda y
+  adelante/atrás; **F1** en cualquier ventana abre el tema de esa ventana. **Ayuda > Manual en PDF** abre el PDF
+  y **Ayuda > Referencia de las funciones del pvserver** abre `doc/pvslib`.
+- **Manual de usuario** en `doc/manual`, en castellano, inglés, portugués y alemán (`Manual_PvSuite.pdf`,
+  `Manual_PvSuite_en.pdf`, `Manual_PvSuite_pt.pdf`, `Manual_PvSuite_de.pdf` y sus versiones HTML). El texto
+  está en los HTML; los PDF y la ayuda integrada se generan.
+- `doc/index.html` es la portada de la documentación (manuales, referencia de funciones y atajos de teclado).
+
+`doc/generar_documentacion.bat` (Windows) o `.sh` (Linux) regeneran todo: la referencia `doc/pvslib` (doxygen),
+el estilo del manual, la ayuda integrada y la portada (Python 3, scripts en `doc/herramientas`) y los PDF
+(Edge o Chrome 131 o más nuevo).
+
 ## Compilar desde el código
 
 Hace falta **Qt 6.9** (probado con 6.9.2).
 
-**Windows** (MinGW para la suite; pvbrowser con MSVC porque Qt WebEngine no existe para MinGW):
+Se compila con qmake, en una carpeta aparte (`build/`, fuera de git). También se pueden abrir los
+`.pro` en Qt Creator, cada uno con su kit.
 
-```bat
-Compilar\pvsuite-win64\build.bat
-```
-
-Usa `C:\Qt\6.9.2\mingw_64`, `C:\Qt\Tools\mingw1310_64`, `C:\Qt\6.9.2\msvc2022_64` y Visual Studio 2022
-Build Tools; las rutas se cambian con `QTDIR_MINGW`, `MINGWDIR`, `QTDIR_MSVC` y `VSDIR`.
-También se pueden abrir `pvsuite-mingw.pro` y `pvbrowser-msvc.pro` en Qt Creator, cada uno con su kit.
-
-**Linux**:
+**Linux y macOS** (`pvsuite.pro` compila todo, pvbrowser incluido):
 
 ```sh
-QTDIR=~/Qt/6.9.2/gcc_64 Compilar/pvsuite-linux64/build.sh
+mkdir build && cd build
+~/Qt/6.9.2/gcc_64/bin/qmake ../pvsuite.pro CONFIG+=release    # macOS: ~/Qt/6.9.2/macos/bin/qmake
+make -j8
 ```
 
-**Instaladores** (Qt Installer Framework 4.x): `Compilar/installer/collect_generate_installer.bat` en
-Windows; `collect_files_linux.sh` y `generate_installer_linux.sh` en Linux (necesita `patchelf`).
+**Windows**: la suite con MinGW (`pvsuite.pro`) y pvbrowser con MSVC 2022 (`msvc/pvbrowser-msvc.pro`),
+porque Qt WebEngine no existe para MinGW. El segundo también deja `rllib.lib` y `serverlib.lib`, para
+compilar los pvservers con Visual Studio.
+
+```bat
+rem consola con C:\Qt\Tools\mingw1310_64\bin y C:\Qt\6.9.2\mingw_64\bin en el PATH
+mkdir build\mingw && cd build\mingw
+qmake ..\..\pvsuite.pro CONFIG+=release
+mingw32-make -j8
+
+rem consola "x64 Native Tools" de Visual Studio 2022 con C:\Qt\6.9.2\msvc2022_64\bin en el PATH
+mkdir build\msvc && cd build\msvc
+qmake ..\..\msvc\pvbrowser-msvc.pro CONFIG+=release
+nmake
+```
+
+Las bibliotecas quedan junto a sus fuentes (`rllib/lib`, `pvserver`, `qwt/lib`); en Windows, pvdevelop
+necesita `qwt/lib/qwt.dll` y pvbrowser `msvc/qwt-msvc/lib/qwt.dll` junto al `.exe`.
 
 ## Licencia y créditos
 
