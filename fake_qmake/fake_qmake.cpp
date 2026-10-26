@@ -82,7 +82,8 @@ static int otherCompilerScope(const char *line)
 // Nestor: variables del .pro (NOMBRE = valor, NOMBRE += valor), con condiciones opcionales delante
 // (equals(QMAKE_GCC_MAJOR_VERSION, N): o un nombre de CONFIG, con ! para negar). $$NOMBRE y $${NOMBRE}
 // se reemplazan por su valor en las lineas que siguen. Los .pro de pvdevelop eligen asi la carpeta de
-// las bibliotecas de MinGW: PVB_MINGWLIB = .../win-mingw/bin/mingw81_64 con GCC 8.
+// las bibliotecas de MinGW: PVB_MINGWLIB = .../win-mingw/bin/mingw81_64 con GCC 8 (mingw81_32 con
+// contains(QT_ARCH, i386), el MinGW 8.1 de 32 bits).
 static std::map<std::string, std::string> vars;
 
 // version mayor de GCC (gcc -dumpversion del PATH, la primera vez que se pregunta); -1 si no hay gcc
@@ -108,6 +109,29 @@ static int gccMajor()
   return major;
 }
 
+// 1 si el gcc del PATH compila para 32 bits (gcc -dumpmachine: i686-w64-mingw32); como QT_ARCH = i386
+static int gcc32()
+{
+  static int is32 = -1;
+  if(is32 != -1) return is32;
+  is32 = 0;
+#ifdef RLWIN32
+  if(use_msvc) return is32;
+  FILE *p = _popen("gcc -dumpmachine 2>nul", "r");
+#else
+  FILE *p = popen("gcc -dumpmachine 2>/dev/null", "r");
+#endif
+  if(p == NULL) return is32;
+  char buf[120];
+  if(fgets(buf, sizeof(buf), p) != NULL) is32 = (strncmp(buf, "i686", 4) == 0 || strncmp(buf, "i386", 4) == 0);
+#ifdef RLWIN32
+  _pclose(p);
+#else
+  pclose(p);
+#endif
+  return is32;
+}
+
 static int conditionTrue(std::string cond)
 {
   while(!cond.empty() && (unsigned char) cond.back()  <= ' ') cond.pop_back();
@@ -118,6 +142,10 @@ static int conditionTrue(std::string cond)
   if(sscanf(cond.c_str(), "equals(QMAKE_GCC_MAJOR_VERSION, %d)", &n) == 1)
   {
     ret = (gccMajor() == n);
+  }
+  else if(cond == "contains(QT_ARCH, i386)")
+  {
+    ret = gcc32();
   }
   else if(!otherCompilerScope(cond.c_str()))
   {

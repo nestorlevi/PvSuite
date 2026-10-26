@@ -28,10 +28,14 @@ ping -n 2 127.0.0.1 >nul
 :compile
 if /i "%PVB_COMPILER%"=="msvc" goto msvc
 rem librllib.a del mismo GCC: MinGW 8.1 (proyectos con Qt 5.15) usa la de win-mingw\bin\mingw81_64
+rem (mingw81_32 con el MinGW 8.1 de 32 bits: gcc -dumpmachine = i686-w64-mingw32)
 set "RLLIB=%PVBDIR%\win-mingw\bin\librllib.a"
 set "GCCVER="
+set "GCCMACH="
 for /f %%v in ('gcc -dumpversion 2^>nul') do set "GCCVER=%%v"
+for /f %%m in ('gcc -dumpmachine 2^>nul') do set "GCCMACH=%%m"
 if "%GCCVER:~0,2%"=="8." set "RLLIB=%PVBDIR%\win-mingw\bin\mingw81_64\librllib.a"
+if "%GCCVER:~0,2%"=="8." if /i "%GCCMACH:~0,4%"=="i686" set "RLLIB=%PVBDIR%\win-mingw\bin\mingw81_32\librllib.a"
 if /i not "%~2"=="ppi" goto mingw
 rem nodave.c (version de Windows, incluye setPort)
 gcc -c -O2 -D_WIN32 -DBCCWIN "%PVBDIR%\win-mingw\nodave.c" "-I%PVBDIR%\win-mingw" "-I%PVBDIR%\rllib\lib" -o nodave_mingw.o

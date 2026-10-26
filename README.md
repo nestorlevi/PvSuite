@@ -58,8 +58,9 @@ Los instaladores están en [Releases](https://github.com/nestorlevi/PvSuite/rele
 
 Para compilar los pvservers hace falta un compilador: en Windows, el MinGW de Qt 6.9 o Visual Studio 2022;
 en Linux, g++ y make (`sudo sh /opt/pvb/terceros/preparar_linux.sh -compilar`). Los proyectos anteriores
-se pueden seguir compilando con MinGW 8.1 y Qt 5.15.2: marcar el componente opcional "Bibliotecas para
-MinGW 8.1" al instalar y elegir ese MinGW en pvdevelop.
+se pueden seguir compilando con MinGW 8.1 y Qt 5.15.2, de 64 o de 32 bits: marcar el componente opcional
+"Bibliotecas para MinGW 8.1" al instalar y elegir ese MinGW en pvdevelop. Sirve para pasar los proyectos
+viejos a esta versión y después llevarlos al MinGW de Qt 6.
 
 ## Primeros pasos
 

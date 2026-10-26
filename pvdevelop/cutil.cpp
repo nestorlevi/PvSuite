@@ -63,11 +63,12 @@ static void writeMsvcScope(FILE *fout)
 }
 
 // Nestor: carpeta de las bibliotecas de MinGW (libserverlib.a, librllib.a, librlhist.a) segun la version de
-// GCC del proyecto: GCC 8 (MinGW 8.1 + Qt 5.15) usa las de win-mingw/bin/mingw81_64; las demas, las de
-// win-mingw/bin (GCC de la suite). fake_qmake tambien entiende estas dos lineas.
+// GCC del proyecto: GCC 8 (MinGW 8.1 + Qt 5.15) usa las de win-mingw/bin/mingw81_64 (mingw81_32 con el Qt de
+// 32 bits); las demas, las de win-mingw/bin (GCC de la suite). fake_qmake tambien entiende estas lineas.
 static const char minGWLibDir[] =
   "PVB_MINGWLIB      = $(PVBDIR)/win-mingw/bin\n"
-  "equals(QMAKE_GCC_MAJOR_VERSION, 8):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_64\n";
+  "equals(QMAKE_GCC_MAJOR_VERSION, 8):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_64\n"
+  "equals(QMAKE_GCC_MAJOR_VERSION, 8):contains(QT_ARCH, i386):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_32\n";
 
 #ifndef PVUNIX
 static QRegularExpression minGWLibRegex()
@@ -75,6 +76,19 @@ static QRegularExpression minGWLibRegex()
   // $(PVBDIR)/win-mingw/bin/libserverlib.a (tambien con \ o $$(PVBDIR)) o, en proyectos viejos, la ruta absoluta
   // a una instalacion (C:/PVSuite/win-mingw/bin/libserverlib.a): pasa a $$PVB_MINGWLIB (la de PVBDIR)
   return QRegularExpression("(?:\\$\\$?\\(PVBDIR\\)|[A-Za-z]:[/\\\\][^\\s\"]*?)[/\\\\]win-mingw[/\\\\]bin[/\\\\](lib(serverlib|rllib|rlhist)\\.a)");
+}
+
+// .pro que ya eligen la carpeta por GCC (PVB_MINGWLIB) pero de antes de las bibliotecas de 32 bits:
+// indice de la linea de mingw81_64 a la que le falta abajo la de mingw81_32; -1 si no hace falta
+static int minGWLib32Missing(const QStringList &lines)
+{
+  for(const QString &l : lines) if(l.contains("mingw81_32")) return -1;
+  for(int i=0; i<lines.size(); i++)
+  {
+    const QString t = lines[i].trimmed();
+    if(!t.startsWith('#') && t.contains("PVB_MINGWLIB") && t.contains("mingw81_64")) return i;
+  }
+  return -1;
 }
 
 int proNeedsMinGWLibDir(const char *name)
@@ -85,7 +99,7 @@ int proNeedsMinGWLibDir(const char *name)
   QFile pro(fname);
   if(!pro.open(QIODevice::ReadOnly | QIODevice::Text)) return 0;
   const QString content = QString::fromUtf8(pro.readAll());
-  if(content.contains("PVB_MINGWLIB")) return 0;
+  if(content.contains("PVB_MINGWLIB")) return minGWLib32Missing(content.split('\n')) >= 0 ? 1 : 0;
   for(const QString &l : content.split('\n'))
   {
     if(!l.trimmed().startsWith('#') && minGWLibRegex().match(l).hasMatch()) return 1;
@@ -104,19 +118,31 @@ int adaptProMinGWLibDir(const char *name)
   pro.close();
   const bool crlf = content.contains("\r\n");
   QStringList lines = QString::fromUtf8(content).remove('\r').split('\n');
-  int first = -1;
-  for(int i=0; i<lines.size(); i++)
+  const int line64 = minGWLib32Missing(lines);
+  if(line64 >= 0)
   {
-    if(lines[i].trimmed().startsWith('#')) continue;
-    QString l = lines[i];
-    l.replace(minGWLibRegex(), "$$PVB_MINGWLIB/\\1");
-    if(l != lines[i] && first < 0) first = i;
-    lines[i] = l;
+    // ya elige por GCC: se agrega abajo la de 32 bits, copiando la de 64 (sangria y $(PVBDIR) o $$(PVBDIR))
+    QString l32 = lines[line64];
+    l32.replace("mingw81_64", "mingw81_32");
+    l32.replace("equals(QMAKE_GCC_MAJOR_VERSION, 8):", "equals(QMAKE_GCC_MAJOR_VERSION, 8):contains(QT_ARCH, i386):");
+    lines.insert(line64 + 1, l32);
   }
-  if(first < 0) return 0;
-  QStringList add = QString(minGWLibDir).trimmed().split('\n');
-  add.prepend("# agregado por pvdevelop: con MinGW 8.1 (GCC 8, Qt 5.15) se enlazan las bibliotecas de win-mingw/bin/mingw81_64");
-  for(int i=add.size()-1; i>=0; i--) lines.insert(first, add[i]);
+  else
+  {
+    int first = -1;
+    for(int i=0; i<lines.size(); i++)
+    {
+      if(lines[i].trimmed().startsWith('#')) continue;
+      QString l = lines[i];
+      l.replace(minGWLibRegex(), "$$PVB_MINGWLIB/\\1");
+      if(l != lines[i] && first < 0) first = i;
+      lines[i] = l;
+    }
+    if(first < 0) return 0;
+    QStringList add = QString(minGWLibDir).trimmed().split('\n');
+    add.prepend("# agregado por pvdevelop: con MinGW 8.1 (GCC 8, Qt 5.15) se enlazan las bibliotecas de win-mingw/bin/mingw81_64 (32 bits: mingw81_32)");
+    for(int i=add.size()-1; i>=0; i--) lines.insert(first, add[i]);
+  }
   QString out = lines.join(crlf ? "\r\n" : "\n");
   if(!pro.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -1;
   pro.write(out.toUtf8());

@@ -1074,8 +1074,20 @@ void MainWindow::offerMinGWLibDir(const QString &project)
   if(c.compiler != "mingw" || CompilerConfig::minGWMajor(c.mingwDir) != 8) return;
   const QByteArray pname = project.toUtf8();
   if(!proNeedsMinGWLibDir(pname.constData())) return;
+  const QString libs = QDir::cleanPath(QString::fromLocal8Bit(qgetenv("PVBDIR")) + "/win-mingw/bin/mingw81_" +
+                                       (CompilerConfig::minGWBits(c.mingwDir) == 32 ? "32" : "64"));
+  {
+    // ya elige las bibliotecas por GCC (PVB_MINGWLIB), solo le falta la linea de 32 bits: se agrega sin preguntar
+    QFile f(pro);
+    if(f.open(QIODevice::ReadOnly) && f.readAll().contains("PVB_MINGWLIB"))
+    {
+      f.close();
+      if(adaptProMinGWLibDir(pname.constData()) > 0)
+        statusBar()->showMessage(tr("%1.pro: con MinGW 8.1 de 32 bits enlaza las bibliotecas de win-mingw/bin/mingw81_32").arg(project), 15000);
+      return;
+    }
+  }
   if(declined.contains(pro, Qt::CaseInsensitive)) return;
-  const QString libs = QDir::cleanPath(QString::fromLocal8Bit(qgetenv("PVBDIR")) + "/win-mingw/bin/mingw81_64");
   QString text = tr("El proyecto usa %1, pero %2.pro enlaza las bibliotecas de pvserver de la suite (otro GCC).\n\n"
                     "¿Adaptarlo para que con GCC 8 use las de %3? Con el MinGW de la suite sigue igual.\n"
                     "(Si no, se vuelve a preguntar al cambiar de compilador.)").arg(CompilerConfig::minGWLabel(c.mingwDir), project, QDir::toNativeSeparators(libs));

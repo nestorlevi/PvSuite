@@ -35,6 +35,7 @@ macx:INCLUDEPATH  += /opt/pvb/rllib/lib
 win32-g++ {
 PVB_MINGWLIB      = $(PVBDIR)/win-mingw/bin
 equals(QMAKE_GCC_MAJOR_VERSION, 8):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_64
+equals(QMAKE_GCC_MAJOR_VERSION, 8):contains(QT_ARCH, i386):PVB_MINGWLIB = $(PVBDIR)/win-mingw/bin/mingw81_32
 QMAKE_LFLAGS      += -static-libgcc
 win32:LIBS        += $$PVB_MINGWLIB/libserverlib.a
 win32:LIBS        += $$PVB_MINGWLIB/librllib.a
