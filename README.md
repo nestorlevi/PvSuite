@@ -121,6 +121,12 @@ nmake
 Las bibliotecas quedan junto a sus fuentes (`rllib/lib`, `pvserver`, `qwt/lib`); en Windows, pvdevelop
 necesita `qwt/lib/qwt.dll` y pvbrowser `msvc/qwt-msvc/lib/qwt.dll` junto al `.exe`.
 
+## Apoyar el proyecto
+
+Si PV Suite te resulta útil, podés invitarme un café:
+
+[![Invitame un café en cafecito.app](https://cdn.cafecito.app/imgs/buttons/button_1.svg)](https://cafecito.app/nestorlevi)
+
 ## Licencia y créditos
 
 PV Suite se basa en pvbrowser, de Rainer Lehrig y la comunidad de pvbrowser
