@@ -46,6 +46,7 @@ public slots:
 private:
   struct EventRow { QComboBox *kind; QComboBox *tag; QLineEdit *value; QSpinBox *mask; };
   void fillTags(QComboBox *c);
+  void setHelp();   // Nestor: ayuda (tooltip) de cada campo y a que widgets se aplica
   void setupEventRow(EventRow *r, QComboBox *kind, QComboBox *tag, QLineEdit *value, QSpinBox *mask);
   void setEventRow(EventRow *r, const QString &spec);
   QString eventSpec(const EventRow &r) const;

@@ -17,6 +17,7 @@
 /****************************************************************************
 ** Nestor: monitor de tags para depurar (ver dlgtagmonitor.h)
 ****************************************************************************/
+#include "../pvbrowser/pvdefine.h"   // PVUNIX
 #include "dlgtagmonitor.h"
 #include "buildconsole.h"   // pvbStartInConsole
 #include "../rllib/lib/rltagdef.h"
@@ -412,7 +413,7 @@ void DlgTagMonitor::slotWrite(bool force)
   int i = selectedItem();
   if(i < 0) { QMessageBox::information(this, windowTitle(), tr("Elegir un tag de la lista")); return; }
   const Item &it = items[i];
-  if(it.tag.rw == 0) { QMessageBox::information(this, windowTitle(), tr("%1 es de solo lectura (o el .tagmap es viejo: volver a compilar el daemon)").arg(it.name)); return; }
+  if(it.tag.rw == 0) { QMessageBox::information(this, windowTitle(), tr("%1 es de solo lectura (rw=0 en el .tagmap). En Daemon > Modbus / Siemens TCP, Tags..., marcar la columna RW de ese tag y volver a compilar el daemon.").arg(it.name)); return; }
   QString text = editValue->text().trimmed();
   text.replace(',', '.');
   if(text == "true" || text == "on") text = "1";

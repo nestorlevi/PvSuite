@@ -101,6 +101,7 @@ QList<PvbTag> pvbProjectTags()
         if(kv[k] == "name") tg.name = kv[k+1];
         if(kv[k] == "type") tg.type = kv[k+1];
         if(kv[k] == "plcaddr") tg.address = kv[k+1];
+        if(kv[k] == "rw") tg.rw = kv[k+1] != "0";
       }
       if(!tg.name.isEmpty()) list << tg;
     }
@@ -238,6 +239,10 @@ struct Gen
   // escritura de un tag (los enteros se redondean, los bool y los bits valen 0 o 1)
   QString write(const PvbTag &t, const QString &v)
   {
+    // Nestor: el cliente (rlModbusClient::writeTag y los demas) descarta sin aviso lo escrito en un tag rw=0
+    if(!t.rw)
+      errors << QString("%1:%2 es de solo lectura (rw=0): marcar la columna RW en Tags... del daemon para poder escribirlo")
+                .arg(t.source, t.name);
     if(isBit(t) && bitsOf(t.type) > 16)   // ver rlTagBit (rllib/lib/rltag.h)
       errors << QString("%1:%2.%3: escribir un bit solo se puede en enteros de 8 o 16 bits (leerlo, si)")
                 .arg(t.source, t.name).arg(t.bit);

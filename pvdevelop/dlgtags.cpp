@@ -430,6 +430,18 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   connect(form->buttonImport,    &QPushButton::clicked, this, &DlgTags::slotImport);
   connect(form->buttonExport,    &QPushButton::clicked, this, &DlgTags::slotExport);
   connect(form->buttonCheck,     &QPushButton::clicked, this, &DlgTags::slotCheck);
+  // Nestor: Modbus: una direccion de entrada discreta o input register no se puede escribir: desmarca RW
+  connect(form->table, &QTableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
+    if(protocol != rlTagList::MODBUS || item->column() != C_ADDRESS) return;
+    QTableWidgetItem *rw = form->table->item(item->row(), C_RW);
+    if(rw == nullptr || rw->checkState() != Qt::Checked) return;
+    rlTagList l(protocol);
+    l.notation = currentNotation();
+    rlTagDef t;
+    std::string err;
+    if(l.parseAddress(item->text().trimmed().toStdString(), t, err) == 0 && (t.area == RLTAG_DISCRETE || t.area == RLTAG_INPUT))
+      rw->setCheckState(Qt::Unchecked);
+  });
   connect(form->buttonCsv,       &QPushButton::clicked, this, &DlgTags::slotBrowseCsv);
   connect(form->radioMk,  &QRadioButton::toggled, this, &DlgTags::slotStoreChanged);
   connect(form->radioCsv, &QRadioButton::toggled, this, &DlgTags::slotStoreChanged);
@@ -617,6 +629,7 @@ void DlgTags::slotAdd()
 {
   rlTagDef t;
   if(protocol == rlTagList::SIEMENS) t.slave = 0;
+  t.rw = 1;   // Nestor: los nuevos se pueden escribir (en Modbus, una entrada discreta o un input register lo desmarca)
   t.name = QString("Tag%1").arg(form->table->rowCount() + 1).toStdString();
   addRow(t);
   form->table->setCurrentCell(form->table->rowCount() - 1, C_NAME);

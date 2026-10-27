@@ -20,6 +20,7 @@
 #include "dlgbind.h"
 #include "ui_dlgbind.h"
 #include <QCompleter>
+#include <QMap>
 #include <QMessageBox>
 #include <QRegularExpression>
 #include "pvimages.h"   // pvbAddImageButton
@@ -74,6 +75,8 @@ DlgBind::DlgBind(QWidget *widget, QWidget *parent) : QDialog(parent)
   if(wtype != "TQPushButton" && wtype != "TQLineEdit" && wtype != "TQSlider" && wtype != "TQDial" &&
      wtype != "TQSpinBox" && wtype != "TQCheck" && wtype != "TQRadio") ui->tabs->setCurrentIndex(1);
 
+  setHelp();
+
   // valores actuales
   QStringList p = pvbSplitPairs(pvbBinding(widget));
   QMap<QString, QString> kv;
@@ -110,6 +113,71 @@ DlgBind::DlgBind(QWidget *widget, QWidget *parent) : QDialog(parent)
   setTag(ui->animTag, kv.value("anim"));
   ui->editFrames->setText(kv.value("frames"));
   if(kv.contains("period")) ui->spinPeriod->setValue(kv.value("period").toInt());
+}
+
+// Nestor: cada fila dice que hace y en que widgets sirve; si el widget que se edita no es de esos, lo avisa
+void DlgBind::setHelp()
+{
+  static const QMap<QString, QString> names = {
+    { "TQPushButton", "PushButton" }, { "TQLabel", "Label" }, { "TQLineEdit", "LineEdit" }, { "TQSlider", "Slider" },
+    { "TQDial", "Dial" }, { "TQSpinBox", "SpinBox" }, { "TQCheck", "CheckBox" }, { "TQRadio", "RadioButton" },
+    { "TQProgressBar", "ProgressBar" }, { "TQLCDNumber", "LCDNumber" }, { "TQImage", "Image" }, { "TQComboBox", "ComboBox" } };
+  const QString self = names.value(wtype, wtype);
+  // types vacio: todos los widgets
+  auto help = [&](std::initializer_list<QWidget *> widgets, const QString &text, const QStringList &types) {
+    QStringList shown;
+    for(const QString &t : types) shown << names.value(t, t);
+    QString tip = text + "<br><br><b>" + tr("Sirve para:") + "</b> " + (types.isEmpty() ? tr("todos los widgets") : shown.join(", "));
+    if(!types.isEmpty() && !types.contains(wtype))
+      tip += "<br><i>" + tr("Este widget (%1) no lo usa.").arg(self) + "</i>";
+    for(QWidget *w : widgets)   // la ayuda propia del campo (del .ui) va primero
+      w->setToolTip("<p>" + (w->toolTip().isEmpty() ? QString() : w->toolTip().toHtmlEscaped() + "<br><br>") + tip + "</p>");
+  };
+  // pvbrowser: el clic lo mandan PushButton e Image (Image al apretar); presionar/soltar, los de pressable (Image solo soltar)
+  const QStringList buttons = { "TQPushButton", "TQImage" };
+  const QStringList pressable = { "TQPushButton", "TQLabel", "TQLineEdit", "TQComboBox", "TQSlider", "TQCheck", "TQRadio" };
+  const QStringList input = { "TQLineEdit", "TQSlider", "TQDial", "TQSpinBox", "TQCheck", "TQRadio" };
+  const QString kinds = tr("Escribir valor (el de la columna Valor), alternar 0/1, sumar o restar (con los limites de Opciones), "
+                           "ir a la pantalla indicada, volver a la anterior o a la de inicio.");
+  help({ ui->labelClick, ui->kindClick, ui->tagClick, ui->valueClick, ui->maskClick },
+       tr("Que hace el widget cuando se lo pulsa y suelta (un clic completo).") + "<br>" + kinds, buttons);
+  help({ ui->labelPress, ui->kindPress, ui->tagPress, ui->valuePress, ui->maskPress },
+       tr("Que hace en el momento en que se aprieta el boton del mouse sobre el widget.") + "<br>" + kinds
+       + "<br>" + tr("Con un Label se arma un pulsador sin usar un PushButton."), pressable);
+  help({ ui->labelRelease, ui->kindRelease, ui->tagRelease, ui->valueRelease, ui->maskRelease },
+       tr("Que hace al soltar el boton del mouse. Junto con Al presionar arma un pulsador momentaneo."), QStringList(pressable) << "TQImage");
+  help({ ui->buttonMomentary },
+       tr("Completa Al presionar = 1 y Al soltar = 0 en el tag de Al presionar (o el de Al hacer clic): "
+          "el tag vale 1 solo mientras se mantiene apretado."), pressable);
+  help({ ui->labelEnter, ui->enterTag },
+       tr("Tag donde se escribe lo que el operador ingresa: el numero de un LineEdit (al apretar Enter), "
+          "la posicion de un Slider, Dial o SpinBox, o 1/0 de un CheckBox o RadioButton."), input);
+  help({ ui->labelLimits, ui->editMin, ui->editMax },
+       tr("Minimo y maximo para Sumar, Restar y lo ingresado: el valor escrito nunca sale de ese rango. Vacio = sin limite."), {});
+  help({ ui->labelConfirm, ui->editConfirm },
+       tr("Pregunta que se muestra antes de la accion de Al hacer clic (o de lo ingresado); si el operador cancela, no se escribe nada. "
+          "Vacio = sin confirmar."), QStringList(buttons) << input);
+  help({ ui->labelCond, ui->condTag, ui->condOp, ui->condValue, ui->condMsg },
+       tr("La accion se hace solo si se cumple la condicion (por ejemplo PLC1:Remoto == 1). Si no se cumple, se muestra el mensaje."), {});
+  help({ ui->labelText, ui->textTag, ui->editFmt },
+       tr("Muestra el valor del tag como texto. Formato: vacio (el numero), %d, %.1f bar, o textos por valor como Parado|Marcha|Falla."),
+       { "TQLabel", "TQPushButton", "TQLineEdit", "TQCheck", "TQRadio" });
+  help({ ui->labelValueAnim, ui->valueTag },
+       tr("Mueve el widget segun el valor del tag: el largo de una barra, la posicion de un Slider o Dial, el numero de un LCD o SpinBox, "
+          "o marca un CheckBox / RadioButton si es distinto de 0."),
+       { "TQProgressBar", "TQSlider", "TQDial", "TQSpinBox", "TQLCDNumber", "TQCheck", "TQRadio" });
+  help({ ui->labelColor, ui->colorTag, ui->editColors, ui->colorPart },
+       tr("Cambia el color de fondo o del texto segun reglas valor=color separadas por ; (por ejemplo 0=#808080;1=#00C000 o >80=#FF0000;else=). Los colores van como #RRGGBB; vacio = el original."), {});
+  help({ ui->labelBlink, ui->blinkTag },
+       tr("Parpadea en rojo (o con los colores de Color) mientras se cumple la condicion."), {});
+  help({ ui->labelVisible, ui->visibleTag, ui->checkInvert },
+       tr("Muestra el widget solo mientras se cumple la condicion; Invertir lo oculta en ese caso."), {});
+  help({ ui->checkQuality },
+       tr("Si el daemon se detiene o el dato es malo, el widget se pinta de gris y el texto muestra --- en lugar de un valor viejo."), {});
+  help({ ui->labelImages, ui->imageTag, ui->editImages },
+       tr("Una imagen por cada valor del tag (0, 1, 2...), separadas por |."), { "TQImage" });
+  help({ ui->labelAnim, ui->animTag, ui->editFrames, ui->spinPeriod },
+       tr("Mientras se cumple la condicion, pvbrowser pasa los cuadros uno tras otro cada tantos milisegundos."), { "TQImage" });
 }
 
 DlgBind::~DlgBind()
