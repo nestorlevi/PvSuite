@@ -56,6 +56,13 @@ struct CompilerConfig
   static int minGWMajor(const QString &mingwDir);      // version mayor de GCC (13), -1 si no se sabe
   static int minGWBits(const QString &mingwDir);       // Nestor: 32 o 64 (0 si no se sabe)
   static QString qtKitForMinGW(const QString &mingwDir); // kit de Qt compilado con esa version de GCC ("" si no hay)
+  // Linux: Qt de cada proyecto (linea qt= del .pvproject: carpeta de un Qt o "system" = el de la distribucion).
+  // setProjectQt("") vuelve al predeterminado (el de Action > Compilador...)
+  static bool setProjectQt(const QString &qtDir);
+  static QString projectQtDir();
+  static QStringList findQts();                        // ~/Qt/<version>/<kit> y /opt/Qt/<version>/<kit>, el mas nuevo primero
+  static QString qtLabel(const QString &qtDir);        // "Qt 6.9.2 (gcc_64)"; "" o "system": "Qt del sistema (6.10.2)"
+  bool    systemQt = false; // Linux: el proyecto pide el Qt de la distribucion aunque el predeterminado sea otro
   void autodetect(bool overwrite);   // completa las carpetas que esten vacias (o todas)
   QString qtDir() const;             // Qt del compilador elegido
   void applyEnvironment() const;     // variables de entorno para los .bat

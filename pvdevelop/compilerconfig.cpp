@@ -283,8 +283,8 @@ QString CompilerConfig::takeNotice()
   return n;
 }
 
-// reescribe las lineas mingw= y qtmingw= del .pvproject (las demas quedan como estan)
-bool CompilerConfig::setProjectMinGW(const QString &mingwDir, const QString &qtMingw)
+// reescribe en el .pvproject las lineas que empiezan con keys (las demas quedan como estan) y agrega add
+static bool rewriteProjectLines(const QStringList &keys, const QStringList &add)
 {
   if(projFile.isEmpty()) return false;
   QStringList lines;
@@ -292,22 +292,90 @@ bool CompilerConfig::setProjectMinGW(const QString &mingwDir, const QString &qtM
   if(in.open(QIODevice::ReadOnly | QIODevice::Text))
   {
     for(const QString &l : QString::fromUtf8(in.readAll()).split('\n'))
-      if(!l.startsWith("mingw=") && !l.startsWith("qtmingw=")) lines << l;
+    {
+      bool keep = true;
+      for(const QString &k : keys) if(l.startsWith(k)) keep = false;
+      if(keep) lines << l;
+    }
     in.close();
   }
   while(!lines.isEmpty() && lines.last().trimmed().isEmpty()) lines.removeLast();
-  if(!mingwDir.isEmpty())
-  {
-    lines << "mingw=" + QDir::toNativeSeparators(mingwDir);
-    if(!qtMingw.isEmpty()) lines << "qtmingw=" + QDir::toNativeSeparators(qtMingw);
-  }
+  lines << add;
   QFile out(projFile);
   if(!out.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) return false;
   out.write((lines.join('\n') + "\n").toUtf8());
   out.close();
+  return true;
+}
+
+bool CompilerConfig::setProjectMinGW(const QString &mingwDir, const QString &qtMingw)
+{
+  QStringList add;
+  if(!mingwDir.isEmpty())
+  {
+    add << "mingw=" + QDir::toNativeSeparators(mingwDir);
+    if(!qtMingw.isEmpty()) add << "qtmingw=" + QDir::toNativeSeparators(qtMingw);
+  }
+  if(!rewriteProjectLines(QStringList{ "mingw=", "qtmingw=" }, add)) return false;
   projMingw = mingwDir.isEmpty() ? QString() : QDir::toNativeSeparators(mingwDir);
   projQt    = (mingwDir.isEmpty() || qtMingw.isEmpty()) ? QString() : QDir::toNativeSeparators(qtMingw);
   return true;
+}
+
+// Linux: qt=<carpeta> o qt=system; projQt guarda lo mismo (projMingw queda vacio)
+bool CompilerConfig::setProjectQt(const QString &qtDir)
+{
+  QStringList add;
+  if(!qtDir.isEmpty()) add << "qt=" + (qtDir == "system" ? qtDir : QDir::cleanPath(qtDir));
+  if(!rewriteProjectLines(QStringList{ "qt=" }, add)) return false;
+  projQt = add.isEmpty() ? QString() : add.first().mid(3);
+  return true;
+}
+
+QString CompilerConfig::projectQtDir() { return projQt; }
+
+QStringList CompilerConfig::findQts()
+{
+  QStringList ret;
+#ifndef _WIN32
+  for(const QString &base : QStringList{ QDir::homePath() + "/Qt", "/opt/Qt" })
+  {
+    QDir b(base);
+    for(const QString &v : b.entryList(QStringList{ "5.*", "6.*" }, QDir::Dirs | QDir::NoDotAndDotDot))
+    {
+      QDir vd(b.filePath(v));
+      for(const QString &k : vd.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+        if(fileExists(vd.filePath(k) + "/bin/qmake")) ret << QDir::cleanPath(vd.filePath(k));
+    }
+  }
+  std::sort(ret.begin(), ret.end(), [](const QString &a, const QString &b) {
+    const QVersionNumber x = QVersionNumber::fromString(QFileInfo(a).dir().dirName());
+    const QVersionNumber y = QVersionNumber::fromString(QFileInfo(b).dir().dirName());
+    return x != y ? x > y : a < b;
+  });
+#endif
+  return ret;
+}
+
+QString CompilerConfig::qtLabel(const QString &qtDir)
+{
+  if(qtDir.isEmpty() || qtDir == "system")
+  {
+    // version del qmake de Qt 6 de la distribucion (los mismos que busca fake_qmake), una sola vez
+    static QString version = []() {
+      for(const char *q : { "/usr/bin/qmake6", "/usr/lib/qt6/bin/qmake", "/usr/lib64/qt6/bin/qmake", "/usr/bin/qmake-qt6", "/usr/bin/qmake" })
+      {
+        if(!fileExists(q)) continue;
+        QProcess p;
+        p.start(q, QStringList{ "-query", "QT_VERSION" });
+        if(p.waitForFinished(3000)) return QString::fromLocal8Bit(p.readAllStandardOutput()).trimmed();
+      }
+      return QString();
+    }();
+    return version.isEmpty() ? QObject::tr("Qt del sistema (no se encontro qmake)") : QObject::tr("Qt del sistema (%1)").arg(version);
+  }
+  const QFileInfo fi(QDir::cleanPath(qtDir));
+  return QObject::tr("Qt %1 (%2)").arg(fi.dir().dirName(), fi.fileName());
 }
 
 void CompilerConfig::setProject(const QString &pvprojectFile)
@@ -315,6 +383,18 @@ void CompilerConfig::setProject(const QString &pvprojectFile)
   projFile = pvprojectFile;
   projMingw.clear();
   projQt.clear();
+#ifndef _WIN32
+  QFile q(projFile);
+  if(!q.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+  for(const QString &l : QString::fromUtf8(q.readAll()).split('\n'))
+    if(l.startsWith("qt=")) projQt = l.mid(3).trimmed();
+  q.close();
+  if(!projQt.isEmpty() && projQt != "system" && !fileExists(projQt + "/bin/qmake"))
+  {
+    projNotice = QObject::tr("No se encuentra el Qt de este proyecto (%1): se usa el predeterminado").arg(projQt);
+    projQt.clear();
+  }
+#endif
 #ifdef _WIN32
   QFile f(projFile);
   if(!f.open(QIODevice::ReadOnly | QIODevice::Text)) return;
@@ -401,6 +481,14 @@ CompilerConfig CompilerConfig::load(bool withProject)
     c.qtMingw = projQt;
     c.projectMinGW = true;
   }
+#ifndef _WIN32
+  if(withProject && !projQt.isEmpty())
+  {
+    c.systemQt = projQt == "system";
+    c.qtMingw = c.systemQt ? QString() : projQt;
+    c.projectMinGW = true; // save() no lo guarda como predeterminado
+  }
+#endif
   return c;
 }
 
@@ -487,7 +575,7 @@ void CompilerConfig::applyEnvironment() const
   // Solo si se eligio uno: un QTDIR que ya traia el entorno se respeta.
   static const QByteArray originalQtdir = qgetenv("QTDIR");
   if(!qtMingw.isEmpty())       qputenv("QTDIR", QDir::cleanPath(qtMingw).toLocal8Bit());
-  else if(originalQtdir.isEmpty()) qunsetenv("QTDIR");
+  else if(systemQt || originalQtdir.isEmpty()) qunsetenv("QTDIR"); // Qt del sistema
   else                         qputenv("QTDIR", originalQtdir);
 #endif
 }

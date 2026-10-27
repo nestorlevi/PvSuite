@@ -974,6 +974,11 @@ void MainWindow::createToolBars()
   comboMingw->setSizeAdjustPolicy(QComboBox::AdjustToContents);
   comboMingw->setToolTip(tr("Version de MinGW de este proyecto (se guarda en el .pvproject)"));
   buildToolBar->addWidget(comboMingw);
+#elif !defined(PVMAC)
+  // Linux: el Qt de este proyecto (qmake de la distribucion o un Qt de ~/Qt)
+  comboMingw->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  comboMingw->setToolTip(tr("Qt con el que se compila este proyecto (se guarda en el .pvproject)"));
+  buildToolBar->addWidget(comboMingw);
 #else
   comboMingw->hide();
 #endif
@@ -1019,6 +1024,27 @@ void MainWindow::syncBuildToolBar()
   comboMingw->setEnabled(c.compiler == "mingw" && !CompilerConfig::projectFile().isEmpty());
   const QString notice = CompilerConfig::takeNotice();
   if(!notice.isEmpty()) statusBar()->showMessage(notice, 20000);
+#elif !defined(PVMAC)
+  c.applyEnvironment(); // tambien al abrir otro proyecto (puede tener otro Qt)
+  // Qt: el predeterminado, el de la distribucion y los de ~/Qt; el del proyecto queda elegido
+  const QSignalBlocker b2(comboMingw);
+  comboMingw->clear();
+  const QString def = CompilerConfig::load(false).qtMingw;
+  comboMingw->addItem(tr("Qt predeterminado (%1)").arg(CompilerConfig::qtLabel(def)), QString());
+  comboMingw->setItemData(0, tr("El de Action > Compilador...: %1").arg(def.isEmpty() ? tr("el de la distribucion") : def), Qt::ToolTipRole);
+  QStringList dirs = CompilerConfig::findQts();
+  const QString proj = CompilerConfig::projectQtDir();
+  if(!proj.isEmpty() && proj != "system" && !dirs.contains(proj)) dirs << proj;
+  dirs.prepend("system");
+  for(const QString &d : dirs)
+  {
+    comboMingw->addItem(CompilerConfig::qtLabel(d), d);
+    comboMingw->setItemData(comboMingw->count() - 1, d == "system" ? tr("qmake6 de la distribucion") : d, Qt::ToolTipRole);
+    if(d == proj) comboMingw->setCurrentIndex(comboMingw->count() - 1);
+  }
+  comboMingw->setEnabled(!CompilerConfig::projectFile().isEmpty());
+  const QString notice = CompilerConfig::takeNotice();
+  if(!notice.isEmpty()) statusBar()->showMessage(notice, 20000);
 #endif
   comboCompiler->setCurrentIndex(c.compiler == "mingw" ? 1 : 0);
 }
@@ -1045,6 +1071,19 @@ void MainWindow::slotProjectMinGW(int index)
   }
   syncBuildToolBar();
   if(!dir.isEmpty()) offerMinGWLibDir(name);
+#elif !defined(PVMAC)
+  // Linux: Qt del proyecto; lo compilado con el otro Qt no sirve: se ofrece limpiar el proyecto
+  const QString dir = comboMingw->itemData(index).toString();
+  if(dir == CompilerConfig::projectQtDir()) return;
+  if(!CompilerConfig::setProjectQt(dir))
+  {
+    statusBar()->showMessage(tr("No se pudo guardar el Qt en %1").arg(CompilerConfig::projectFile()), 10000);
+    syncBuildToolBar();
+    return;
+  }
+  syncBuildToolBar();
+  statusBar()->showMessage(tr("%1 guardado en el proyecto").arg(comboMingw->currentText()), 15000);
+  slotCleanProject();
 #else
   (void) index;
 #endif
