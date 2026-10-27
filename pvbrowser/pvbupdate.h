@@ -29,7 +29,7 @@ class QWidget;
 class QMenu;
 
 // version de PV Suite (la misma que <Version> de Compilar/installer/config/config.xml)
-#define PVSUITE_VERSION "1.0.0-beta.4"
+#define PVSUITE_VERSION "1.0.0-beta.5"
 // ultima version publicada (GitHub Releases)
 #define PVSUITE_UPDATE_URL "https://api.github.com/repos/nestorlevi/PvSuite/releases/latest"
 

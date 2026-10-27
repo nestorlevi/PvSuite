@@ -1,5 +1,7 @@
 # PV Suite
 
+[![Invitame un café en cafecito.app](https://cdn.cafecito.app/imgs/buttons/button_1.svg)](https://cafecito.app/nestorlevi)
+
 SCADA/HMI libre basado en [pvbrowser](https://pvbrowser.de), adaptado a **Qt 6** y extendido con
 un editor de tags y animaciones sin código. Funciona en **Windows** y **Linux**.
 
