@@ -85,6 +85,7 @@ class MyScrollArea : public QScrollArea
     MyScrollArea(QWidget *parent=0);
     ~MyScrollArea();
     void wheelEvent(QWheelEvent *event);
+    QWidget *takeMask();   // Nestor: takeWidget() sin dejar el foco en la mascara que se saca
   protected:
     bool event(QEvent *event);
   private:
@@ -215,6 +216,9 @@ private:
   QAction *reconnectActToolBar;
   QAction *editmenuActToolBar;
   QAction *statusbarActToolBar;
+#ifdef USE_ANDROID
+  QAction *androidMenuAct;   // Nestor: boton de la barra con los menus (Android no muestra la barra de menus)
+#endif
   QAction *storebmpAct;
   QAction *gohomeAct;
   QAction *logbmpAct;

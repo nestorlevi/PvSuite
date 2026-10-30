@@ -109,6 +109,11 @@ void pvbTranslateMenuTexts()
   l_status_connection_lost    = QCoreApplication::translate("pvbrowser", "Connection to server lost, CTRL-R for reconnect");
   l_status_connected          = QCoreApplication::translate("pvbrowser", "Connected to server");
   l_status_could_not_connect  = QCoreApplication::translate("pvbrowser", "Could not connect to server, CTRL-R for reconnect");
+#ifdef USE_ANDROID
+  // Nestor: en el celular no hay CTRL-R, se reconecta con el boton de recargar de la barra
+  l_status_connection_lost    = QCoreApplication::translate("pvbrowser", "Connection to server lost, tap the reload button to reconnect");
+  l_status_could_not_connect  = QCoreApplication::translate("pvbrowser", "Could not connect to server, tap the reload button to reconnect");
+#endif
   l_status_reconnect          = QCoreApplication::translate("pvbrowser", "Reconnect to host");
   l_status_options            = QCoreApplication::translate("pvbrowser", "Views/changes pvbrowser options");
   l_status_new_window         = QCoreApplication::translate("pvbrowser", "Opens a new pvbrowser window");
@@ -443,6 +448,8 @@ int i;
            {
              qDebug()<<"Error creating temp dir";
            }
+#elif defined(USE_ANDROID)
+          QDir().mkpath(QString::fromUtf8(buf2)); // Nestor: Android no tiene shell para system()
 #else
           sprintf(cmd,"mkdir -p %s", buf2);
           if(system(cmd) != 0) printf("could not create temporary directory: %s\n", cmd);
@@ -478,7 +485,7 @@ int i;
           strcat(buf2,"\\");
 #endif
           strcpy(opt.temp,buf2);
-#ifdef PVUNIX
+#if defined(PVUNIX) && !defined(USE_ANDROID)
           system("which ffmpeg > ffmpeg.dat && which ffplay >> ffmpeg.dat");
           FILE *fin = fopen("ffmpeg.dat","r");
           if(fin != NULL)

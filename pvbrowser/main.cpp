@@ -19,6 +19,7 @@
 #include <QApplication>
 #include <QIcon>
 #include <QSplashScreen>
+#include <QStyleHints>
 #include <QMessageBox>
 #include "images/splash.xpm"
 #include "mainwindow.h"
@@ -235,13 +236,23 @@ int main(int argc, char *argv[])
 
   //Nestor aquí, nuevo estilo multiplataforma
   app.setStyle(QStyleFactory::create("Fusion"));
+#if defined(USE_ANDROID) && QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+  // Nestor: con el celular en modo oscuro Fusion pasaba a gris oscuro: siempre claro, como en la PC
+  app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
   pvbInstallTranslators(app, "pvbrowser"); // Nestor: idioma (menu Archivo > Idioma o el del sistema)
   pvbTranslateMenuTexts();
 
   //printf("within main: 3\n");
+#ifdef USE_ANDROID
+  // Nestor: en Android la ventana del splash seguia tomando los toques en su rectangulo (centro de la
+  // pantalla) despues de borrarla: los botones de esa zona no respondian. Android ya muestra su propio splash.
+  QSplashScreen *splash = NULL;
+#else
   QPixmap pm(splash_xpm);
   QSplashScreen *splash = new QSplashScreen(pm);
   splash->show();
+#endif
   init1(argc,argv);
   perhapsSetFont(app);
   QIcon appIcon(":/images/app.png");
@@ -251,8 +262,11 @@ int main(int argc, char *argv[])
   //printf("within main: 5\n");
   init2(argc,argv);
   app.processEvents();
-  splash->finish(&mainWin);
-  delete splash;
+  if(splash != NULL)
+  {
+    splash->finish(&mainWin);
+    delete splash;
+  }
   mainWin.show();
   mainWin.showBusyWidget(2000,"Starting...");
   app.processEvents();

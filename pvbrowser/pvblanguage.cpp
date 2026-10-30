@@ -70,7 +70,8 @@ static void loadQtTranslation(QApplication &qapp, const QString &name, const QSt
 #else
        << QLibraryInfo::location(QLibraryInfo::TranslationsPath)
 #endif
-       << "/opt/pvb/translations";
+       << "/opt/pvb/translations"
+       << ":/qttranslations";   // Android: el .pro de la app las lleva en los recursos
   QStringList files;
   files << name + "_" + code;
   if(code == "pt") files << name + "_pt_BR" << name + "_pt_PT";

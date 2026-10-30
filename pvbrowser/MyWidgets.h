@@ -138,6 +138,10 @@ public slots:
     void slotTextChanged(const QString &txt);
     void slotReturnPressed();
 
+#ifdef USE_ANDROID
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
+#endif
+
 private:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);

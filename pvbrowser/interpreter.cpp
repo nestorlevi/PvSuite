@@ -94,6 +94,41 @@ extern int errno;
 extern OPT opt;
 extern QString l_print_header;
 
+#ifdef USE_ANDROID
+#include <QScrollArea>
+#include <QScroller>
+#include <QScreen>
+// Nestor: un dialogo del pvserver (recetas, usuarios, ...) mas grande que la pantalla del celular quedaba
+// cortado y sus ultimos botones no se podian tocar: su contenido pasa a un area que se mueve con el dedo
+static void pvbFitDialogToScreen(QDialog *d)
+{
+  QRect avail = QGuiApplication::primaryScreen()->availableGeometry();
+  QSize full = d->size();
+  if(full.width() <= avail.width() && full.height() <= avail.height()) return;
+  QWidget *content = new QWidget;
+  const QObjectList kids = d->children();
+  for(QObject *o : kids)
+  {
+    QWidget *c = qobject_cast<QWidget *>(o);
+    if(c == NULL || c->isWindow()) continue;
+    QRect g = c->geometry();
+    bool visible = c->isVisibleTo(d);
+    c->setParent(content);
+    c->setGeometry(g);
+    c->setVisible(visible);
+  }
+  content->setFixedSize(full);
+  QScrollArea *sa = new QScrollArea(d);
+  sa->setFrameShape(QFrame::NoFrame);
+  sa->setWidget(content);
+  QScroller::grabGesture(sa->viewport(), QScroller::TouchGesture);
+  QVBoxLayout *l = new QVBoxLayout(d);
+  l->setContentsMargins(0, 0, 0, 0);
+  l->addWidget(sa);
+  d->setFixedSize(qMin(full.width(), avail.width()), qMin(full.height(), avail.height()));
+}
+#endif
+
 // send this event to the custom widget to call methods within custom widget
 PvbEvent::PvbEvent(const char *_command, QString _param, QEvent::Type _event)
          : QEvent(_event)
@@ -1230,7 +1265,7 @@ void Interpreter::interprete(const char *command)
     if(allBase == NULL)
     {
       if(opt.arg_debug) printf("endDefinition begin\n");
-      delete mainWindow->scroll->takeWidget();
+      delete mainWindow->scroll->takeMask();
       w = mainWindow->width();
       h = mainWindow->height();
       mainWindow->pvbtab[mainWindow->currentTab].w = w;
@@ -1271,6 +1306,9 @@ void Interpreter::interprete(const char *command)
       if(opt.arg_debug) printf("endDefinition allBase != NULL modalDialog\n");
       capt = QString::asprintf("%s - pvbrowser",(const char *) mainWindow->curFile.toUtf8());
       modalDialog->setWindowTitle(capt);
+#ifdef USE_ANDROID
+      pvbFitDialogToScreen(modalDialog);
+#endif
       modalDialog->show();
     }
     if(opt.arg_debug) printf("endDefinition end\n");
@@ -8058,7 +8096,7 @@ void Interpreter::showMyBrowser(const char *url)
     if(allBase == NULL)
     {
       if(opt.arg_debug) printf("endDefinition begin\n");
-      delete mainWindow->scroll->takeWidget();
+      delete mainWindow->scroll->takeMask();
       w = mainWindow->width();
       h = mainWindow->height();
       mainWindow->pvbtab[mainWindow->currentTab].w = w;
@@ -8091,6 +8129,9 @@ void Interpreter::showMyBrowser(const char *url)
       if(opt.arg_debug) printf("endDefinition allBase != NULL modalDialog\n");
       capt = QString::asprintf("%s - pvbrowser",(const char *) mainWindow->curFile.toUtf8());
       modalDialog->setWindowTitle(capt);
+#ifdef USE_ANDROID
+      pvbFitDialogToScreen(modalDialog);
+#endif
       modalDialog->show();
     }
     if(opt.arg_debug) printf("endDefinition end\n");

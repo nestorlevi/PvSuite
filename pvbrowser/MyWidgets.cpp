@@ -326,6 +326,16 @@ void MyLineEdit::slotReturnPressed()
   tcp_send(s,buf,strlen(buf));
 }
 
+#ifdef USE_ANDROID
+QVariant MyLineEdit::inputMethodQuery(Qt::InputMethodQuery query) const
+{
+  // Nestor: con la tecla "Listo" del teclado de Android el campo perdia el foco antes del Enter
+  // y el pvserver nunca recibia la confirmacion; con "Ir" el Enter llega al campo (returnPressed)
+  if(query == Qt::ImEnterKeyType) return Qt::EnterKeyGo;
+  return QLineEdit::inputMethodQuery(query);
+}
+#endif
+
 void MyLineEdit::mousePressEvent(QMouseEvent *event)
 {
   char buf[80];

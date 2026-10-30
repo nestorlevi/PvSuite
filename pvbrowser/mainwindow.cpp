@@ -96,10 +96,58 @@ MyScrollArea::MyScrollArea(QWidget *parent)
     grabGesture(Qt::PinchGesture);
     //grabGesture(Qt::SwipeGesture);
 #endif
+#ifdef USE_ANDROID
+    // Nestor: en el celular la mascara suele ser mas grande que la pantalla: se mueve arrastrando el dedo
+    QScroller::grabGesture(viewport(), QScroller::TouchGesture);
+    QScrollerProperties sp = QScroller::scroller(viewport())->scrollerProperties();
+    sp.setScrollMetric(QScrollerProperties::OvershootDragResistanceFactor, 0.0);
+    sp.setScrollMetric(QScrollerProperties::HorizontalOvershootPolicy, QScrollerProperties::OvershootAlwaysOff);
+    sp.setScrollMetric(QScrollerProperties::VerticalOvershootPolicy, QScrollerProperties::OvershootAlwaysOff);
+    QScroller::scroller(viewport())->setScrollerProperties(sp);
+#endif
 }
 
 MyScrollArea::~MyScrollArea()
 {
+}
+
+#ifdef USE_ANDROID
+// Nestor: en Android la tecla (o el gesto) Atras cerraba la app sin preguntar: un toque de mas
+// en el borde de la pantalla cortaba la conexion. Ahora pregunta antes de salir.
+class AndroidBackFilter : public QObject
+{
+  public:
+    AndroidBackFilter(MainWindow *m) : QObject(m), mw(m) {}
+  protected:
+    bool eventFilter(QObject *obj, QEvent *ev) override
+    {
+        if((ev->type() == QEvent::KeyPress || ev->type() == QEvent::KeyRelease) &&
+           static_cast<QKeyEvent *>(ev)->key() == Qt::Key_Back)
+        {
+            if(ev->type() == QEvent::KeyRelease && !asking)
+            {
+                asking = true;
+                if(QMessageBox::question(mw, "PV Suite", MainWindow::tr("Exit PV Suite?")) == QMessageBox::Yes)
+                    QTimer::singleShot(0, mw, &MainWindow::slotExit);
+                asking = false;
+            }
+            return true;   // nunca llega a Qt: sin esto Android termina la actividad
+        }
+        return QObject::eventFilter(obj, ev);
+    }
+  private:
+    MainWindow *mw;
+    bool asking = false;
+};
+#endif
+
+QWidget *MyScrollArea::takeMask()
+{
+    // Nestor: si un widget de la mascara tiene el foco, takeWidget() la oculta, Qt pasa el foco al
+    // siguiente y QScrollArea::focusNextPrevChild usa la mascara que ya no esta: se caia (Android)
+    QWidget *f = QApplication::focusWidget();
+    if(f != NULL && widget() != NULL && widget()->isAncestorOf(f)) f->clearFocus();
+    return takeWidget();
 }
 
 bool MyScrollArea::event(QEvent *event)
@@ -412,6 +460,9 @@ MainWindow::MainWindow()
         QApplication::setFont(f);
     }
 
+#ifdef USE_ANDROID
+    qApp->installEventFilter(new AndroidBackFilter(this));
+#endif
     createActions();
     createToolBars();
     createMenus();
@@ -639,6 +690,19 @@ void MainWindow::slotManual()
 
 void MainWindow::about()
 {
+#ifdef USE_ANDROID
+    // Nestor: la app de Android (GPL v2): autoria, licencias y donde esta el codigo fuente
+    QMessageBox::about(this, tr("About PV Suite"),
+                       tr("<b>PV Suite</b> for Android<br>pvbrowser %1<br><br>"
+                          "Based on pvbrowser (R), (C) 2000-2025 Lehrig Software Engineering, "
+                          "<a href=\"http://pvbrowser.org\">pvbrowser.org</a><br>"
+                          "Modified by N&eacute;stor Levi Palomeque (DESAT Ingenier&iacute;a).<br><br>"
+                          "Free software under the GNU General Public License version 2. "
+                          "Source code: <a href=\"https://github.com/nestorlevi/PvSuite\">github.com/nestorlevi/PvSuite</a><br><br>"
+                          "Uses Qt (LGPL v3, qt.io), Qwt (Qwt License, based on LGPL 2.1) and FFmpeg (LGPL 2.1).")
+                       .arg(VERSION));
+    return;
+#endif
     QMessageBox::about(this, tr("About pvbrowser"),
                        tr(
                            "pvbrowser (R) \nVersion " VERSION WEBVERSION
@@ -795,7 +859,9 @@ void MainWindow::createMenus()
     fileMenu->addAction(logbmpAct);
     fileMenu->addAction(logpvmAct);
 #endif
+#ifndef USE_ANDROID
     fileMenu->addAction(printAct);
+#endif
     fileMenu->addSeparator();
     fileMenu->addAction(exitAct);
 
@@ -822,8 +888,22 @@ void MainWindow::createMenus()
 #endif
     helpMenu->addAction(aboutAct);
     helpMenu->addAction(aboutQtAct);
+#ifndef USE_ANDROID   // Nestor: la actualizacion baja el instalador de PC; la app se actualiza por su cuenta
     helpMenu->addSeparator();
     pvbAddUpdateActions(helpMenu, this, "pvbrowser", false); // Nestor: solo a pedido (puestos de operacion)
+#else
+    // Nestor: Android no muestra la barra de menus: los mismos menus salen del boton de la barra
+    QMenu *androidMenu = new QMenu(this);
+    androidMenu->addMenu(fileMenu);
+    androidMenu->addMenu(editMenu);
+    if(opt.arg_disable == 0) androidMenu->addMenu(viewMenu);
+    androidMenu->addMenu(helpMenu);
+    connect(androidMenuAct, &QAction::triggered, this, [this, androidMenu]() {
+        QWidget *b = fileToolBar->widgetForAction(androidMenuAct);
+        androidMenu->popup(b ? b->mapToGlobal(QPoint(0, b->height())) : QCursor::pos());
+    });
+    menuBar()->hide();
+#endif
 }
 
 
@@ -876,7 +956,7 @@ void MainWindow::createToolBars() // Nestor was here. Update connect signal/slot
     fileToolBar->addAction(logbmpAct);
     fileToolBar->addAction(logpvmAct);
 #endif
-#ifndef NO_PRINTER
+#if !defined(NO_PRINTER) && !defined(USE_ANDROID)   // Nestor: en Android no hay impresora directa
     fileToolBar->addAction(printAct);
 #endif
 #ifndef USE_MAEMO
@@ -903,16 +983,41 @@ void MainWindow::createToolBars() // Nestor was here. Update connect signal/slot
                                "http://host"
                                ));
 #ifdef USE_ANDROID
-    urlComboBox->setMinimumWidth(777);
-    urlComboBox->setMaximumWidth(1024);
-    urlComboBox->setMinimumHeight(88);
-#endif
+    // Nestor: en el celular una sola barra fija: casa, direccion (ocupa lo que sobra), reconectar y menu.
+    // La direccion se toma al confirmar (Enter o eleccion de la lista), no en cada tecla.
+    fileToolBar->setMovable(false);
+    fileToolBar->setIconSize(QSize(32, 32));
+    urlComboBox->setMinimumWidth(80);
+    urlComboBox->setMaximumWidth(QWIDGETSIZE_MAX);
+    urlComboBox->setMinimumHeight(40);
+    urlComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    urlComboBox->setInputMethodHints(Qt::ImhUrlCharactersOnly | Qt::ImhNoAutoUppercase | Qt::ImhNoPredictiveText);
+    urlComboBox->lineEdit()->setClearButtonEnabled(true);   // borrar la direccion de un toque
+    fileToolBar->addWidget(urlComboBox);
+    connect(urlComboBox, &QComboBox::textActivated, this, &MainWindow::slotUrl);
+#else
     fileToolBar->addWidget(urlComboBox);
     connect(urlComboBox, &QComboBox::currentTextChanged, this, &MainWindow::slotUrl);
+#endif
 
     reconnectActToolBar = new QAction(QIcon(":/images/view-refresh.png"), "reconnect", this);
     fileToolBar->addAction(reconnectActToolBar);
     connect(reconnectActToolBar, &QAction::triggered, this, &MainWindow::slotReconnect);
+#ifdef USE_ANDROID
+    QPixmap menuPm(96, 96);   // icono de menu (tres rayas): la fuente de Android no trae el caracter
+    menuPm.fill(Qt::transparent);
+    {
+        QPainter p(&menuPm);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(60, 60, 60));
+        for(int y : {20, 42, 64}) p.drawRoundedRect(12, y, 72, 12, 6, 6);
+    }
+    androidMenuAct = new QAction(QIcon(menuPm), tr("Menu"), this);   // el menu (ver createMenus)
+    fileToolBar->addAction(androidMenuAct);
+    editmenuActToolBar = statusbarActToolBar = NULL;
+    return;
+#endif
 
     editmenuActToolBar = new QAction(QIcon(":/images/arrow-up.png"), "editmenu", this);
     fileToolBar->addAction(editmenuActToolBar);
@@ -967,7 +1072,7 @@ void MainWindow::slotTabChanged(int index)
             qApp->beep();
         }
     }
-    pvbtab[currentTab].rootWidget = scroll->takeWidget();
+    pvbtab[currentTab].rootWidget = scroll->takeMask();
     text = tabBar->tabWhatsThis(index);
     sscanf((const char *) text.toUtf8(),"%d", &ipvbtab);
     if(opt.arg_debug) printf("Tab changed to index=%d ipvbtab=%d begin\n", index, ipvbtab);
@@ -1103,7 +1208,7 @@ void MainWindow::slotDeleteTab()
         tcp_close(&pvbtab[ipvbtab].s);
         pvbtab[ipvbtab].s = -1;
         pvbtab[ipvbtab].in_use = 0;
-        delete scroll->takeWidget();
+        delete scroll->takeMask();
         pvbtab[ipvbtab].rootWidget = new MyQWidget(&pvbtab[ipvbtab].s,0,NULL);
         scroll->setWidget(pvbtab[ipvbtab].rootWidget);
     }

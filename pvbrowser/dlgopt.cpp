@@ -41,14 +41,12 @@ DlgOpt::DlgOpt(QWidget *parent) : QDialog(parent)
 #ifdef USE_MAEMO
   vlayout->addLayout(hlayout);
   vlayout->addWidget(edit1);
-  hlayout->addSpacing(10);
-  hlayout->addSpacing(200);
+  // Nestor: en el celular los botones entran en el ancho de la pantalla y el texto se parte en lineas
+  edit1->setLineWrapMode(QTextEdit::WidgetWidth);
   hlayout->addWidget(QPushButton_reset_inifile);
-  hlayout->addSpacing(10);
+  hlayout->addStretch(1);
   hlayout->addWidget(QPushButton_cancel);
-  hlayout->addSpacing(10);
   hlayout->addWidget(QPushButton_ok);
-  hlayout->addSpacing(200);
   vlayout->activate();
 #else
   vlayout->addWidget(edit1);

@@ -25,6 +25,7 @@
 #include <QMouseEvent>
 #include "qwt_plot.h"
 #include "qwt_scale_draw.h"
+#include "qwt_text.h"
 #include "qwt_plot_curve.h"
 #include "qwt_plot_marker.h"
 #include "qwt_plot_grid.h"
@@ -98,6 +99,12 @@ public:
     QwtText qwttext;
     qwttext.setText(qdt.toString( out ));
     return qwttext;
+  }
+#else
+  // Nestor: con Qwt 6.2 el eje de tiempo (qpwSetAxisScaleDraw) mostraba los segundos crudos (1.79e+09)
+  QwtText label(double v) const override
+  {
+    return QwtText(QDateTime::fromSecsSinceEpoch((qint64) v).toString(QString::fromUtf8(out)));
   }
 #endif
 private:

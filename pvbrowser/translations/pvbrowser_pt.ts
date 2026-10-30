@@ -207,6 +207,22 @@ http://host</translation>
         <source>no printable contents</source>
         <translation>não há conteúdo para imprimir</translation>
     </message>
+    <message>
+        <source>Exit PV Suite?</source>
+        <translation>Sair do PV Suite?</translation>
+    </message>
+    <message>
+        <source>Menu</source>
+        <translation>Menu</translation>
+    </message>
+    <message>
+        <source>About PV Suite</source>
+        <translation>Sobre o PV Suite</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;PV Suite&lt;/b&gt; for Android&lt;br&gt;pvbrowser %1&lt;br&gt;&lt;br&gt;Based on pvbrowser (R), (C) 2000-2025 Lehrig Software Engineering, &lt;a href="http://pvbrowser.org"&gt;pvbrowser.org&lt;/a&gt;&lt;br&gt;Modified by N&amp;eacute;stor Levi Palomeque (DESAT Ingenier&amp;iacute;a).&lt;br&gt;&lt;br&gt;Free software under the GNU General Public License version 2. Source code: &lt;a href="https://github.com/nestorlevi/PvSuite"&gt;github.com/nestorlevi/PvSuite&lt;/a&gt;&lt;br&gt;&lt;br&gt;Uses Qt (LGPL v3, qt.io), Qwt (Qwt License, based on LGPL 2.1) and FFmpeg (LGPL 2.1).</source>
+        <translation>&lt;b&gt;PV Suite&lt;/b&gt; para Android&lt;br&gt;pvbrowser %1&lt;br&gt;&lt;br&gt;Baseado no pvbrowser (R), (C) 2000-2025 Lehrig Software Engineering, &lt;a href="http://pvbrowser.org"&gt;pvbrowser.org&lt;/a&gt;&lt;br&gt;Modificado por N&amp;eacute;stor Levi Palomeque (DESAT Ingenier&amp;iacute;a).&lt;br&gt;&lt;br&gt;Software livre sob a Licença Pública Geral GNU versão 2. Código-fonte: &lt;a href="https://github.com/nestorlevi/PvSuite"&gt;github.com/nestorlevi/PvSuite&lt;/a&gt;&lt;br&gt;&lt;br&gt;Usa Qt (LGPL v3, qt.io), Qwt (Licença Qwt, baseada na LGPL 2.1) e FFmpeg (LGPL 2.1).</translation>
+    </message>
 </context>
 <context>
     <name>QObject</name>
@@ -563,6 +579,14 @@ http://host</translation>
         <location line="+1" />
         <source>Printed by pvbrowser at: </source>
         <translation>Impresso pelo pvbrowser em: </translation>
+    </message>
+    <message>
+        <source>Connection to server lost, tap the reload button to reconnect</source>
+        <translation>Conexão com o servidor perdida, toque em recarregar</translation>
+    </message>
+    <message>
+        <source>Could not connect to server, tap the reload button to reconnect</source>
+        <translation>Sem conexão com o servidor, toque em recarregar</translation>
     </message>
 </context>
 </TS>
