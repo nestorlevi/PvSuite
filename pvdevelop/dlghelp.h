@@ -95,6 +95,8 @@ private:
 };
 
 // F1 en cualquier ventana de pvdevelop: abre la ayuda en el tema de esa ventana.
+// Shift+F1: modo "Que es esto?": un clic en un control muestra su ayuda (su "Que es esto?" o su tooltip) junto al
+// mouse, con un enlace a la ayuda de la ventana.
 class HelpKeyFilter : public QObject
 {
   Q_OBJECT
@@ -102,9 +104,9 @@ public:
   //! open(topic, ventana desde la que se pidio); mainTopic: tema de la ventana principal (Designer o editor)
   HelpKeyFilter(QWidget *mainWindow, std::function<QString()> mainTopic,
                 std::function<void(const QString &, QWidget *)> open, QObject *parent = nullptr);
-protected:
   bool eventFilter(QObject *o, QEvent *e) override;
 private:
+  QString topicOf(QWidget *window) const;
   QWidget *mainWindow;
   std::function<QString()> mainTopic;
   std::function<void(const QString &, QWidget *)> open;
@@ -112,5 +114,12 @@ private:
 
 // tema de ayuda de una ventana de pvdevelop segun su clase ("" = el inicio); para las pruebas
 QString pvbHelpTopicFor(const QObject *window);
+// tema de ayuda de una clase de dialogo; nulo (isNull) si no esta en la tabla
+QString pvbHelpTopicForClass(const char *cls);
+// el texto de "Que es esto?" de un control: su whatsThis o, si no tiene, su tooltip
+QString pvbWhatsThisText(const QWidget *w);
+// un dialogo propio mas grande que la pantalla (1366x768, escala 150%): el contenido pasa a un area con
+// desplazamiento (la fila de botones de abajo queda fija) y la ventana se achica a lo que entra
+void pvbFitWindowToScreen(QWidget *w);
 
 #endif

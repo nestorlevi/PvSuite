@@ -29,6 +29,7 @@ typedef struct
   QWidget *OldParent;
   QWidget *OldCurrent;
   int     OldX, OldY, OldWidth, OldHeight;
+  int     step;                            // Nestor: Ctrl+Z deshace juntos los del mismo paso
 }OldState;
 
 class QScrollArea;
@@ -54,6 +55,7 @@ class MyRootWidget : public QWidget
     void alignSelection(int mode);
     void stackClear();
     QWidget *pop(QWidget *current);
+    void deleteWidgets(const QList<QWidget *> &widgets);
     QMainWindow  *mainWindow;
   private:
     void mouseDoubleClickEvent(QMouseEvent *event);
@@ -90,10 +92,16 @@ class MyRootWidget : public QWidget
     QString lastTab;
     dlgInsertWidget insert;
     QStack<OldState> stack;
+    QString deletedText;                     // Nestor: lo ultimo borrado (formato de copiar/pegar), Ctrl+Z lo vuelve a poner
+    QList<QPointer<QWidget> > deletedParents;
     QList<QPointer<QWidget> > copiedParents; // padres de los widgets copiados (se pega en el mismo contenedor)
     QList<QPointer<QWidget> > selection;     // selección múltiple; selection[0] es la referencia para alinear
     QList<QPoint> groupStart;                // posiciones al empezar a arrastrar la selección
     bool groupPushed = false;                // ya se guardó el arrastre del grupo para deshacer
+    int  undoStep = 0;                       // Nestor: paso de deshacer en curso
+    bool undoGrouping = false;               // dentro de un arrastre: cada widget se guarda una vez (posicion inicial)
+    void beginUndoStep() { undoStep++; undoGrouping = true; }
+    void endUndoStep() { undoGrouping = false; }
     bool dragStarted = false;                // el mouse se alejo del clic mas que startDragDistance: recien ahi se mueve o cambia el tamano
     QRubberBand *rubberBand = nullptr;       // rectángulo de selección
     QPoint rubberOrigin;

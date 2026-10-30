@@ -135,9 +135,9 @@ private:
 
   QMenu *fileMenu;
   QMenu *editMenu;
-  QMenu *actionMenu;
-  QMenu *rllibMenu;
-  QMenu *daemonMenu;
+  QMenu *actionMenu;    // Nestor: Pantalla (editor, Designer, pantallas)
+  QMenu *daemonMenu;    // Nestor: Comunicaciones (daemons, tags)
+  QMenu *buildMenu;     // Nestor: Compilar y probar
   QMenu *helpMenu;
   QToolBar *fileToolBar;
   QToolBar *editToolBar;

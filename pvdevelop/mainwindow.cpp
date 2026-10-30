@@ -15,6 +15,7 @@
 ****************************************************************************/
 #include "../pvbrowser/pvdefine.h"
 #include <QtGui>
+#include <QWhatsThis>
 #include <QFile>
 
 #include "mainwindow.h"
@@ -648,6 +649,7 @@ void MainWindow::createActions()
   connect(compilerAct, &QAction::triggered, this, &MainWindow::slotCompilerDialog);
   cleanProjectAct = new QAction(tr("&Limpiar proyecto..."), this); // Nestor
   cleanProjectAct->setStatusTip(tr("Borra lo compilado del proyecto (release, debug, Makefile, .o); los fuentes no se tocan"));
+  cleanProjectAct->setIcon(toolIcon(18));
   connect(cleanProjectAct, &QAction::triggered, this, &MainWindow::slotCleanProject);
 
   actionStartPvbrowserAct = new QAction(QIcon(":/images/app.png"), tr("&pvbrowser"), this);
@@ -882,33 +884,36 @@ void MainWindow::createMenus()
   editMenu->addAction(searchAct);
   editMenu->addAction(replaceAct);
 
-  actionMenu = menuBar()->addMenu(tr("&Action"));
+  // Nestor: menus por tarea (antes Accion / RLlib / Daemon); la consola de compilacion la agrega createBuildConsole
+  actionMenu = menuBar()->addMenu(tr("&Pantalla"));
   actionMenu->addAction(actionEditorAct);
   actionMenu->addAction(actionDesignerAct);
-//#ifndef PVWIN32
-  actionMenu->addAction(actionQtDesignerAct);
-//#endif
-  actionMenu->addAction(actionExportUIAct);
-  actionMenu->addAction(actionImportUIAct);
-  actionMenu->addAction(actionInsertMaskAct);
-  actionMenu->addAction(actionMakeAct);
-  actionMenu->addAction(cleanProjectAct);
-  actionMenu->addAction(actionStartServerAct);
-  actionMenu->addAction(actionStartPvbrowserAct);
   actionMenu->addSeparator();
-  actionMenu->addAction(compilerAct);
+  actionMenu->addAction(actionInsertMaskAct);
+  actionMenu->addSeparator();
+  QMenu *uiMenu = actionMenu->addMenu(QIcon(":/images/importui.png"), tr("Archivos &UI de Qt"));
+  uiMenu->addAction(actionQtDesignerAct);
+  uiMenu->addAction(actionExportUIAct);
+  uiMenu->addAction(actionImportUIAct);
 
-  rllibMenu = menuBar()->addMenu(tr("&RLlib"));
-  rllibMenu->addAction(rllibUncommentRllibAct);
-  // Nestor: los clientes de Modbus, Siemens TCP y PPI los agrega pvdevelop (pvbEnsureDaemonClients);
-  // descomentar las lineas de ejemplo dejaba nombres genericos. Quedan -action=uncommentModbus... (main.cpp)
-
-  daemonMenu = menuBar()->addMenu(tr("&Daemon"));
+  daemonMenu = menuBar()->addMenu(tr("&Comunicaciones"));
   daemonMenu->addAction(daemonModbusAct);
   daemonMenu->addAction(daemonSiemenstcpAct);
   daemonMenu->addAction(daemonPpiAct);
   daemonMenu->addSeparator();
   daemonMenu->addAction(tagMonitorAct);
+  daemonMenu->addSeparator();
+  // Nestor: los clientes de Modbus, Siemens TCP y PPI los agrega pvdevelop (pvbEnsureDaemonClients);
+  // descomentar las lineas de ejemplo dejaba nombres genericos. Quedan -action=uncommentModbus... (main.cpp)
+  daemonMenu->addAction(rllibUncommentRllibAct);
+
+  buildMenu = menuBar()->addMenu(tr("Compilar y p&robar"));
+  buildMenu->addAction(actionMakeAct);
+  buildMenu->addAction(actionStartServerAct);
+  buildMenu->addAction(actionStartPvbrowserAct);
+  buildMenu->addSeparator();
+  buildMenu->addAction(cleanProjectAct);
+  buildMenu->addAction(compilerAct);
 
   menuBar()->addSeparator();
 
@@ -916,9 +921,11 @@ void MainWindow::createMenus()
   helpMenu = menuBar()->addMenu(tr("&Help"));
   helpMenu->addAction(aboutManualAct);
   // Nestor: el manual en PDF, la referencia de las funciones del pvserver y los atajos de teclado
-  helpMenu->addAction(tr("Manual en &PDF"), this, &MainWindow::slotHelpPdf);
-  helpMenu->addAction(tr("&Referencia de las funciones del pvserver"), this, &MainWindow::slotHelpReference);
-  helpMenu->addAction(tr("&Atajos de teclado"), this, [this]() { showHelp("s3-2"); });
+  helpMenu->addAction(toolIcon(23), tr("Manual en &PDF"), this, &MainWindow::slotHelpPdf);
+  helpMenu->addAction(toolIcon(24), tr("&Referencia de las funciones del pvserver"), this, &MainWindow::slotHelpReference);
+  helpMenu->addAction(toolIcon(25), tr("&Atajos de teclado"), this, [this]() { showHelp("s3-2"); });
+  // Nestor: Shift+F1 (lo atiende HelpKeyFilter; el texto despues del tab se ve como atajo)
+  helpMenu->addAction(toolIcon(30), tr("¿&Qué es esto?") + "	Shift+F1", this, []() { QWhatsThis::enterWhatsThisMode(); });
   pvbAddUpdateActions(helpMenu, this, "pvdevelop", true); // Nestor: Buscar actualizaciones (y una vez por semana)
   helpMenu->addSeparator();
   helpMenu->addAction(aboutAct);
@@ -2324,8 +2331,7 @@ void MainWindow::keyPressEvent(QKeyEvent * event)
   {
     if(event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace)
     {
-      designer->root->deleteLastChild();
-      designer->root->stackClear();
+      designer->root->deleteLastChild();   // Nestor: Ctrl+Z lo vuelve a poner
     }
     else if(event->key() == Qt::Key_P)
     {
@@ -2387,9 +2393,10 @@ void MainWindow::createBuildConsole()
   QAction *toggle = buildDock->toggleViewAction();
   toggle->setText(tr("Consola de &compilacion"));
   toggle->setShortcut(tr("Ctrl+J"));
+  toggle->setIcon(toolIcon(21));
   toggle->setStatusTip(tr("Muestra u oculta la salida de la compilacion (Ctrl+M, Ctrl+T y daemons)"));
-  actionMenu->addSeparator();
-  actionMenu->addAction(toggle);
+  buildMenu->addSeparator();
+  buildMenu->addAction(toggle);
   connect(buildConsole, &BuildConsole::started, buildDock, &QDockWidget::show);
   connect(buildConsole, &BuildConsole::openLocation, this, &MainWindow::openLocation);
   connect(buildConsole, &BuildConsole::finished, this, [this](bool) { hideWarningMarks = false; applyErrorMarks(); });
@@ -2423,6 +2430,10 @@ void MainWindow::createBuildConsole()
   projectToolBar = new QToolBar(tr("Proyecto"), this);
   projectToolBar->setObjectName("projectToolBar");
   insertToolBar(alignToolBar, projectToolBar);
+  // Nestor: nombre corto debajo del icono y el completo en la ayuda emergente
+  projectToolBar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+  tagMonitorAct->setIconText(tr("Tags"));
+  tagMonitorAct->setToolTip(tr("Monitor de tags"));
   projectToolBar->addAction(tagMonitorAct);
 }
 
@@ -2585,6 +2596,68 @@ QIcon MainWindow::toolIcon(int kind)
       arrow << QPoint(6, 8) << QPoint(18, 8) << QPoint(12, 14);
       p.setBrush(guide);
       p.drawPolygon(arrow);
+      break;
+    }
+    case 18:  // limpiar proyecto: escoba
+    {
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setPen(QPen(guide, 2.2));
+      p.drawLine(QPointF(20, 2), QPointF(12, 12));
+      p.setPen(Qt::NoPen);
+      p.setBrush(box);
+      QPolygon b;
+      b << QPoint(10, 10) << QPoint(15, 14) << QPoint(10, 22) << QPoint(2, 22) << QPoint(2, 17);
+      p.drawPolygon(b);
+      break;
+    }
+    case 21:  // consola de compilacion: terminal
+    {
+      p.fillRect(1, 3, 22, 18, box);
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setPen(QPen(Qt::white, 2));
+      p.drawLine(QPointF(5, 8), QPointF(9, 12));
+      p.drawLine(QPointF(9, 12), QPointF(5, 16));
+      p.setPen(Qt::NoPen);
+      p.fillRect(11, 15, 7, 2, Qt::white);
+      break;
+    }
+    case 23:  // manual en PDF: documento con la franja roja
+      p.fillRect(4, 1, 16, 22, guide);
+      p.fillRect(5, 2, 14, 20, Qt::white);
+      for(int i=0; i<3; i++) p.fillRect(7, 4 + i * 3, 10, 1, guide);
+      p.fillRect(2, 13, 16, 7, QColor(211, 47, 47));
+      p.fillRect(4, 15, 2, 3, Qt::white);
+      p.fillRect(8, 15, 2, 3, Qt::white);
+      p.fillRect(12, 15, 3, 3, Qt::white);
+      break;
+    case 24:  // referencia: libro
+      p.fillRect(4, 2, 16, 20, box);
+      p.fillRect(4, 2, 3, 20, guide);
+      p.fillRect(9, 6, 9, 2, Qt::white);
+      p.fillRect(9, 10, 6, 2, Qt::white);
+      p.fillRect(7, 19, 13, 2, Qt::white);
+      break;
+    case 25:  // atajos de teclado: teclado
+      p.fillRect(1, 6, 22, 13, guide);
+      for(int i=0; i<5; i++)
+      {
+        p.fillRect(3 + i * 4, 8, 3, 3, Qt::white);
+        p.fillRect(3 + i * 4, 12, 3, 2, Qt::white);
+      }
+      p.fillRect(7, 15, 10, 2, box);
+      break;
+    case 30:  // que es esto?: flecha del mouse con un signo de pregunta
+    {
+      QPolygon a;
+      a << QPoint(2, 2) << QPoint(2, 17) << QPoint(6, 13) << QPoint(9, 20) << QPoint(11, 19) << QPoint(8, 12) << QPoint(13, 12);
+      p.setBrush(guide);
+      p.drawPolygon(a);
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setPen(QPen(box, 2.4, Qt::SolidLine, Qt::RoundCap));
+      p.setBrush(Qt::NoBrush);
+      p.drawArc(QRectF(13, 2, 8, 7), 160 * 16, -250 * 16);
+      p.drawLine(QPointF(17, 9), QPointF(17, 12));
+      p.drawPoint(QPointF(17, 16.5));
       break;
     }
     case 4:   // simulacion: iniciar

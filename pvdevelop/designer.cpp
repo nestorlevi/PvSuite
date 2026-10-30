@@ -16,6 +16,7 @@
 #include "../pvbrowser/pvdefine.h"
 #include <QtGui>
 #include <algorithm>
+#include <QScopeGuard>
 #include "opt.h"
 #include "MyWidgets.h"
 #include "designer.h"
@@ -251,7 +252,9 @@ void MyRootWidget::MoveKey(int key)
   // Nestor: las flechas mueven (Ctrl+flechas redimensionan) todos los widgets seleccionados
   if(grabbed == 0) return;
   const QList<QWidget *> selected = selectedWidgets();
+  beginUndoStep();
   for(int i=0; i<selected.size(); i++) moveKeyWidget(selected.at(i), key);
+  endUndoStep();
 }
 
 void MyRootWidget::moveKeyWidget(QWidget *child, int key)
@@ -872,6 +875,7 @@ void MyRootWidget::mousePressEvent(QMouseEvent *event)
     buttonDown = 1;
     groupPushed = false;
     dragStarted = false;
+    beginUndoStep();   // Nestor: todo el arrastre es un solo Ctrl+Z
 
     if(normalMode && ctrl && !shift) // Ctrl+clic: agregar/quitar de la selección
     {
@@ -1071,15 +1075,10 @@ void MyRootWidget::mousePressEvent(QMouseEvent *event)
         {
           deleteLastChild(); // Nestor: borra toda la selección múltiple
         }
-        else
+        else if(child != NULL)
         {
-          clearSelectionFrames();
-          selection.clear();
-          lastChild = clickedChild = NULL;
-          if(child != NULL) delete child;
+          deleteWidgets(QList<QWidget *>{child});
         }
-        modified = 1;
-        stackClear();
       }
       else if(ret->text() == Add_Tab())
       {
@@ -1189,6 +1188,7 @@ void MyRootWidget::mousePressEvent(QMouseEvent *event)
 
 void MyRootWidget::mouseReleaseEvent(QMouseEvent *event)
 {
+  const auto endStep = qScopeGuard([this]() { endUndoStep(); });
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) //Nestor aquí: Compatibilidad con QT6
     int x = (int) event->position().x();
     int y = (int) event->position().y();
@@ -1341,10 +1341,18 @@ void MyRootWidget::restoreColors(QWidget *item)
 
 void MyRootWidget::deleteLastChild()
 {
-  // Nestor: borra todos los widgets seleccionados (QPointer: si uno estaba dentro de otro ya borrado, se salta)
-  QList<QPointer<QWidget> > victims;
-  const QList<QWidget *> selected = selectedWidgets();
-  for(int i=0; i<selected.size(); i++) victims.append(selected.at(i));
+  // Nestor: borra todos los widgets seleccionados
+  deleteWidgets(selectedWidgets());
+}
+
+// Nestor: borra los widgets y los guarda en el formato de copiar/pegar: Ctrl+Z los vuelve a poner
+// (QPointer: si uno estaba dentro de otro ya borrado, se salta)
+void MyRootWidget::deleteWidgets(const QList<QWidget *> &widgets)
+{
+  if(widgets.isEmpty()) return;
+  const QString text = copyWidgetsToText(this, widgets);
+  QList<QPointer<QWidget> > victims, parents;
+  for(int i=0; i<widgets.size(); i++) { victims.append(widgets.at(i)); parents.append(widgets.at(i)->parentWidget()); }
   clearSelectionFrames();
   selection.clear();
   lastChild = clickedChild = NULL;
@@ -1352,6 +1360,9 @@ void MyRootWidget::deleteLastChild()
   {
     if(!victims.at(i).isNull()) { delete victims.at(i).data(); modified = 1; }
   }
+  stackClear();   // las posiciones guardadas pueden ser de los borrados
+  deletedText = text;
+  deletedParents = parents;
 }
 
 void MyRootWidget::showProperties()
@@ -1399,7 +1410,15 @@ void MyRootWidget::push(QWidget *current)
 {
   OldState state;
   if(current == NULL) return;
+  if(undoGrouping)
+  {
+    // Nestor: en un arrastre solo vale la posicion de antes de empezar
+    for(int i=stack.size()-1; i>=0 && stack.at(i).step == undoStep; i--)
+      if(stack.at(i).OldCurrent == current) return;
+  }
+  else undoStep++;
 
+  state.step       = undoStep;
   state.OldX       = current->x();
   state.OldY       = current->y();
   state.OldWidth   = current->width();
@@ -1413,32 +1432,49 @@ QWidget *MyRootWidget::pop(QWidget *current)
 {
   // current may be NULL
   OldState state;
+  if(stack.isEmpty() && !deletedText.isEmpty())
+  {
+    // Nestor: deshacer el ultimo borrado: vuelven con los mismos nombres, en el mismo contenedor y lugar
+    QList<QWidget *> parents;
+    for(int i=0; i<deletedParents.size(); i++) if(!deletedParents.at(i).isNull()) parents.append(deletedParents.at(i).data());
+    const QList<QWidget *> back = pasteWidgetsFromText(this, deletedText, parents, 1, QString(), QString(), true);
+    deletedText.clear();
+    deletedParents.clear();
+    bool hasDraw = false;
+    for(QWidget *w : back)
+    {
+      w->show();
+      if(w->statusTip().startsWith("TQDraw:")) hasDraw = true;
+      for(QWidget *c : w->findChildren<QWidget *>()) if(c->statusTip().startsWith("TQDraw:")) hasDraw = true;
+    }
+    if(hasDraw) drawDrawWidgets(this);
+    if(back.isEmpty()) { qApp->beep(); return current; }
+    clearSelection();
+    for(QWidget *w : back) selection.append(w);
+    refreshSelectionFrames();
+    modified = 1;
+    printStatusMessage(back.first());
+    return back.first();
+  }
   if(stack.isEmpty())
   {
     qApp->beep();
     return current;
   }
-  state = stack.pop();
-  if(current == state.OldCurrent)
+  // Nestor: vuelve todo el paso (un arrastre, una alineacion, una flecha con varios seleccionados)
+  const int step = stack.top().step;
+  while(!stack.isEmpty() && stack.top().step == step)
   {
-    if(current->parent() != state.OldParent)
-    {
-      state.OldParent->hide();
-      current->setParent(state.OldParent);
-      state.OldParent->show();
-    }  
-  }
-  else
-  {
+    state = stack.pop();
     current = state.OldCurrent;
     if(current->parent() != state.OldParent)
     {
       state.OldParent->hide();
       current->setParent(state.OldParent);
       state.OldParent->show();
-    }  
+    }
+    current->setGeometry(state.OldX, state.OldY, state.OldWidth, state.OldHeight);
   }
-  current->setGeometry(state.OldX, state.OldY, state.OldWidth, state.OldHeight);
   printStatusMessage(current);
   return current;
 }
@@ -1446,6 +1482,8 @@ QWidget *MyRootWidget::pop(QWidget *current)
 void MyRootWidget::stackClear()
 {
   stack.clear();
+  deletedText.clear();
+  deletedParents.clear();
 }
 
 // Nestor: copiar/pegar widgets con Ctrl+C / Ctrl+V en el diseñador
@@ -1576,6 +1614,8 @@ void MyRootWidget::alignSelection(int mode)
         return;
     }
 
+    beginUndoStep();   // Nestor: la alineacion entera es un solo Ctrl+Z
+    const auto endStep = qScopeGuard([this]() { endUndoStep(); });
     struct Item { QWidget *w; QRect r; };
     QList<Item> items;
     for (int i = 0; i < ws.size(); i++) {

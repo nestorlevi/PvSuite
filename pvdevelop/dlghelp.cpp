@@ -21,6 +21,12 @@
 #include "ui_dlghelp.h"
 #include "../pvbrowser/pvblanguage.h"
 #include <QApplication>
+#include <QBoxLayout>
+#include <QDialogButtonBox>
+#include <QAbstractButton>
+#include <QLabel>
+#include <QScreen>
+#include <QScrollArea>
 #include <QDesktopServices>
 #include <QCoreApplication>
 #include <QDir>
@@ -35,6 +41,7 @@
 #include <QTextDocument>
 #include <QTreeWidget>
 #include <QUrl>
+#include <QWhatsThis>
 #include <algorithm>
 #include <cstring>
 
@@ -436,25 +443,104 @@ void DlgHelp::slotResult(QListWidgetItem *item)
 // ---------------------------------------------------------------------------------------------------------
 // F1: tema de ayuda segun la ventana activa
 // ---------------------------------------------------------------------------------------------------------
-QString pvbHelpTopicFor(const QObject *window)
+QString pvbHelpTopicForClass(const char *cls)
 {
   static const struct { const char *cls; const char *topic; } table[] = {
-    {"DlgTags", "tags"},               {"DlgBind", "acciones"},           {"DlgHistorian", "historiador"},
-    {"DlgTagMonitor", "s8-7"},         {"DlgProcesses", "launcher"},      {"DlgGrafana", "s14-7"},
-    {"DlgResources", "embebidas"},     {"DlgBlocks", "bloques"},          {"DlgBlockNew", "bloques"},
-    {"DlgBlockInsert", "bloques"},     {"DlgScada", "usuarios"},          {"DlgRecipes", "recetas"},
-    {"DlgAutomation", "automatizacion"}, {"DlgXref", "s9-7"},             {"DlgUaServer", "uaserver"},
-    {"DlgMqtt", "mqtt"},               {"DlgInstaller", "instalador"},    {"DlgSheet", "s4-7"},
+    {"DlgTags", "tags"},               {"DlgBind", "acciones"},           {"DlgTagMonitor", "s8-7"},
     {"DlgCompiler", "compilar"},       {"DlgOpt", "pvdevelop"},           {"dlgDaemon", "daemons"},
     {"dlgInsertWidget", "s4-1"},       {"dlgProperty", "s4-2"},           {"dlgnewprj", "s3-1"},
     {"dlgInsertFunction", "programar"}, {"dlgPasteWidget", "s4-4"},       {"dlgsearchreplace", "pvdevelop"},
     {"dlgeditlayout", "designer"},
   };
+  for(const auto &t : table)
+    if(strcmp(cls, t.cls) == 0) return QString::fromLatin1(t.topic);
+  return QString();
+}
+
+QString pvbHelpTopicFor(const QObject *window)
+{
   if(window == nullptr) return QString();
   for(const QMetaObject *m = window->metaObject(); m != nullptr; m = m->superClass())
-    for(const auto &t : table)
-      if(strcmp(m->className(), t.cls) == 0) return QString::fromLatin1(t.topic);
+  {
+    const QString t = pvbHelpTopicForClass(m->className());
+    if(!t.isNull()) return t;
+  }
   return QString();
+}
+
+// Shift+F1 (o Ayuda > Que es esto?): el texto de un control es su "Que es esto?" o, si no tiene, su tooltip
+QString pvbWhatsThisText(const QWidget *w)
+{
+  if(w == nullptr) return QString();
+  return w->whatsThis().isEmpty() ? w->toolTip() : w->whatsThis();
+}
+
+// los popups (el cartel del "Que es esto?", menus, tooltips) no tienen ayuda: si el cartel la recibia como ventana,
+// showText lo borraba mientras Qt le entregaba el clic y pvdevelop se cerraba
+static bool pvbIsPopup(const QWidget *w)
+{
+  const Qt::WindowType t = w->window()->windowType();
+  return t == Qt::Popup || t == Qt::ToolTip;
+}
+
+static bool pvbIsButtonRow(QLayoutItem *item)
+{
+  if(item->widget() != nullptr) return qobject_cast<QDialogButtonBox *>(item->widget()) != nullptr;
+  QLayout *l = item->layout();
+  if(l == nullptr || qobject_cast<QHBoxLayout *>(l) == nullptr) return false;
+  for(int i = 0; i < l->count(); i++)
+  {
+    QWidget *c = l->itemAt(i)->widget();
+    if(c != nullptr && !qobject_cast<QAbstractButton *>(c) && !qobject_cast<QLabel *>(c) && !qobject_cast<QDialogButtonBox *>(c)) return false;
+  }
+  return true;
+}
+
+void pvbFitWindowToScreen(QWidget *w)
+{
+  if(w == nullptr || !w->isWindow() || !w->inherits("QDialog") || w->property("pvbFitted").toBool()) return;
+  const char *cls = w->metaObject()->className();
+  if(cls[0] == 'Q') return;   // solo los dialogos de pvdevelop (no QMessageBox, QFileDialog...)
+  w->setProperty("pvbFitted", true);
+  QScreen *sc = w->screen();
+  if(sc == nullptr) return;
+  const QRect avail = sc->availableGeometry();
+  const QSize frame(w->frameGeometry().width() - w->width(), w->frameGeometry().height() - w->height());
+  const int maxW = avail.width() - qMax(frame.width(), 16);
+  const int maxH = avail.height() - qMax(frame.height(), 40);
+  QBoxLayout *box = qobject_cast<QBoxLayout *>(w->layout());
+  const QSize need = w->minimumSizeHint();
+  if(box != nullptr && box->count() > 0 && (need.height() > maxH || need.width() > maxW)
+     && w->findChild<QScrollArea *>("pvbFitScroll") == nullptr)
+  {
+    QScrollArea *sa = new QScrollArea(w);
+    sa->setObjectName("pvbFitScroll");
+    sa->setWidgetResizable(true);
+    sa->setFrameShape(QFrame::NoFrame);
+    QWidget *inner = new QWidget;
+    QVBoxLayout *il = new QVBoxLayout(inner);
+    il->setContentsMargins(0, 0, 0, 0);
+    const int n = box->count() - (pvbIsButtonRow(box->itemAt(box->count() - 1)) ? 1 : 0);
+    for(int i = 0; i < n; i++)
+    {
+      const int stretch = box->stretch(0);
+      QLayoutItem *item = box->takeAt(0);
+      if(QWidget *c = item->widget()) { il->addWidget(c, stretch); delete item; }
+      else if(QLayout *l = item->layout()) { l->setParent(nullptr); il->addLayout(l, stretch); }
+      else il->addItem(item);
+    }
+    sa->setWidget(inner);
+    box->insertWidget(0, sa, 1);
+    w->setMinimumSize(0, 0);
+  }
+  QRect g = w->geometry();
+  g.setSize(g.size().boundedTo(QSize(maxW, maxH)));
+  // que quede entera dentro de la pantalla (con el marco)
+  if(g.right() + frame.width() > avail.right()) g.moveRight(avail.right() - frame.width());
+  if(g.bottom() + frame.height() > avail.bottom()) g.moveBottom(avail.bottom() - frame.height());
+  if(g.left() < avail.left()) g.moveLeft(avail.left());
+  if(g.top() - (frame.height() - frame.width() / 2) < avail.top()) g.moveTop(avail.top() + frame.height() - frame.width() / 2);
+  if(g != w->geometry()) w->setGeometry(g);
 }
 
 HelpKeyFilter::HelpKeyFilter(QWidget *main, std::function<QString()> mainTopicFn,
@@ -463,17 +549,66 @@ HelpKeyFilter::HelpKeyFilter(QWidget *main, std::function<QString()> mainTopicFn
 {
 }
 
+QString HelpKeyFilter::topicOf(QWidget *window) const
+{
+  return (window == mainWindow) ? mainTopic() : pvbHelpTopicFor(window);
+}
+
 bool HelpKeyFilter::eventFilter(QObject *o, QEvent *e)
 {
-  Q_UNUSED(o);
-  if(e->type() != QEvent::KeyPress) return false;
-  QKeyEvent *k = static_cast<QKeyEvent *>(e);
-  if(k->key() != Qt::Key_F1 || (k->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier))) return false;
-  QWidget *w = QApplication::activeModalWidget();
-  if(w == nullptr) w = QApplication::activeWindow();
-  if(w == nullptr) return false;
-  if(w->inherits("DlgHelp")) return false;
-  const QString topic = (w == mainWindow) ? mainTopic() : pvbHelpTopicFor(w);
-  open(topic, w);
-  return true;
+  switch(e->type())
+  {
+    case QEvent::Show:
+      if(o->isWidgetType() && static_cast<QWidget *>(o)->isWindow()) pvbFitWindowToScreen(static_cast<QWidget *>(o));
+      return false;
+    case QEvent::KeyPress:
+    {
+      QKeyEvent *k = static_cast<QKeyEvent *>(e);
+      const Qt::KeyboardModifiers mods = k->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier);
+      if(k->key() != Qt::Key_F1 || (mods != Qt::NoModifier && mods != Qt::ShiftModifier)) return false;
+      if(mods == Qt::ShiftModifier)   // el cursor pasa a "?": un clic en un control muestra su ayuda ahi mismo
+      {
+        if(!QWhatsThis::inWhatsThisMode()) QWhatsThis::enterWhatsThisMode();
+        return true;
+      }
+      QWidget *w = QApplication::activeModalWidget();
+      if(w == nullptr) w = QApplication::activeWindow();
+      if(w == nullptr) return false;
+      if(w->inherits("DlgHelp")) return false;
+      open(topicOf(w), w);
+      return true;
+    }
+    // "Que es esto?": el control con texto lo muestra; si no tiene, sigue al contenedor y por ultimo a la ventana
+    // (que siempre tiene al menos el enlace a la ayuda)
+    case QEvent::QueryWhatsThis:
+    {
+      QWidget *w = qobject_cast<QWidget *>(o);
+      if(w == nullptr || pvbIsPopup(w) || (pvbWhatsThisText(w).isEmpty() && !w->isWindow())) return false;
+      e->accept();
+      return true;
+    }
+    case QEvent::WhatsThis:
+    {
+      QWidget *w = qobject_cast<QWidget *>(o);
+      if(w == nullptr || pvbIsPopup(w)) return false;
+      QString text = pvbWhatsThisText(w);
+      if(text.isEmpty() && !w->isWindow()) return false;
+      if(!Qt::mightBeRichText(text)) text = text.toHtmlEscaped().replace("\n", "<br>");
+      if(text.isEmpty()) text = "<b>" + w->window()->windowTitle().toHtmlEscaped() + "</b>";
+      text += "<p><a href=\"pvbhelp:" + topicOf(w->window()) + "\">" + tr("Ver en la ayuda (F1)") + "</a></p>";
+      QWhatsThis::showText(static_cast<QHelpEvent *>(e)->globalPos(), text, w);
+      return true;
+    }
+    case QEvent::WhatsThisClicked:
+    {
+      const QString href = static_cast<QWhatsThisClickedEvent *>(e)->href();
+      QWidget *w = qobject_cast<QWidget *>(o);
+      if(!href.startsWith("pvbhelp:") || w == nullptr) return false;
+      QWhatsThis::hideText();
+      open(href.mid(8), w->window());
+      return true;
+    }
+    default:
+      return false;
+  }
 }
