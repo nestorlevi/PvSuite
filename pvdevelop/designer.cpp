@@ -390,6 +390,13 @@ void MyRootWidget::mouseMoveEvent(QMouseEvent *event)
     // --- MANEJO DE WIDGETS EXISTENTES ---
     QWidget *child = clickedChild;
 
+    // Nestor: un clic o doble clic con un temblor de la mano no mueve ni cambia el tamano (antes un pixel bastaba y
+    // ademas lo acomodaba a la grilla): el arrastre empieza cuando el mouse se aleja del clic mas que startDragDistance
+    if (child && grabbed && buttonDown && !dragStarted) {
+        if ((QPoint(x, y) - QPoint(xOld, yOld)).manhattanLength() < QApplication::startDragDistance()) return;
+        dragStarted = true;
+    }
+
     // --- ARRASTRE DE LA SELECCIÓN MÚLTIPLE ---
     if (child && grabbed && buttonDown && inMiddle == 1 && selection.size() > 1 &&
         isSelected(child) && groupStart.size() == selection.size()) {
@@ -864,6 +871,7 @@ void MyRootWidget::mousePressEvent(QMouseEvent *event)
     yOld = y;
     buttonDown = 1;
     groupPushed = false;
+    dragStarted = false;
 
     if(normalMode && ctrl && !shift) // Ctrl+clic: agregar/quitar de la selección
     {
@@ -1225,7 +1233,7 @@ void MyRootWidget::mouseReleaseEvent(QMouseEvent *event)
     clickedChild = NULL;
     return;
   }
-  if(clickedChild != NULL)
+  if(clickedChild != NULL && dragStarted)   // Nestor: un clic sin arrastre no cambia de padre ni lo acomoda a la grilla
   {
     clickedChild->hide();
     QWidget *item = childAt(x,y);

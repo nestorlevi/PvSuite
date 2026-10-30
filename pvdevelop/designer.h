@@ -94,6 +94,7 @@ class MyRootWidget : public QWidget
     QList<QPointer<QWidget> > selection;     // selección múltiple; selection[0] es la referencia para alinear
     QList<QPoint> groupStart;                // posiciones al empezar a arrastrar la selección
     bool groupPushed = false;                // ya se guardó el arrastre del grupo para deshacer
+    bool dragStarted = false;                // el mouse se alejo del clic mas que startDragDistance: recien ahi se mueve o cambia el tamano
     QRubberBand *rubberBand = nullptr;       // rectángulo de selección
     QPoint rubberOrigin;
     QPointer<QWidget> rubberContainer;       // contenedor donde empezó el rectángulo
