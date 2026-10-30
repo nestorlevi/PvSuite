@@ -16,6 +16,7 @@
 #include "../pvbrowser/pvdefine.h"
 #include <QtGui>
 #include <QWhatsThis>
+#include <memory>
 #include <QFile>
 
 #include "mainwindow.h"
@@ -2397,6 +2398,14 @@ void MainWindow::createBuildConsole()
   toggle->setStatusTip(tr("Muestra u oculta la salida de la compilacion (Ctrl+M, Ctrl+T y daemons)"));
   buildMenu->addSeparator();
   buildMenu->addAction(toggle);
+  // Nestor: Compilar todo (los daemons generados y el pvserver que cambiaron), antes de ejecutar el servidor
+  QAction *compileAllAct = new QAction(toolIcon(34), tr("Compilar todo"), this);
+  compileAllAct->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_B));
+  compileAllAct->setStatusTip(tr("Compila lo que cambio (los daemons generados y el pvserver) en la consola de abajo, sin ejecutar nada"));
+  compileAllAct->setToolTip(tr("Compilar todo (Ctrl+Shift+B)"));
+  compileAllAct->setWhatsThis(compileAllAct->statusTip());
+  connect(compileAllAct, &QAction::triggered, this, &MainWindow::compileAll);
+  buildMenu->insertAction(actionStartServerAct, compileAllAct);
   connect(buildConsole, &BuildConsole::started, buildDock, &QDockWidget::show);
   connect(buildConsole, &BuildConsole::openLocation, this, &MainWindow::openLocation);
   connect(buildConsole, &BuildConsole::finished, this, [this](bool) { hideWarningMarks = false; applyErrorMarks(); });
@@ -2660,6 +2669,11 @@ QIcon MainWindow::toolIcon(int kind)
       p.drawPoint(QPointF(17, 16.5));
       break;
     }
+    case 34:  // compilar todo: tres piezas apiladas
+      p.fillRect(3, 15, 18, 6, box);
+      p.fillRect(5, 8, 14, 5, box);
+      p.fillRect(7, 2, 10, 4, guide);
+      break;
     case 4:   // simulacion: iniciar
     {
       QPolygon t;
@@ -2712,6 +2726,105 @@ void MainWindow::buildProject(bool startServer)
   for(const QString &a : clientsAdded) buildConsole->appendLine(tr("Cliente del daemon agregado: %1").arg(a), "#606060");
   for(const QString &w : clientWarnings) buildConsole->appendLine(w, "#b06000");
   if(!cleanLog.isEmpty()) buildConsole->appendLine(cleanLog, "#606060");
+}
+
+// Nestor: Compilar todo: el pvserver esta desactualizado si falta o si un fuente es mas nuevo
+static bool projectNeedsBuild(const QString &exe)
+{
+  QFileInfo e(exe);
+  if(!e.exists()) return true;
+  const QDateTime built = e.lastModified();
+  const QFileInfoList src = QDir::current().entryInfoList(QStringList{"*.cpp", "*.c", "*.h", "*.pro", "*.pri", "*.qrc"}, QDir::Files);
+  for(const QFileInfo &f : src) if(f.lastModified() > built) return true;
+  return false;
+}
+
+// Nestor: Windows no deja reemplazar un .exe abierto, pero si renombrarlo: el que corre sigue como <exe>.oldN
+// y se borra en la proxima compilacion (si ya no corre). Devuelve el nombre nuevo (vacio si no hacia falta)
+static QString moveRunningExe(const QString &exe)
+{
+#ifdef PVWIN32
+  QDir rel(QFileInfo(exe).absolutePath());
+  for(const QString &f : rel.entryList(QStringList{QFileInfo(exe).fileName() + ".old*"}, QDir::Files)) rel.remove(f);
+  if(!QFile::exists(exe)) return QString();
+  for(int i=1; i<100; i++)
+  {
+    QString m = exe + ".old" + QString::number(i);
+    if(!QFile::exists(m) && QFile::rename(exe, m)) return m;
+  }
+#else
+  (void) exe;
+#endif
+  return QString();
+}
+
+// Nestor: Compilar todo (Ctrl+Shift+B), en la consola de abajo: primero los daemons generados (Modbus, Siemens,
+// PPI) desactualizados, despues el pvserver si sus fuentes son mas nuevos; no ejecuta nada
+void MainWindow::compileAll()
+{
+  if(name.isEmpty()) { QMessageBox::information(this, "pvdevelop", tr("No project loaded"), QMessageBox::Ok); return; }
+  if(designer != NULL) { if(!save()) return; }   // como Ctrl+T: guarda la mascara
+  else if(!maybeSave()) return;
+  const QString project = name;
+  writePendingDocs();   // Nestor: pestanas
+  if(buildConsole->running()) { buildConsole->appendLine(tr("Ya hay una compilacion en curso: esperar o Detener"), "#b00000"); return; }
+  const bool lua = (opt_develop.script == PV_LUA);
+  QString cleanLog;
+  if(!lua && !checkBuiltBits(project, &cleanLog)) return;   // Nestor: .o de otra arquitectura
+
+  QStringList log, errors;
+  QList<PvbDaemonJob> jobs;
+  const bool generated = pvbDaemonJobs(false, &jobs, &errors);   // genera los daemons (y su .tagmap) antes del pvserver
+  log << errors;
+  if(!cleanLog.isEmpty()) log << cleanLog;
+  struct Step { QString title, program, exe, moved; QStringList args; QProcessEnvironment env; };
+  auto steps = std::make_shared<QList<Step>>();
+  if(generated)
+  {
+    for(const PvbDaemonJob &j : jobs) steps->append(Step{ j.title, j.program, j.exe, QString(), j.args, j.env });
+    const QString exe = serverExePath(project);
+    if(!lua && projectNeedsBuild(exe))
+    {
+      QStringList clientsAdded;
+      log << pvbEnsureDaemonClients(project, &clientsAdded);
+      for(const QString &a : clientsAdded) log << tr("Cliente del daemon agregado: %1").arg(a);
+#ifdef PVWIN32
+      offerMinGWLibDir(project);
+      perhapsAddMsvcScope(project.toUtf8().constData());
+      steps->append(Step{ project, "cmd.exe", exe, QString(), QStringList() << "/C" << "pvb_build.bat" << project, QProcessEnvironment() });
+#else
+      QString cmd = QString("fake_qmake %1 '%2.pro' && make -j%3").arg(opt_develop.fake_qmake).arg(QString(project).replace("'", "'\\''")).arg(buildJobs());
+      steps->append(Step{ project, "sh", exe, QString(), QStringList() << "-c" << cmd, QProcessEnvironment() });
+#endif
+    }
+  }
+
+  buildConsole->clear();
+  if(buildDock) buildDock->show();
+  for(const QString &l : log) buildConsole->appendLine(l, errors.contains(l) ? "#b00000" : "#606060");
+  if(!generated) { buildConsole->appendLine(tr("No se compilo"), "#b00000"); return; }
+  if(steps->isEmpty()) { buildConsole->appendLine(tr("Nada para compilar: todo esta al dia"), "#006000"); return; }
+  QStringList titles;
+  for(const Step &s : *steps) titles << s.title;
+  buildConsole->appendLine(tr("Compilar todo: %1").arg(titles.join(", ")), "#606060");
+
+  // un paso detras de otro; el siguiente arranca despues de que la consola termino con el anterior
+  auto next = std::make_shared<std::function<void(int)>>();
+  std::weak_ptr<std::function<void(int)>> weak = next;
+  *next = [this, steps, weak](int k) {
+    if(k == steps->size()) { buildConsole->appendLine(tr("Compilar todo: listo"), "#006000"); return; }
+    Step &s = (*steps)[k];
+    s.moved = moveRunningExe(s.exe);
+    auto self = weak.lock();
+    const bool started = buildConsole->run(s.title, s.program, s.args, [this, steps, self, k](bool ok) {
+      if(ok) { QTimer::singleShot(0, this, [self, k]() { (*self)(k + 1); }); return; }
+      const Step &f = steps->at(k);
+      if(!f.moved.isEmpty() && !QFile::exists(f.exe)) QFile::rename(f.moved, f.exe);   // vuelve el anterior
+      buildConsole->appendLine(tr("No se compilo %1").arg(f.title), "#b00000");
+    }, s.env, true);
+    if(!started && !s.moved.isEmpty() && !QFile::exists(s.exe)) QFile::rename(s.moved, s.exe);
+  };
+  (*next)(0);
 }
 
 // Nestor: el ejecutable del pvserver del proyecto (en la carpeta actual)

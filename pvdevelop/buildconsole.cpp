@@ -218,14 +218,15 @@ bool BuildConsole::running() const
 }
 
 bool BuildConsole::run(const QString &title, const QString &program, const QStringList &args,
-                       std::function<void(bool)> done, const QProcessEnvironment &env)
+                       std::function<void(bool)> done, const QProcessEnvironment &env, bool append)
 {
   if(running())
   {
     appendLine(tr("Ya hay una compilacion en curso: esperar o Detener"), "#b00000");
     return false;
   }
-  clear();
+  if(append) pending.clear();
+  else       clear();
   emit started();
   serverMode = false;
   doneFn = done;

@@ -17,6 +17,7 @@
 #define DLG_DAEMON_H
 
 #include "ui_dlgdaemon.h"
+#include <QProcessEnvironment>
 #define PPI_DAEMON        1
 #define SIEMENSTCP_DAEMON 2
 #define MODBUS_DAEMON     3
@@ -49,6 +50,19 @@ private:
     QString filename;
     Ui_DialogDaemon *form;
 };
+
+// Nestor: Compilar todo: los daemons generados (Modbus, Siemens, PPI) desactualizados se generan de nuevo
+// y devuelven el comando que los compila (en la consola de compilacion)
+struct PvbDaemonJob
+{
+  QString title;            // nombre del daemon (PLC1)
+  QString exe;              // el ejecutable que se reemplaza (Windows: PLC1.exe)
+  QString program;
+  QStringList args;
+  QProcessEnvironment env;
+};
+//! force: aunque no haya cambiado nada. false si un generador dio error (en messages)
+bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages);
 
 #endif
 

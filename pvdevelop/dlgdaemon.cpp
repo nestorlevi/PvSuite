@@ -26,6 +26,7 @@
 #include <qmessagebox.h>
 #include <QProcess>
 #include <QTimer>
+#include <QCoreApplication>
 #include "buildconsole.h"
 extern BuildConsole *g_buildConsole; // mainwindow.cpp
 #ifdef PVWIN32
@@ -123,6 +124,33 @@ void dlgDaemon::perhapsEditTags()
   }
 }
 
+// Nestor: el comando que compila un daemon generado (src: el .cpp sin la extension); false si no se puede
+static bool daemonBuildCommand(int what, const QString &src, PvbDaemonJob *job, QString *error)
+{
+  (void) error;   // solo lo usa macOS (PPI)
+  job->exe = QFileInfo(src).fileName();
+  job->title = job->exe;
+#ifdef PVUNIX
+#ifdef PVMAC
+  if(what == PPI_DAEMON) { *error = QCoreApplication::translate("dlgDaemon", "libnodave is not available for OS-X"); return false; }
+  const QString cmd = "g++ "+shQuote(src+".cpp")+" -o "+shQuote(job->exe)+" -I/opt/pvb/rllib/lib -L/usr/lib/ -L/usr/local/lib/ /usr/local/lib/librllib.dylib -lpthread";
+#else
+  const QString nodave = (what == PPI_DAEMON) ? " /opt/pvb/rllib/lib/nodave.o /opt/pvb/rllib/lib/setport.o" : "";
+  const QString cmd = "g++ -c "+shQuote(src+".cpp")+" -o "+shQuote(src+".o")+" -I/opt/pvb/rllib/lib && g++ "+shQuote(src+".o")+nodave+" /usr/lib/librllib.so -lpthread -o "+shQuote(job->exe);
+#endif
+  job->program = "sh";
+  job->args = QStringList() << "-c" << cmd;
+#else
+  job->exe += ".exe";
+  job->program = "cmd.exe";
+  job->args = QStringList() << "/C" << "pvb_make_daemon.bat" << QDir::toNativeSeparators(src);
+  if(what == PPI_DAEMON) job->args << "ppi";
+  job->env = QProcessEnvironment::systemEnvironment();
+  job->env.insert("PVB_NOPAUSE", "1");
+#endif
+  return true;
+}
+
 void dlgDaemon::slotCompile()
 {
   int ret = 0;
@@ -165,30 +193,25 @@ void dlgDaemon::slotCompile()
       // sin consola (pvdevelop -action=...), en su propia ventana
       QString src = buildName();
       QString exe = QFileInfo(src).fileName();
-#ifdef PVUNIX
-#ifdef PVMAC
-      if(what == PPI_DAEMON)
+      PvbDaemonJob job;
+      QString error;
+      if(!daemonBuildCommand(what, src, &job, &error))
       {
-        QMessageBox::information(this,"pvdevelop",tr("libnodave is not available for OS-X"),QMessageBox::Ok);
+        QMessageBox::information(this,"pvdevelop",error,QMessageBox::Ok);
         break;
       }
-      QString cmd = "g++ "+shQuote(src+".cpp")+" -o "+shQuote(exe)+" -I/opt/pvb/rllib/lib -L/usr/lib/ -L/usr/local/lib/ /usr/local/lib/librllib.dylib -lpthread";
-#else
-      QString nodave = (what == PPI_DAEMON) ? " /opt/pvb/rllib/lib/nodave.o /opt/pvb/rllib/lib/setport.o" : "";
-      QString cmd = "g++ -c "+shQuote(src+".cpp")+" -o "+shQuote(src+".o")+" -I/opt/pvb/rllib/lib && g++ "+shQuote(src+".o")+nodave+" /usr/lib/librllib.so -lpthread -o "+shQuote(exe);
-#endif
+#ifdef PVUNIX
       if(g_buildConsole != NULL)
       {
-        g_buildConsole->run(exe, "sh", QStringList() << "-c" << cmd);
+        g_buildConsole->run(exe, job.program, job.args);
         break;
       }
-      ret = pvbStartInConsole("sh", QStringList() << "-c" << cmd + " && echo compiler_finished; read", QDir::currentPath(), exe) ? 0 : -1;
+      ret = pvbStartInConsole("sh", QStringList() << "-c" << job.args.last() + " && echo compiler_finished; read", QDir::currentPath(), exe) ? 0 : -1;
 #else
       if(g_buildConsole != NULL)
       {
         // si el daemon esta corriendo su .exe no se puede reemplazar: preguntar si se lo cierra
-        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-        env.insert("PVB_NOPAUSE", "1");
+        QProcessEnvironment env = job.env;
         QProcess t;
         t.start("tasklist", QStringList() << "/nh" << "/fi" << "IMAGENAME eq " + exe + ".exe");
         t.waitForFinished(3000);
@@ -198,18 +221,10 @@ void dlgDaemon::slotCompile()
              != QMessageBox::Yes) break;
           env.insert("PVB_KILL", "1");
         }
-        QStringList args;
-        args << "/C" << "pvb_make_daemon.bat" << QDir::toNativeSeparators(src);
-        if(what == PPI_DAEMON) args << "ppi";
-        g_buildConsole->run(exe, "cmd.exe", args, nullptr, env);
+        g_buildConsole->run(exe, job.program, job.args, nullptr, env);
         break;
       }
-      {
-        QStringList args;
-        args << "/C" << "pvb_make_daemon.bat" << QDir::toNativeSeparators(src);
-        if(what == PPI_DAEMON) args << "ppi";
-        ret = pvbStartInConsole("cmd.exe", args, QDir::currentPath(), exe) ? 0 : -1;
-      }
+      ret = pvbStartInConsole(job.program, job.args, QDir::currentPath(), exe) ? 0 : -1;
 #endif
       break;
     }
@@ -517,4 +532,61 @@ int dlgDaemon::generate()
     return -1;
   }
   return 0;
+}
+
+// Nestor: Compilar todo. Lo generado esta desactualizado si falta, o si el archivo del daemon o su .csv
+// de tags (tags=) son mas nuevos
+static QString daemonSetting(const QString &file, const QString &key)
+{
+  QFile f(file);
+  if(!f.open(QIODevice::ReadOnly | QIODevice::Text)) return QString();
+  QString ret;
+  for(const QString &line : QString::fromUtf8(f.readAll()).split('\n'))
+    if(line.startsWith(key + "=")) ret = line.mid(key.length() + 1).trimmed().section(' ', 0, 0);
+  return ret;
+}
+
+static bool daemonOutdated(const QString &mk, const QString &out)
+{
+  const QFileInfo fout(out), fmk(mk);
+  if(!fout.exists() || fmk.lastModified() > fout.lastModified()) return true;
+  const QString csv = daemonSetting(mk, "tags");
+  if(csv.isEmpty()) return false;
+  const QFileInfo fcsv(QFileInfo(csv).isAbsolute() ? csv : fmk.absoluteDir().filePath(csv));
+  return fcsv.exists() && fcsv.lastModified() > fout.lastModified();
+}
+
+bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages)
+{
+  bool ok = true;
+  const QDir dir = QDir::current();
+  struct Kind { const char *ext; int what; };
+  for(const Kind &k : { Kind{ ".mkmodbus", MODBUS_DAEMON }, Kind{ ".mksiemens", SIEMENSTCP_DAEMON }, Kind{ ".mkppi", PPI_DAEMON } })
+  {
+    for(const QString &mk : dir.entryList(QStringList() << QString("*") + k.ext, QDir::Files, QDir::Name))
+    {
+      const QByteArray arg = mk.toUtf8();   // relativo a la carpeta del proyecto (los generadores usan fopen)
+      QString src = QString(mk).remove(k.ext);
+      if(k.what != MODBUS_DAEMON)
+      {
+        src = daemonSetting(mk, "target");
+        if(src.isEmpty()) src = (k.what == PPI_DAEMON) ? "ppidaemon" : "siemensdaemon";
+      }
+      PvbDaemonJob job;
+      QString error;
+      if(!daemonBuildCommand(k.what, src, &job, &error)) { *messages << mk + ": " + error; continue; }
+      if(!force && !daemonOutdated(mk, job.exe)) continue;
+      g_daemon_error.clear();
+      const int ret = (k.what == MODBUS_DAEMON) ? gmodbus(arg.constData())
+                    : (k.what == PPI_DAEMON)    ? gppi(arg.constData()) : gsiemens(arg.constData());
+      if(ret < 0)
+      {
+        ok = false;
+        *messages << mk + ": " + (g_daemon_error.isEmpty() ? QCoreApplication::translate("dlgDaemon", "No se pudo generar el daemon") : g_daemon_error);
+        continue;
+      }
+      jobs->append(job);
+    }
+  }
+  return ok;
 }

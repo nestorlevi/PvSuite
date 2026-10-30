@@ -68,9 +68,10 @@ class BuildConsole : public QWidget
 public:
   explicit BuildConsole(QWidget *parent = nullptr);
 
-  //! ejecuta program args en la carpeta actual; done(ok) al terminar (ok = codigo de salida 0)
+  //! ejecuta program args en la carpeta actual; done(ok) al terminar (ok = codigo de salida 0).
+  //! append: sigue debajo de lo anterior (varios pasos, p. ej. Compilar todo)
   bool run(const QString &title, const QString &program, const QStringList &args,
-           std::function<void(bool)> done = nullptr, const QProcessEnvironment &env = QProcessEnvironment());
+           std::function<void(bool)> done = nullptr, const QProcessEnvironment &env = QProcessEnvironment(), bool append = false);
   bool running() const;
   //! Nestor: el pvserver dentro del panel (Linux sin terminal); Detener lo cierra
   bool runServer(const QString &title, const QString &program);

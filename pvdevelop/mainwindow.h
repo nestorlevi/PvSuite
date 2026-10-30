@@ -97,6 +97,7 @@ private:
   // Nestor: consola de compilacion (abajo), marcas de error en el editor e historiador al ejecutar
   void createBuildConsole();
   void buildProject(bool startServer);
+  void compileAll();                     // Nestor: Ctrl+Shift+B: los daemons y el pvserver que cambiaron, sin ejecutar
   void startServerProcess(const QString &project);
   static QString serverExePath(const QString &project);
   void applyErrorMarks();
