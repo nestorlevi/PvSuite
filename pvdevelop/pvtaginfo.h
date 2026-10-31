@@ -59,4 +59,11 @@ QList<PvbTag> pvbTagsAtAddress(const QString &text, QStringList *canCreate = nul
 // Devuelve el texto que va (vacio = se cancelo o no era una direccion)
 QString pvbResolveAddress(QWidget *parent, const QString &text, const QPoint &globalPos, bool code);
 
+// Nestor: las llamadas del cliente del daemon que le sirven a un tag simple (segun el tipo y rw=), para el editor:
+// PLC1.getUInt(PLC1_Horas), PLC1.getReal(PLC1_Horas), PLC1.quality(PLC1_Horas), PLC1.setInt(PLC1_Horas, )...
+// write: escribe (falta el valor, va antes del ")"). Vacia: estructura, bloque, bit de un entero
+// proto: "double getReal(tag)". group 1/2: leer/escribir un bit del entero (label: "4   FlechaA12"), 0: las del tag
+struct PvbTagCall { QString text, help; bool write = false; QString proto; int group = 0; QString label; };
+QList<PvbTagCall> pvbTagCalls(const PvbTag &t, const QString &ref);
+
 #endif

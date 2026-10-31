@@ -82,30 +82,45 @@
 <context>
     <name>CodeCompleter</name>
     <message>
-        <location filename="../codecompleter.cpp" line="455"/>
+        <location filename="../codecompleter.cpp" line="457"/>
         <source>widget de %1</source>
         <translation>Widget von %1</translation>
     </message>
     <message>
-        <location filename="../codecompleter.cpp" line="469"/>
+        <location filename="../codecompleter.cpp" line="471"/>
         <source>tag de %1 (%2)</source>
         <translation>Tag von %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../codecompleter.cpp" line="473"/>
+        <location filename="../codecompleter.cpp" line="475"/>
         <source>daemon (memoria compartida)</source>
         <translation>Daemon (gemeinsamer Speicher)</translation>
+    </message>
+    <message>
+        <location filename="../codecompleter.cpp" line="699"/>
+        <source>Leer un bit</source>
+        <translation>Ein Bit lesen</translation>
+    </message>
+    <message>
+        <location filename="../codecompleter.cpp" line="699"/>
+        <source>Escribir un bit</source>
+        <translation>Ein Bit schreiben</translation>
+    </message>
+    <message>
+        <location filename="../codecompleter.cpp" line="702"/>
+        <source>Bit %1</source>
+        <translation>Bit %1</translation>
     </message>
 </context>
 <context>
     <name>CodeTextEdit</name>
     <message>
-        <location filename="../codecompleter.cpp" line="361"/>
+        <location filename="../codecompleter.cpp" line="363"/>
         <source>Formatear código (lineas seleccionadas)</source>
         <translation>Code formatieren (markierte Zeilen)</translation>
     </message>
     <message>
-        <location filename="../codecompleter.cpp" line="361"/>
+        <location filename="../codecompleter.cpp" line="363"/>
         <source>Formatear código (todo el archivo)</source>
         <translation>Code formatieren (ganze Datei)</translation>
     </message>
@@ -2025,7 +2040,7 @@ Strukturen bleiben immer in der Daemon-Datei.</translation>
     </message>
     <message>
         <location filename="../dlgtags.ui" line="245"/>
-        <location filename="../dlgtags.cpp" line="255"/>
+        <location filename="../dlgtags.cpp" line="258"/>
         <source>Esclavo</source>
         <translation>Slave</translation>
     </message>
@@ -2067,6 +2082,66 @@ Strukturen bleiben immer in der Daemon-Datei.</translation>
         <location filename="../dlgtags.ui" line="300"/>
         <source>Duplicar</source>
         <translation>Duplizieren</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="545"/>
+        <source>Daemon</source>
+        <translation>Daemon</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="548"/>
+        <source>El resto del archivo del daemon: conexión con el PLC, memoria compartida, mailbox, ciclos y comentarios</source>
+        <translation>Der Rest der Daemon-Datei: Verbindung zur SPS, Shared Memory, Mailbox, Zyklen und Kommentare</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="554"/>
+        <source>Las líneas del archivo que no son tags: conexión con el PLC, memoria compartida, mailbox y comentarios. Los tags, las estructuras y la forma de leer se editan en las otras pestañas.</source>
+        <translation>Die Zeilen der Datei, die keine Tags sind: Verbindung zur SPS, Shared Memory, Mailbox und Kommentare. Tags, Strukturen und die Leseart werden in den anderen Registerkarten bearbeitet.</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="564"/>
+        <source>Ajustes del daemon (clave=valor, una por línea; # = comentario). Se guardan con Aceptar junto con los tags</source>
+        <translation>Daemon-Einstellungen (Schlüssel=Wert, eine pro Zeile; # = Kommentar). Sie werden mit OK zusammen mit den Tags gespeichert</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="576"/>
+        <source>Compilar</source>
+        <translation>Kompilieren</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="579"/>
+        <source>Guarda, genera el daemon (su .cpp, .h y .tagmap) y lo compila en la consola de compilación</source>
+        <translation>Speichert, erzeugt den Daemon (seine .cpp, .h und .tagmap) und kompiliert ihn in der Build-Konsole</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="586"/>
+        <source>Generar código del daemon</source>
+        <translation>Daemon-Code erzeugen</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="589"/>
+        <source>Copia el código de rlopcuadaemon (y open62541) a la carpeta opcuadaemon del proyecto para modificarlo y compilarlo</source>
+        <translation>Kopiert den Code von rlopcuadaemon (und open62541) in den Ordner opcuadaemon des Projekts, um ihn zu ändern und zu kompilieren</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="603"/>
+        <source>Abrir...</source>
+        <translation>Öffnen...</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="606"/>
+        <source>Abrir otro archivo de daemon del mismo tipo (pregunta si se guardan los cambios de este)</source>
+        <translation>Eine andere Daemon-Datei desselben Typs öffnen (fragt, ob die Änderungen an dieser gespeichert werden)</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="613"/>
+        <source>Nuevo...</source>
+        <translation>Neu...</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.ui" line="616"/>
+        <source>Crear un daemon nuevo del mismo tipo (pregunta si se guardan los cambios de este)</source>
+        <translation>Einen neuen Daemon desselben Typs anlegen (fragt, ob die Änderungen an diesem gespeichert werden)</translation>
     </message>
     <message>
         <location filename="../dlgtags.ui" line="297"/>
@@ -2165,12 +2240,12 @@ Strukturen bleiben immer in der Daemon-Datei.</translation>
         <translation>Nach unten</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="165"/>
+        <location filename="../dlgtags.cpp" line="156"/>
         <source>Historial / alarma</source>
         <translation>Historian / Alarm</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="166"/>
+        <location filename="../dlgtags.cpp" line="157"/>
         <source>Claves del historiador para este miembro (en todas las variables de esta estructura), por ejemplo:
 log=1 deadband=0.5 unit=C alarm=&quot;&gt;80&quot; hyst=2 alarm_text=&quot;Temperatura alta&quot; priority=1 ack=1
 event=1 registra los cambios de un bool. Ver la pestania Historial y alarmas.</source>
@@ -2179,43 +2254,43 @@ log=1 deadband=0.5 unit=C alarm=&quot;&gt;80&quot; hyst=2 alarm_text=&quot;Tempe
 event=1 speichert die Änderungen eines bool. Siehe Reiter Historian und Alarme.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="173"/>
-        <location filename="../dlgtags.cpp" line="178"/>
+        <location filename="../dlgtags.cpp" line="164"/>
+        <location filename="../dlgtags.cpp" line="169"/>
         <source>Historial</source>
         <translation>Verlauf</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="174"/>
+        <location filename="../dlgtags.cpp" line="165"/>
         <source>Marcado: la variable aparece en la pestania Historial y alarmas (tendencias, alarmas y eventos del historiador)</source>
         <translation>Markiert: die Variable erscheint im Reiter Verlauf und Alarme (Trends, Alarme und Ereignisse des Historians)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="179"/>
+        <location filename="../dlgtags.cpp" line="170"/>
         <source>Marcado: el miembro aparece en la pestania Historial y alarmas (vale para todas las variables de esta estructura)</source>
         <translation>Markiert: das Element erscheint im Reiter Verlauf und Alarme (gilt für alle Variablen dieser Struktur)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="219"/>
+        <location filename="../dlgtags.cpp" line="222"/>
         <source>Consola del daemon:</source>
         <translation>Daemon-Konsole:</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="224"/>
+        <location filename="../dlgtags.cpp" line="227"/>
         <source>Silencioso (solo errores)</source>
         <translation>Still (nur Fehler)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="225"/>
+        <location filename="../dlgtags.cpp" line="228"/>
         <source>Normal (resumen)</source>
         <translation>Normal (Zusammenfassung)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="226"/>
+        <location filename="../dlgtags.cpp" line="229"/>
         <source>Detallado (cada bloque, con el numero de ciclo)</source>
         <translation>Ausführlich (jeder Block, mit Zyklusnummer)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="227"/>
+        <location filename="../dlgtags.cpp" line="230"/>
         <source>Mensajes que el daemon escribe en su ventana:
 Silencioso: solo cuando un bloque deja de leerse (y cuando vuelve) y los errores de escritura.
 Normal: lo mismo y un resumen cada tantos segundos (ciclos, duracion, errores).
@@ -2228,97 +2303,97 @@ Ausführlich: jeder Lesevorgang mit Zyklusnummer, Slave, Adresse, Ergebnis und D
 Beim Starten des Daemons mit -q, -n oder -v änderbar.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="235"/>
+        <location filename="../dlgtags.cpp" line="238"/>
         <source> s</source>
         <translation> s</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="236"/>
+        <location filename="../dlgtags.cpp" line="239"/>
         <source>Normal: segundos entre resumenes</source>
         <translation>Normal: Sekunden zwischen Zusammenfassungen</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="251"/>
+        <location filename="../dlgtags.cpp" line="254"/>
         <source>pvdevelop: tags Modbus - %1</source>
         <translation>pvdevelop: Modbus-Tags - %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="252"/>
+        <location filename="../dlgtags.cpp" line="255"/>
         <source>Modicon (40001, 30001, 00001, 10001)</source>
         <translation>Modicon (40001, 30001, 00001, 10001)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="253"/>
+        <location filename="../dlgtags.cpp" line="256"/>
         <source>Offset base 0 (HR0, IR0, CO0, DI0)</source>
         <translation>Offset ab 0 (HR0, IR0, CO0, DI0)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="254"/>
+        <location filename="../dlgtags.cpp" line="257"/>
         <source>PLC Schneider (%MW0, %MD0, %MF0, %IW0, %M0, %I0)</source>
         <translation>SPS Schneider (%MW0, %MD0, %MF0, %IW0, %M0, %I0)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="256"/>
+        <location filename="../dlgtags.cpp" line="259"/>
         <source>registros</source>
         <translation>Register</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="260"/>
+        <location filename="../dlgtags.cpp" line="263"/>
         <source>pvdevelop: tags Siemens S7 - %1</source>
         <translation>pvdevelop: Siemens-S7-Tags - %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="261"/>
+        <location filename="../dlgtags.cpp" line="264"/>
         <source>Alemana (E, A, M, DB10.DBX4.3)</source>
         <translation>Deutsch (E, A, M, DB10.DBX4.3)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="262"/>
+        <location filename="../dlgtags.cpp" line="265"/>
         <source>Inglesa (I, Q, M, DB10.DBX4.3)</source>
         <translation>Englisch (I, Q, M, DB10.DBX4.3)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="263"/>
+        <location filename="../dlgtags.cpp" line="266"/>
         <source>PLC (slave)</source>
         <translation>SPS (slave)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="264"/>
+        <location filename="../dlgtags.cpp" line="267"/>
         <source>bytes</source>
         <translation>Bytes</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="283"/>
+        <location filename="../dlgtags.cpp" line="286"/>
         <source>pvdevelop: tags OPC UA - %1</source>
         <translation>pvdevelop: OPC-UA-Tags - %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="284"/>
+        <location filename="../dlgtags.cpp" line="287"/>
         <source>NodeId (ns=2;s=...)</source>
         <translation>NodeId (ns=2;s=...)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="291"/>
+        <location filename="../dlgtags.cpp" line="294"/>
         <source>Muestreo (ms)</source>
         <translation>Abtastung (ms)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="292"/>
+        <location filename="../dlgtags.cpp" line="295"/>
         <source>Sufijo del NodeId</source>
         <translation>NodeId-Suffix</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="302"/>
+        <location filename="../dlgtags.cpp" line="305"/>
         <source>Cantidad de elementos: mas de 1 es un arreglo (Nombre[0], Nombre[1], ...)</source>
         <translation>Anzahl der Elemente: mehr als 1 ist ein Array (Name[0], Name[1], ...)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="303"/>
+        <location filename="../dlgtags.cpp" line="306"/>
         <source>Distancia entre elementos del arreglo en %1 (bits en arreglos de bits); vacio = consecutivos</source>
         <translation>Abstand zwischen Array-Elementen in %1 (Bits bei Bit-Arrays); leer = fortlaufend</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="306"/>
+        <location filename="../dlgtags.cpp" line="309"/>
         <source>Cada miembro se lee del NodeId de la variable mas el sufijo (por defecto &quot;.&quot; + nombre).
 Ejemplo: variable Zona con NodeId ns=2;s=Planta.Zona1 y miembro Temp -&gt; ns=2;s=Planta.Zona1.Temp.
 Arreglos de variables: {i} en el NodeId (ns=2;s=Planta.Zona{i}) se reemplaza por 0, 1, 2, ...
@@ -2329,7 +2404,7 @@ Arrays von Variablen: {i} in der NodeId (ns=2;s=Anlage.Zone{i}) wird durch 0, 1,
 Im pvserver: OPC1.getReal(OPC1_Zone[2].Temp)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="322"/>
+        <location filename="../dlgtags.cpp" line="325"/>
         <source>Posicion: lugar del miembro desde el comienzo de la estructura, en %1, con .bit para un bool (p. ej. 0.3). Vacia: a continuacion del anterior (los bool siguen en el bit siguiente).
 Una variable con Tipo = la estructura usa su Direccion como comienzo; con Cantidad &gt; 1 es un arreglo de estructuras, una cada &quot;Paso&quot; %1 (vacio = consecutivas).
 En el pvserver: PLC1.getReal(PLC1_Bomba1.Velocidad), PLC1.setBool(PLC1_Bombas[2].Marcha, 1)</source>
@@ -2338,97 +2413,123 @@ Eine Variable mit Typ = Struktur nutzt ihre Adresse als Beginn; mit Anzahl &gt; 
 Im pvserver: PLC1.getReal(PLC1_Pumpe1.Drehzahl), PLC1.setBool(PLC1_Pumpen[2].Ein, 1)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="498"/>
+        <location filename="../dlgtags.cpp" line="502"/>
         <source>(auto)</source>
         <translation>(auto)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="507"/>
+        <location filename="../dlgtags.cpp" line="511"/>
         <source>(auto): segun la direccion (bit -&gt; bool, registro -&gt; int, %MD -&gt; dint, %MF -&gt; real, MW -&gt; int, MD -&gt; dint).
 Tambien puede ser una estructura (pestania Estructuras).</source>
         <translation>(auto): nach der Adresse (Bit -&gt; bool, Register -&gt; int, %MD -&gt; dint, %MF -&gt; real, MW -&gt; int, MD -&gt; dint).
 Kann auch eine Struktur sein (Reiter Strukturen).</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="516"/>
+        <location filename="../dlgtags.cpp" line="520"/>
         <source>(general)</source>
         <translation>(allgemein)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="697"/>
+        <location filename="../dlgtags.cpp" line="701"/>
         <source>Importar tags</source>
         <translation>Tags importieren</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="702"/>
+        <location filename="../dlgtags.cpp" line="706"/>
         <source>%1 variables importadas de %2</source>
         <translation>%1 Variablen aus %2 importiert</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="709"/>
+        <location filename="../dlgtags.cpp" line="713"/>
         <source>Exportar tags</source>
         <translation>Tags exportieren</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="715"/>
-        <location filename="../dlgtags.cpp" line="862"/>
-        <location filename="../dlgtags.cpp" line="877"/>
+        <location filename="../dlgtags.cpp" line="719"/>
+        <location filename="../dlgtags.cpp" line="948"/>
+        <location filename="../dlgtags.cpp" line="963"/>
         <source>No se pudo escribir %1</source>
         <translation>%1 konnte nicht geschrieben werden</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="717"/>
+        <location filename="../dlgtags.cpp" line="721"/>
         <source>Variables exportadas a %1 (las estructuras quedan en el archivo del daemon)</source>
         <translation>Variablen nach %1 exportiert (Strukturen bleiben in der Daemon-Datei)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="742"/>
+        <location filename="../dlgtags.cpp" line="746"/>
         <source>%1 direcciones convertidas%2</source>
         <translation>%1 Adressen umgerechnet%2</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="743"/>
+        <location filename="../dlgtags.cpp" line="747"/>
         <source>, %1 no se pudieron convertir (revisarlas)</source>
         <translation>, %1 konnten nicht umgerechnet werden (bitte prüfen)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="748"/>
+        <location filename="../dlgtags.cpp" line="752"/>
         <source>Archivo de tags</source>
         <translation>Tag-Datei</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="777"/>
+        <location filename="../dlgtags.cpp" line="781"/>
         <source>%1 variables (%2 valores simples); %3 bytes en la memoria compartida</source>
         <translation>%1 Variablen (%2 einfache Werte); %3 Bytes im gemeinsamen Speicher</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="782"/>
+        <location filename="../dlgtags.cpp" line="786"/>
         <source>%1 variables (%2 valores simples) en %3 bloques de lectura (%4 bytes en la memoria compartida):</source>
         <translation>%1 Variablen (%2 einfache Werte) in %3 Leseblöcken (%4 Bytes im gemeinsamen Speicher):</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="790"/>
+        <location filename="../dlgtags.cpp" line="794"/>
         <source>  esclavo %1, %2 %3..%4 (%5)%6</source>
         <translation>  Slave %1, %2 %3..%4 (%5)%6</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="791"/>
-        <location filename="../dlgtags.cpp" line="798"/>
+        <location filename="../dlgtags.cpp" line="795"/>
+        <location filename="../dlgtags.cpp" line="802"/>
         <source>, cada %1 ms</source>
         <translation>, alle %1 ms</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="797"/>
+        <location filename="../dlgtags.cpp" line="801"/>
         <source>  PLC %1, %2 bytes %3..%4 (%5)%6</source>
         <translation>  SPS %1, %2 Bytes %3..%4 (%5)%6</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="801"/>
+        <location filename="../dlgtags.cpp" line="805"/>
         <source>  ... (%1 bloques mas)</source>
         <translation>  ... (%1 weitere Blöcke)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="821"/>
+        <location filename="../dlgtags.cpp" line="847"/>
+        <source>Abrir daemon</source>
+        <translation>Daemon öffnen</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.cpp" line="854"/>
+        <source>Nuevo daemon</source>
+        <translation>Neuer Daemon</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.cpp" line="871"/>
+        <source>Generar .h</source>
+        <translation>.h erzeugen</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.cpp" line="890"/>
+        <source>La linea %1 de la pestania Daemon es de tags o de la forma de leer:
+%2
+
+Esos datos se editan en las otras pestanias. Borrarla de aca.</source>
+        <translation>Zeile %1 der Registerkarte Daemon gehört zu den Tags oder zur Leseart:
+%2
+
+Diese Daten werden in den anderen Registerkarten bearbeitet. Bitte hier löschen.</translation>
+    </message>
+    <message>
+        <location filename="../dlgtags.cpp" line="907"/>
         <source>Hay errores en los tags:
 
 %1
@@ -2441,55 +2542,55 @@ Guardar igual?</source>
 Trotzdem speichern?</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="872"/>
+        <location filename="../dlgtags.cpp" line="958"/>
         <source>Falta el nombre del archivo CSV</source>
         <translation>Der Name der CSV-Datei fehlt</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="924"/>
+        <location filename="../dlgtags.cpp" line="1010"/>
         <source>Marcado: se puede escribir; vacio: solo lectura; intermedio: como la variable</source>
         <translation>Markiert: beschreibbar; leer: nur lesen; teilweise: wie die Variable</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1014"/>
+        <location filename="../dlgtags.cpp" line="1100"/>
         <source>Nueva estructura</source>
         <translation>Neue Struktur</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1014"/>
+        <location filename="../dlgtags.cpp" line="1100"/>
         <source>Nombre (letras, numeros y _):</source>
         <translation>Name (Buchstaben, Ziffern und _):</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1018"/>
-        <location filename="../dlgtags.cpp" line="1044"/>
+        <location filename="../dlgtags.cpp" line="1104"/>
+        <location filename="../dlgtags.cpp" line="1130"/>
         <source>Nombre invalido: %1</source>
         <translation>Ungültiger Name: %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1020"/>
+        <location filename="../dlgtags.cpp" line="1106"/>
         <source>Ya existe %1</source>
         <translation>%1 existiert bereits</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1041"/>
+        <location filename="../dlgtags.cpp" line="1127"/>
         <source>Renombrar estructura</source>
         <translation>Struktur umbenennen</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1041"/>
+        <location filename="../dlgtags.cpp" line="1127"/>
         <source>Nombre:</source>
         <translation>Name:</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1061"/>
+        <location filename="../dlgtags.cpp" line="1147"/>
         <source>Eliminar la estructura %1?
 Las variables de ese tipo quedan con error hasta cambiarles el tipo.</source>
         <translation>Struktur %1 löschen?
 Variablen dieses Typs zeigen einen Fehler, bis ihr Typ geändert wird.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1130"/>
+        <location filename="../dlgtags.cpp" line="1216"/>
         <source>Lo que guarda el historiador (rlhistorian) de cada variable: su valor para las tendencias, sus alarmas y eventos.
 Registrar: guarda el valor cuando cambia mas que la banda muerta (0 = cualquier cambio), y cada &quot;Max. s&quot; aunque no cambie.
 Alarma: &gt;80  &gt;=80  &lt;10  &lt;=10  =1  !=0  1 (bool en 1)  0 (bool en 0)  in:10..20  out:10..20.  Reconocer: la alarma queda en la lista hasta que un usuario la reconoce.
@@ -2502,243 +2603,243 @@ Ereignis: zeichnet jedes Ein- und Ausschalten eines bool auf.
 Hier erscheinen die Variablen mit markierter Spalte Verlauf (Reiter Variablen) und die Strukturelemente mit markiertem Verlauf (Reiter Strukturen): die Alarme einer Struktur gehören zu jedem Element.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1140"/>
+        <location filename="../dlgtags.cpp" line="1226"/>
         <source>Mostrar los tags de sistema (estado de la comunicacion: SYS.Comunicacion, SYS.Ciclo...)</source>
         <translation>Systemtags anzeigen (Kommunikationsstatus: SYS.Comunicacion, SYS.Ciclo...)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1143"/>
+        <location filename="../dlgtags.cpp" line="1229"/>
         <source>No hay variables con historial: marcar la columna Historial en las variables o en los miembros de las estructuras.</source>
         <translation>Keine Variablen mit Verlauf: die Spalte Verlauf bei den Variablen oder den Strukturelementen markieren.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1272"/>
+        <location filename="../dlgtags.cpp" line="1358"/>
         <source>En una estructura la alarma se define en cada miembro (marcar Historial en la pestania Estructuras)</source>
         <translation>In einer Struktur wird der Alarm in jedem Element definiert (Verlauf im Reiter Strukturen markieren)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1148"/>
+        <location filename="../dlgtags.cpp" line="1234"/>
         <source>Variable</source>
         <translation>Variable</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="140"/>
+        <location filename="../dlgtags.cpp" line="142"/>
         <source>Daemon:</source>
         <translation>Daemon:</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="142"/>
+        <location filename="../dlgtags.cpp" line="144"/>
         <source>Editar los tags de otro daemon del proyecto (pregunta si se guardan los cambios de este)</source>
         <translation>Die Tags eines anderen Daemons des Projekts bearbeiten (fragt, ob die Änderungen dieses Daemons gespeichert werden)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="154"/>
+        <location filename="../dlgtags.cpp" line="829"/>
         <source>Guardar los cambios de %1 antes de abrir %2?</source>
         <translation>Änderungen von %1 vor dem Öffnen von %2 speichern?</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1148"/>
+        <location filename="../dlgtags.cpp" line="1234"/>
         <source>Registrar</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1148"/>
+        <location filename="../dlgtags.cpp" line="1234"/>
         <source>Banda muerta</source>
         <translation>Totband</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1148"/>
+        <location filename="../dlgtags.cpp" line="1234"/>
         <source>Max. s</source>
         <translation>Max. s</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1148"/>
+        <location filename="../dlgtags.cpp" line="1234"/>
         <source>Unidad</source>
         <translation>Einheit</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1148"/>
+        <location filename="../dlgtags.cpp" line="1234"/>
         <source>Alarma</source>
         <translation>Alarm</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1149"/>
+        <location filename="../dlgtags.cpp" line="1235"/>
         <source>Histeresis</source>
         <translation>Hysterese</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1149"/>
+        <location filename="../dlgtags.cpp" line="1235"/>
         <source>Texto de la alarma</source>
         <translation>Alarmtext</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1149"/>
+        <location filename="../dlgtags.cpp" line="1235"/>
         <source>Grupo</source>
         <translation>Gruppe</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1149"/>
+        <location filename="../dlgtags.cpp" line="1235"/>
         <source>Prioridad</source>
         <translation>Priorität</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1149"/>
+        <location filename="../dlgtags.cpp" line="1235"/>
         <source>Reconocer</source>
         <translation>Quittieren</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1149"/>
+        <location filename="../dlgtags.cpp" line="1235"/>
         <source>Evento</source>
         <translation>Ereignis</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1151"/>
+        <location filename="../dlgtags.cpp" line="1237"/>
         <source>Segundos: registra aunque no cambie (vacio = el del historiador, 600; 0 = nunca)</source>
         <translation>Sekunden: speichert auch ohne Änderung (leer = der des Historians, 600; 0 = nie)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1152"/>
+        <location filename="../dlgtags.cpp" line="1238"/>
         <source>&gt;80  &gt;=80  &lt;10  &lt;=10  =1  !=0  1 (bool en 1)  0 (bool en 0)  in:10..20  out:10..20</source>
         <translation>&gt;80  &gt;=80  &lt;10  &lt;=10  =1  !=0  1 (bool auf 1)  0 (bool auf 0)  in:10..20  out:10..20</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1153"/>
+        <location filename="../dlgtags.cpp" line="1239"/>
         <source>Histeresis: cuanto tiene que volver el valor para que la alarma termine (evita alarmas que van y vienen)</source>
         <translation>Hysterese: wie weit der Wert zurückgehen muss, damit der Alarm endet (verhindert flatternde Alarme)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1154"/>
+        <location filename="../dlgtags.cpp" line="1240"/>
         <source>Vacio: la descripcion de la variable (o su nombre)</source>
         <translation>Leer: die Beschreibung der Variablen (oder ihr Name)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1155"/>
+        <location filename="../dlgtags.cpp" line="1241"/>
         <source>1 = alta ... 4 = baja; vacio = sin prioridad</source>
         <translation>1 = hoch ... 4 = niedrig; leer = keine Priorität</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1159"/>
+        <location filename="../dlgtags.cpp" line="1245"/>
         <source>Historial y alarmas</source>
         <translation>Historian und Alarme</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1240"/>
+        <location filename="../dlgtags.cpp" line="1326"/>
         <source>Tag de sistema (lo actualiza el daemon): %1</source>
         <translation>Systemtag (vom Daemon aktualisiert): %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1242"/>
+        <location filename="../dlgtags.cpp" line="1328"/>
         <source>
 Para un esclavo o PLC en particular: linea &quot;sys name=Esclavo1 ...&quot; (o Plc0) en el archivo</source>
         <translation>
 Für einen bestimmten Slave oder eine SPS: Zeile &quot;sys name=Esclavo1 ...&quot; (oder Plc0) in der Datei</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1247"/>
+        <location filename="../dlgtags.cpp" line="1333"/>
         <source>Miembro de la estructura %1: vale para todas las variables de ese tipo</source>
         <translation>Element der Struktur %1: gilt für alle Variablen dieses Typs</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1260"/>
+        <location filename="../dlgtags.cpp" line="1346"/>
         <source>1 (alta)</source>
         <translation>1 (hoch)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1260"/>
+        <location filename="../dlgtags.cpp" line="1346"/>
         <source>4 (baja)</source>
         <translation>4 (niedrig)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1274"/>
+        <location filename="../dlgtags.cpp" line="1360"/>
         <source>Registrar, banda muerta, grupo, prioridad, reconocer y evento: valores por defecto de los miembros (intermedio = lo que diga cada miembro)</source>
         <translation>Speichern, Totband, Gruppe, Priorität, Quittieren und Ereignis: Standardwerte der Elemente (teilweise = was jedes Element sagt)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="188"/>
+        <location filename="../dlgtags.cpp" line="179"/>
         <source>Formato</source>
         <translation>Format</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="188"/>
+        <location filename="../dlgtags.cpp" line="179"/>
         <source>Ruta JSON</source>
         <translation>JSON-Pfad</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="188"/>
+        <location filename="../dlgtags.cpp" line="179"/>
         <source>Topico de comando</source>
         <translation>Befehls-Topic</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="189"/>
+        <location filename="../dlgtags.cpp" line="180"/>
         <source>QoS</source>
         <translation>QoS</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="189"/>
+        <location filename="../dlgtags.cpp" line="180"/>
         <source>Retain</source>
         <translation>Retain</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="189"/>
+        <location filename="../dlgtags.cpp" line="180"/>
         <source>Sin datos (s)</source>
         <translation>Keine Daten (s)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="191"/>
+        <location filename="../dlgtags.cpp" line="182"/>
         <source>Valor: el mensaje es el numero (&quot;25.3&quot;, &quot;1&quot;, &quot;true&quot;, &quot;on&quot;).
 JSON: el valor esta dentro de un objeto JSON (ver Ruta JSON)</source>
         <translation>Wert: die Nachricht ist die Zahl („25.3“, „1“, „true“, „on“).
 JSON: der Wert steckt in einem JSON-Objekt (siehe JSON-Pfad)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="192"/>
+        <location filename="../dlgtags.cpp" line="183"/>
         <source>Con formato JSON: ruta del valor, con puntos para objetos anidados (amb.temp). Vacio = value.
 Varios tags pueden leer el mismo topico con rutas distintas</source>
         <translation>Bei JSON-Format: Pfad des Werts, mit Punkten für verschachtelte Objekte (amb.temp). Leer = value.
 Mehrere Tags können dasselbe Topic mit unterschiedlichen Pfaden lesen</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="194"/>
+        <location filename="../dlgtags.cpp" line="185"/>
         <source>Topico donde se publican las escrituras (Escribir marcado). Vacio = &lt;topico&gt;/set</source>
         <translation>Topic, in dem Schreibvorgänge veröffentlicht werden (Markierte schreiben). Leer = &lt;Topic&gt;/set</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="195"/>
+        <location filename="../dlgtags.cpp" line="186"/>
         <source>Calidad de servicio de la suscripcion y de las escrituras: 0, 1 o 2. Vacio = la del archivo (qos=)</source>
         <translation>Servicequalität von Abonnement und Schreibvorgängen: 0, 1 oder 2. Leer = die der Datei (qos=)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="196"/>
+        <location filename="../dlgtags.cpp" line="187"/>
         <source>Las escrituras se publican con retain (el broker las guarda para los que se conectan despues)</source>
         <translation>Schreibvorgänge werden mit Retain veröffentlicht (der Broker behält sie für später verbundene Clients)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="197"/>
+        <location filename="../dlgtags.cpp" line="188"/>
         <source>Segundos sin mensajes para marcar la calidad como mala (0 o vacio = nunca)</source>
         <translation>Sekunden ohne Nachrichten, um die Qualität als schlecht zu markieren (0 oder leer = nie)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="268"/>
+        <location filename="../dlgtags.cpp" line="271"/>
         <source>pvdevelop: tags MQTT - %1</source>
         <translation>pvdevelop: MQTT-Tags - %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="269"/>
+        <location filename="../dlgtags.cpp" line="272"/>
         <source>Topico</source>
         <translation>Topic</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="270"/>
+        <location filename="../dlgtags.cpp" line="273"/>
         <source>Topico MQTT del valor, sin + ni # (planta/sensor1/temp). En un arreglo, {i} se reemplaza por 0, 1, 2...</source>
         <translation>MQTT-Topic des Werts, ohne + und # (anlage/sensor1/temp). Bei einem Array wird {i} durch 0, 1, 2... ersetzt</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="278"/>
+        <location filename="../dlgtags.cpp" line="281"/>
         <source>Sufijo del topico</source>
         <translation>Topic-Suffix</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="314"/>
+        <location filename="../dlgtags.cpp" line="317"/>
         <source>Cada miembro se lee del topico de la variable mas el sufijo (por defecto &quot;/&quot; + nombre).
 Ejemplo: variable Bomba1 con topico planta/bomba1 y miembro Marcha -&gt; planta/bomba1/Marcha.
 Arreglos de variables: {i} en el topico (planta/zona{i}) se reemplaza por 0, 1, 2, ...
@@ -2749,7 +2850,7 @@ Variablen-Arrays: {i} im Topic (anlage/zone{i}) wird durch 0, 1, 2, ... ersetzt.
 Im pvserver: MQTT1.getReal(MQTT1_Zona[2].Temp)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="569"/>
+        <location filename="../dlgtags.cpp" line="573"/>
         <source>Valor</source>
         <translation>Wert</translation>
     </message>
@@ -3944,7 +4045,7 @@ Möchten Sie sie überschreiben?</translation>
 <context>
     <name>PvbTagInfo</name>
     <message>
-        <location filename="../codecompleter.cpp" line="337"/>
+        <location filename="../codecompleter.cpp" line="339"/>
         <source>Ctrl+clic: abrirlo en el editor de tags</source>
         <translation>Strg+Klick: im Tag-Editor öffnen</translation>
     </message>
@@ -4002,6 +4103,51 @@ Möchten Sie sie überschreiben?</translation>
         <location filename="../pvtaginfo.cpp" line="376"/>
         <source>Crear un tag en %1...</source>
         <translation>Tag an %1 anlegen...</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="405"/>
+        <source>Lee el valor: 0 o 1</source>
+        <translation>Liest den Wert: 0 oder 1</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="406"/>
+        <source>Lee el valor como entero con signo</source>
+        <translation>Liest den Wert als vorzeichenbehaftete Ganzzahl</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="407"/>
+        <source>Lee el valor como entero sin signo</source>
+        <translation>Liest den Wert als vorzeichenlose Ganzzahl</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="408"/>
+        <source>Lee el valor con la escala del tag (double)</source>
+        <translation>Liest den Wert mit der Skalierung des Tags (double)</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="409"/>
+        <source>1 = leido bien, 0 = error o sin comunicacion</source>
+        <translation>1 = korrekt gelesen, 0 = Fehler oder keine Kommunikation</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="410"/>
+        <source>Escribe el valor con la escala del tag (falta el valor)</source>
+        <translation>Schreibt den Wert mit der Skalierung des Tags (der Wert fehlt)</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="411"/>
+        <source>Escribe el valor (falta el valor)</source>
+        <translation>Schreibt den Wert (der Wert fehlt)</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="444"/>
+        <source>Lee el bit %1: 0 o 1</source>
+        <translation>Liest Bit %1: 0 oder 1</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="448"/>
+        <source>Escribe el bit %1 sin cambiar los demas (falta el valor: 0 o 1)</source>
+        <translation>Schreibt Bit %1, ohne die anderen zu ändern (der Wert fehlt: 0 oder 1)</translation>
     </message>
 </context>
 <context>
@@ -4121,7 +4267,7 @@ Möchten Sie sie überschreiben?</translation>
         <translation>pvdevelop Modbus-Daemon erstellen</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="172"/>
+        <location filename="../dlgdaemon.cpp" line="167"/>
         <source>Se genero %1.h con los tags para el pvserver.
 
 En el pvserver:
@@ -4142,25 +4288,25 @@ Der Daemon wird gestartet mit:
   rlopcuadaemon %2</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="179"/>
+        <location filename="../dlgdaemon.cpp" line="174"/>
         <source>Iniciar daemon</source>
         <translation>Daemon starten</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="142"/>
+        <location filename="../dlgdaemon.cpp" line="137"/>
         <source>libnodave is not available for OS-X</source>
         <translation>libnodave ist für macOS nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="227"/>
+        <location filename="../dlgdaemon.cpp" line="222"/>
         <source>%1.exe esta en ejecucion y no se puede reemplazar.
 Cerrarlo y compilar?</source>
         <translation>%1.exe läuft und kann nicht ersetzt werden.
 Beenden und kompilieren?</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="539"/>
-        <location filename="../dlgdaemon.cpp" line="593"/>
+        <location filename="../dlgdaemon.cpp" line="548"/>
+        <location filename="../dlgdaemon.cpp" line="602"/>
         <source>No se pudo generar el daemon</source>
         <translation>Der Daemon konnte nicht erzeugt werden</translation>
     </message>

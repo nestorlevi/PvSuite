@@ -46,6 +46,8 @@ static QPoint mousePos(const QMouseEvent *e) { return e->pos(); }
 #endif
 #include <QLineEdit>
 #include <QCheckBox>
+#include <QPlainTextEdit>
+#include <QTabBar>
 #include "pvimages.h"   // pvbProjectName
 #include "pvtablesort.h"   // Nestor: clic en el titulo: ordenar
 
@@ -147,18 +149,7 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
     top->addWidget(comboDaemon);
     top->addStretch(1);
     if(QBoxLayout *bl = qobject_cast<QBoxLayout *>(layout())) bl->insertLayout(0, top);
-    connect(comboDaemon, QOverload<int>::of(&QComboBox::activated), this, [this](int i) {
-      QString f = comboDaemon->itemData(i).toString();
-      auto back = [this]() { comboDaemon->setCurrentIndex(comboDaemon->findData(QFileInfo(mkfile).absoluteFilePath())); };
-      if(f == QFileInfo(mkfile).absoluteFilePath()) return;
-      int r = QMessageBox::question(this, "pvdevelop", tr("Guardar los cambios de %1 antes de abrir %2?").arg(QFileInfo(mkfile).completeBaseName(), QFileInfo(f).completeBaseName()),
-                                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, QMessageBox::Yes);
-      if(r == QMessageBox::Cancel) { back(); return; }
-      switchTo = f;
-      if(r == QMessageBox::No) { reject(); return; }
-      slotOk();   // si hay errores y no se guarda, se queda aca
-      if(QDialog::result() != QDialog::Accepted && isVisible()) { switchTo.clear(); back(); }
-    });
+    connect(comboDaemon, QOverload<int>::of(&QComboBox::activated), this, [this](int i) { askSwitch(comboDaemon->itemData(i).toString()); });
   }
   // miembros: columna de historial y alarmas (texto clave=valor)
   form->tableMembers->insertColumn(M_HIST);
@@ -209,6 +200,18 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   form->tabs->removeTab(form->tabs->indexOf(tabHist));   // sin historiador (ver arriba): la pestania no se muestra
   tabHist->setParent(this);
   tabHist->hide();
+  // Nestor: pestania Daemon (al final): el resto del .mk; Compilar, Abrir y Nuevo los muestra dlgDaemon
+  {
+    QFont mono("Monospace");
+    mono.setStyleHint(QFont::TypeWriter);
+    form->textDaemon->setFont(mono);
+  }
+  form->tabs->tabBar()->moveTab(form->tabs->indexOf(form->tabDaemon), form->tabs->count() - 1);
+  for(QPushButton *b : { form->buttonCompile, form->buttonDaemonCode, form->buttonOpenDaemon, form->buttonNewDaemon }) b->hide();
+  connect(form->buttonCompile, &QPushButton::clicked, this, &DlgTags::slotCompile);
+  connect(form->buttonDaemonCode, &QPushButton::clicked, this, &DlgTags::daemonCodeRequested);
+  connect(form->buttonOpenDaemon, &QPushButton::clicked, this, &DlgTags::slotOpenDaemon);
+  connect(form->buttonNewDaemon, &QPushButton::clicked, this, &DlgTags::slotNewDaemon);
   // texto centrado en todas las columnas
   CenterDelegate *center = new CenterDelegate(this);
   form->table->setItemDelegate(center);
@@ -454,6 +457,7 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   connect(form->buttonMemberRemove, &QPushButton::clicked, this, &DlgTags::slotMemberRemove);
   connect(form->buttonMemberUp,     &QPushButton::clicked, this, &DlgTags::slotMemberUp);
   connect(form->buttonMemberDown,   &QPushButton::clicked, this, &DlgTags::slotMemberDown);
+  form->textDaemon->setPlainText(otherLines.join("\n"));   // Nestor: pestania Daemon (otherLines ya leidas)
   connect(form->tabs, &QTabWidget::currentChanged, this, &DlgTags::slotTabChanged);
   connect(form->buttonBox, &QDialogButtonBox::accepted, this, &DlgTags::slotOk);
   connect(form->buttonBox, &QDialogButtonBox::rejected, this, &DlgTags::reject);
@@ -813,13 +817,95 @@ void DlgTags::slotCheck()
 
 void DlgTags::slotOk()
 {
+  if(buildResult()) accept();
+}
+
+// Nestor: abrir otro daemon (el selector de arriba, Abrir..., Nuevo...): pregunta si se guarda este y cierra;
+// quien abrio el editor (dlgDaemon) abre switchFile()
+void DlgTags::askSwitch(const QString &f)
+{
+  auto back = [this]() { comboDaemon->setCurrentIndex(comboDaemon->findData(QFileInfo(mkfile).absoluteFilePath())); };
+  if(f.isEmpty() || f == QFileInfo(mkfile).absoluteFilePath()) { back(); return; }
+  int r = QMessageBox::question(this, "pvdevelop", tr("Guardar los cambios de %1 antes de abrir %2?").arg(QFileInfo(mkfile).completeBaseName(), QFileInfo(f).completeBaseName()),
+                                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, QMessageBox::Yes);
+  if(r == QMessageBox::Cancel) { back(); return; }
+  switchTo = f;
+  if(r == QMessageBox::No) { reject(); return; }
+  slotOk();   // si hay errores y no se guarda, se queda aca
+  if(QDialog::result() != QDialog::Accepted && isVisible()) { switchTo.clear(); back(); }
+}
+
+QString DlgTags::daemonExtension() const
+{
+  return (protocol == rlTagList::SIEMENS) ? ".mksiemens" : (protocol == rlTagList::OPCUA) ? ".mkopcua" :
+         (protocol == rlTagList::MQTT) ? ".mkmqtt" : ".mkmodbus";
+}
+
+void DlgTags::slotOpenDaemon()
+{
+  const QString ext = daemonExtension();
+  const QString f = QFileDialog::getOpenFileName(this, tr("Abrir daemon"), QFileInfo(mkfile).absolutePath(), "daemon (*" + ext + ")");
+  if(!f.isEmpty()) askSwitch(QFileInfo(f).absoluteFilePath());
+}
+
+void DlgTags::slotNewDaemon()
+{
+  const QString ext = daemonExtension();
+  QString f = QFileDialog::getSaveFileName(this, tr("Nuevo daemon"), QFileInfo(mkfile).absolutePath(), "*" + ext);
+  if(f.isEmpty()) return;
+  if(!f.endsWith(ext)) f += ext;
+  askSwitch(QFileInfo(f).absoluteFilePath());
+}
+
+void DlgTags::slotCompile()
+{
+  if(buildResult()) emit compileRequested(result);
+}
+
+void DlgTags::enableDaemonActions(bool daemonCode)
+{
+  form->buttonCompile->show();
+  form->buttonOpenDaemon->show();
+  form->buttonNewDaemon->show();
+  form->buttonDaemonCode->setVisible(daemonCode);
+  if(protocol == rlTagList::OPCUA) form->buttonCompile->setText(tr("Generar .h"));
+}
+
+void DlgTags::showDaemonTab()
+{
+  if(form->tabs->indexOf(form->tabDaemon) >= 0) form->tabs->setCurrentWidget(form->tabDaemon);
+}
+
+// la pestania Daemon -> otherLines; una linea de tags o de la forma de leer alli se perderia: se avisa
+bool DlgTags::takeDaemonText()
+{
+  if(form->tabs->indexOf(form->tabDaemon) < 0) return true;   // MQTT: lo arma su dialogo
+  QStringList lines = form->textDaemon->toPlainText().split('\n');
+  while(!lines.isEmpty() && lines.last().trimmed().isEmpty()) lines.removeLast();
+  for(int i = 0; i < lines.size(); i++)
+  {
+    rlTagList probe(protocol);
+    if(probe.parseLine(lines[i].toUtf8().constData(), "daemon") == 0) continue;
+    form->tabs->setCurrentWidget(form->tabDaemon);
+    QMessageBox::warning(this, "pvdevelop", tr("La linea %1 de la pestania Daemon es de tags o de la forma de leer:\n%2\n\n"
+                                               "Esos datos se editan en las otras pestanias. Borrarla de aca.").arg(i + 1).arg(lines[i].trimmed()));
+    return false;
+  }
+  otherLines = lines;
+  return true;
+}
+
+// Nestor: el texto del .mk con lo de todas las pestanias (Aceptar y Compilar); false: errores o el usuario no quiso guardar
+bool DlgTags::buildResult()
+{
+  if(!takeDaemonText()) return false;
   QString report;
   if(!check(&report))
   {
     form->labelStatus->setText(report);
     form->tabs->setCurrentIndex(0);
     if(QMessageBox::question(this, "pvdevelop", tr("Hay errores en los tags:\n\n%1\n\nGuardar igual?").arg(report)) != QMessageBox::Yes)
-      return;
+      return false;
   }
   rlTagList list(protocol);
   fillList(list);
@@ -860,7 +946,7 @@ void DlgTags::slotOk()
     if(rlTagList::writeSharedStructs(sharedStructsPath().toLocal8Bit().constData(), merged.sharedStructLines()) < 0)
     {
       QMessageBox::warning(this, "pvdevelop", tr("No se pudo escribir %1").arg(sharedStructsPath()));
-      return;
+      return false;
     }
     if(anyShared) out << "structs=" + QFileInfo(sharedStructsPath()).fileName();
   }
@@ -870,12 +956,12 @@ void DlgTags::slotOk()
     if(csv.isEmpty())
     {
       QMessageBox::warning(this, "pvdevelop", tr("Falta el nombre del archivo CSV"));
-      return;
+      return false;
     }
     if(list.writeCsv(csvPath().toLocal8Bit().constData()) < 0)
     {
       QMessageBox::warning(this, "pvdevelop", tr("No se pudo escribir %1").arg(csvPath()));
-      return;
+      return false;
     }
     out << "tags=" + QDir::fromNativeSeparators(csv);
   }
@@ -884,7 +970,7 @@ void DlgTags::slotOk()
     for(size_t i=0; i<list.tags.size(); i++) out << QString::fromStdString(list.tagLine(list.tags[i]));
   }
   result = out.join("\n") + "\n";
-  accept();
+  return true;
 }
 
 //------------------------------------------------------------------------------------------------

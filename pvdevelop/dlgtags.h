@@ -62,6 +62,13 @@ public:
   QString switchFile() const { return switchTo; }
   //! Nestor: selecciona la variable de un tag (Ctrl+clic en el editor): "Motores[0].Marcha" -> la fila Motores
   void selectTag(const QString &name);
+  //! Nestor: pestania Daemon: muestra Compilar (compileRequested), Abrir y Nuevo (switchFile) y, con daemonCode, Generar codigo
+  void enableDaemonActions(bool daemonCode);
+  void showDaemonTab();
+
+signals:
+  void compileRequested(const QString &text);   // el .mk completo, como al aceptar
+  void daemonCodeRequested();
 
 private slots:
   void slotAdd();
@@ -74,6 +81,9 @@ private slots:
   void slotBrowseCsv();
   void slotStoreChanged();
   void slotOk();
+  void slotCompile();
+  void slotOpenDaemon();
+  void slotNewDaemon();
   // estructuras
   void slotStructSelected(int row);
   void slotStructNew();
@@ -140,6 +150,10 @@ private:
   QString sharedStructsPath() const;             // <proyecto>.mkstruct (carpeta del .mk)
   QSet<QString> sharedLoaded;                    // compartidas que se cargaron al abrir
   QString switchTo;
+  void askSwitch(const QString &file);
+  QString daemonExtension() const;
+  bool takeDaemonText();
+  bool buildResult();
   QComboBox *comboDaemon;
 };
 

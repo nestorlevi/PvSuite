@@ -383,3 +383,73 @@ QString pvbResolveAddress(QWidget *parent, const QString &text0, const QPoint &g
   pvbTagsInvalidate();
   return dlg.source() + (code ? "_" : ":") + dlg.name();
 }
+
+QList<PvbTagCall> pvbTagCalls(const PvbTag &t, const QString &ref)
+{
+  QList<PvbTagCall> l;
+  if(t.bit >= 0 || t.source.isEmpty()) return l;
+  const QString ty = t.type.toLower();
+  const bool modbus = t.protocol == "modbus";
+  QStringList get, set;
+  if(ty == "bool") { get << "getBool"; set << "setBool"; }
+  else if(ty == "real" || ty == "lreal") { get << "getReal"; set << "setReal"; }
+  else if(isIntType(ty))
+  {
+    get << (ty == "uint" || ty == "udint" || ty == "byte" ? "getUInt" : "getInt") << "getReal";
+    set << "setInt" << "setReal";
+  }
+  if(get.isEmpty()) return l;   // estructura, bloque...
+  get << "quality";
+  if(!t.rw || t.name.startsWith("SYS.")) set.clear();
+  auto help = [](const QString &fn) -> QString {
+    if(fn == "getBool") return QCoreApplication::translate("PvbTagInfo", "Lee el valor: 0 o 1");
+    if(fn == "getInt") return QCoreApplication::translate("PvbTagInfo", "Lee el valor como entero con signo");
+    if(fn == "getUInt") return QCoreApplication::translate("PvbTagInfo", "Lee el valor como entero sin signo");
+    if(fn == "getReal") return QCoreApplication::translate("PvbTagInfo", "Lee el valor con la escala del tag (double)");
+    if(fn == "quality") return QCoreApplication::translate("PvbTagInfo", "1 = leido bien, 0 = error o sin comunicacion");
+    if(fn == "setReal") return QCoreApplication::translate("PvbTagInfo", "Escribe el valor con la escala del tag (falta el valor)");
+    return QCoreApplication::translate("PvbTagInfo", "Escribe el valor (falta el valor)");
+  };
+  // Nestor: el prototipo del cliente (rlModbusClient y los demas): que devuelve y que recibe
+  auto proto = [](const QString &fn) -> QString {
+    static const QMap<QString, QString> ret = {
+      { "getBool", "int" }, { "getInt", "int" }, { "getUInt", "unsigned int" }, { "getReal", "double" },
+      { "quality", "int" } };
+    static const QMap<QString, QString> arg = {
+      { "setBool", "int value" }, { "setInt", "int value" }, { "setReal", "double value" } };
+    if(fn.startsWith("set")) return QString("int %1(tag, %2)").arg(fn, arg.value(fn));
+    return QString("%1 %2(tag)").arg(ret.value(fn), fn);
+  };
+  for(const QString &fn : get) l << PvbTagCall{ QString("%1.%2(%3)").arg(t.source, fn, ref), help(fn), false, proto(fn), 0, QString() };
+  for(const QString &fn : set) l << PvbTagCall{ QString("%1.%2(%3, )").arg(t.source, fn, ref), help(fn), true, proto(fn), 0, QString() };
+
+  // Nestor: los bits de un entero (bitPos 0..N-1): el tag bool que ya lo nombra (%MW130.4 = FlechaA12) o rlTagBitOf.
+  // Escribir: setBool en los de 8 y 16 bits de Modbus y Siemens
+  const bool siemens = t.protocol == "siemens";
+  if(isIntType(ty) && (modbus || siemens))
+  {
+    const int nbits = (ty == "byte") ? 8 : (ty == "int" || ty == "uint") ? 16 : 32;
+    const bool canWrite = !set.isEmpty() && nbits <= 16;
+    const QList<PvbTag> &tags = pvbTagsCached();
+    for(int n = 0; n < nbits; n++)
+    {
+      const PvbTag *named = nullptr;
+      if(!t.address.isEmpty())
+        for(const PvbTag &x : tags)
+          if(x.source == t.source && x.type.toLower() == "bool" && x.bit < 0 &&
+             (x.address.compare(t.address + "." + QString::number(n), Qt::CaseInsensitive) == 0 ||
+              x.address.compare(t.address + ":X" + QString::number(n), Qt::CaseInsensitive) == 0)) { named = &x; break; }
+      const QString bitRef = named ? t.source + "_" + named->name : QString("rlTagBitOf(%1, %2)").arg(ref).arg(n);
+      const QString label = named ? QString("%1   %2").arg(n).arg(named->name) : QString::number(n);
+      QString h = QCoreApplication::translate("PvbTagInfo", "Lee el bit %1: 0 o 1").arg(n);
+      if(named && !named->desc.isEmpty()) h += " - " + named->desc;
+      l << PvbTagCall{ QString("%1.getBool(%2)").arg(t.source, bitRef), h, false, proto("getBool"), 1, label };
+      if(!canWrite) continue;
+      const QString w = QCoreApplication::translate("PvbTagInfo", "Escribe el bit %1 sin cambiar los demas (falta el valor: 0 o 1)").arg(n);
+      // un tag de bit rw=0 lo descarta el cliente: por la palabra
+      const QString writeRef = (named && named->rw) ? bitRef : QString("rlTagBitOf(%1, %2)").arg(ref).arg(n);
+      l << PvbTagCall{ QString("%1.setBool(%2, )").arg(t.source, writeRef), w, true, proto("setBool"), 2, label };
+    }
+  }
+  return l;
+}

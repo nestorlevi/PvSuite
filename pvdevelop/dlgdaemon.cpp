@@ -109,26 +109,21 @@ QString dlgDaemon::run(const QString &file, const QString &tag)
 
 QString dlgDaemon::run()
 {
-  perhapsEditTags();
-  exec();
+  if(what == PPI_DAEMON) { exec(); return ""; }   // sin tags: el texto del .mk en esta ventana
+  slotTags();   // Nestor: una sola ventana: el editor de tags con la pestania Daemon
   return "";
 }
 
-// Nestor: si el archivo ya tiene tags ("tag ..." o "tags=archivo.csv"), se abre el editor de tags;
-// al cerrarlo queda esta ventana para compilar
-void dlgDaemon::perhapsEditTags()
+// Nestor: el archivo ya tiene tags ("tag ..." o "tags=archivo.csv"): el editor empieza en Variables; si no, en Daemon
+bool dlgDaemon::fileHasTags() const
 {
-  if(what == PPI_DAEMON) return;
   const QStringList lines = form->textEdit->toPlainText().split('\n');
   for(const QString &line : lines)
   {
     QString l = line.trimmed();
-    if(l.startsWith("tag ") || l.startsWith("tag\t") || l.startsWith("tags="))
-    {
-      QTimer::singleShot(0, this, &dlgDaemon::slotTags);
-      return;
-    }
+    if(l.startsWith("tag ") || l.startsWith("tag\t") || l.startsWith("tags=")) return true;
   }
+  return false;
 }
 
 // Nestor: el comando que compila un daemon generado (src: el .cpp sin la extension); false si no se puede
@@ -175,7 +170,7 @@ void dlgDaemon::slotCompile()
            "  rlOpcUaClient %1(%1_MAILBOX, %1_SHARED_MEMORY, %1_SHARED_MEMORY_SIZE);\n"
            "  float v = %1.getReal(%1_<tag>);\n\n"
            "El daemon se inicia con:\n"
-           "  rlopcuadaemon %2").arg(target).arg(f_info.fileName()), QMessageBox::Ok, this);
+           "  rlopcuadaemon %2").arg(target).arg(f_info.fileName()), QMessageBox::Ok, top());
       QPushButton *start = box.addButton(tr("Iniciar daemon"), QMessageBox::ActionRole);
       box.exec();
       if(box.clickedButton() == start)
@@ -204,7 +199,7 @@ void dlgDaemon::slotCompile()
       QString error;
       if(!daemonBuildCommand(what, src, &job, &error))
       {
-        QMessageBox::information(this,"pvdevelop",error,QMessageBox::Ok);
+        QMessageBox::information(top(),"pvdevelop",error,QMessageBox::Ok);
         break;
       }
 #ifdef PVUNIX
@@ -224,7 +219,7 @@ void dlgDaemon::slotCompile()
         t.waitForFinished(3000);
         if(QString::fromLocal8Bit(t.readAll()).contains(exe + ".exe", Qt::CaseInsensitive))
         {
-          if(QMessageBox::question(this, "pvdevelop", tr("%1.exe esta en ejecucion y no se puede reemplazar.\nCerrarlo y compilar?").arg(exe))
+          if(QMessageBox::question(top(), "pvdevelop", tr("%1.exe esta en ejecucion y no se puede reemplazar.\nCerrarlo y compilar?").arg(exe))
              != QMessageBox::Yes) break;
           env.insert("PVB_KILL", "1");
         }
@@ -307,7 +302,6 @@ void dlgDaemon::slotOpen()
    if(!f.isEmpty())
    {
        load(QDir::toNativeSeparators(f));
-       perhapsEditTags();
    }
 }
 void dlgDaemon::slotNew()
@@ -324,19 +318,34 @@ void dlgDaemon::slotNew()
    }
 }
 
-// Nestor: editor de tags sobre el texto actual
+// Nestor: el editor de tags es la ventana del daemon (pestanias Variables, Estructuras, Historial y Daemon):
+// Compilar desde la pestania Daemon; Aceptar guarda y compila si cambio (como Guardar y cerrar); Abrir, Nuevo y el
+// selector de arriba cambian de archivo
 void dlgDaemon::slotTags()
 {
   int protocol = (what == SIEMENSTCP_DAEMON) ? rlTagList::SIEMENS :
                  (what == OPCUA_DAEMON)      ? rlTagList::OPCUA   : rlTagList::MODBUS;
-  while(true)   // Nestor: el editor puede pedir otro daemon del mismo protocolo
+  while(true)
   {
-    DlgTags dlg(protocol, QFileInfo(filename).absoluteFilePath(), form->textEdit->toPlainText(), this);
+    const bool hasTags = fileHasTags();
+    DlgTags dlg(protocol, QFileInfo(filename).absoluteFilePath(), form->textEdit->toPlainText(), parentWidget());
+    dlg.setWindowTitle(windowTitle() + " - " + QFileInfo(filename).fileName());
+    dlg.enableDaemonActions(what == OPCUA_DAEMON);
+    if(!hasTags) dlg.showDaemonTab();
     if(!selectTag.isEmpty()) { dlg.selectTag(selectTag); selectTag.clear(); }
-    if(dlg.exec() == QDialog::Accepted)
+    connect(&dlg, &DlgTags::compileRequested, this, [this](const QString &text) {
+      form->textEdit->document()->setPlainText(text);
+      slotCompile();
+    });
+    connect(&dlg, &DlgTags::daemonCodeRequested, this, &dlgDaemon::slotDaemonCode);
+    front = &dlg;
+    const int r = dlg.exec();
+    front = nullptr;
+    if(r == QDialog::Accepted)
     {
       form->textEdit->document()->setPlainText(dlg.resultText());
-      save();
+      const bool changed = save();
+      if(changed || needsBuild()) slotCompile();
     }
     if(dlg.switchFile().isEmpty()) return;
     load(QDir::toNativeSeparators(dlg.switchFile()));
@@ -536,7 +545,7 @@ int dlgDaemon::generate()
   }
   if(ret < 0) // Nestor: antes un error cerraba pvdevelop (exit)
   {
-    QMessageBox::warning(this, "pvdevelop", g_daemon_error.isEmpty() ? tr("No se pudo generar el daemon") : g_daemon_error);
+    QMessageBox::warning(top(), "pvdevelop", g_daemon_error.isEmpty() ? tr("No se pudo generar el daemon") : g_daemon_error);
     return -1;
   }
   return 0;

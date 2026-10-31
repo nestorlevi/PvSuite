@@ -46,7 +46,9 @@ private:
     bool needsBuild() const;    // el .exe (o el .h de OPC UA) es mas viejo que el proyecto
     int  generate();        // -1 si hubo errores (se muestran)
     QString extension() const;
-    void perhapsEditTags();  // Nestor: abre el editor de tags si el archivo tiene tags
+    bool fileHasTags() const;  // Nestor: el editor de tags empieza en Variables (si no, en la pestania Daemon)
+    QWidget *top() { return front ? front : static_cast<QWidget *>(this); }   // Nestor: padre de los avisos
+    QWidget *front = nullptr;  // Nestor: el editor de tags abierto (esta ventana no se muestra)
     int what;
     QString filename;
     QString selectTag;          // Nestor: run(file, tag)

@@ -40,6 +40,8 @@
 #include <QPainter>
 #include <QToolTip>
 #include <QMouseEvent>
+#include <QTimer>
+#include <QAction>
 #include "pvtaginfo.h"
 #include <algorithm>
 
@@ -649,5 +651,63 @@ void CodeCompleter::insertCompletion(const QString &completion)
     const QString rest = tc.block().text().mid(tc.positionInBlock());
     if(!rest.startsWith("(")) tc.insertText("(");
   }
+  edit->setTextCursor(tc);
+  // Nestor: un tag (PLC1_Horas): segunda lista con las llamadas que le sirven (cuando se cierra la primera)
+  if(wordKind.value(completion) == QChar('T')) QTimer::singleShot(0, this, [this, completion]() { offerTagCalls(completion); });
+}
+
+// PLC1_Horas -> PLC1.getUInt(PLC1_Horas), o PLC1.setInt(PLC1_Horas, |) con el cursor en el valor. Esc deja solo el tag.
+// No se ofrece si el tag ya es el argumento de una llamada (PLC1.getInt(PLC1_Horas)
+void CodeCompleter::offerTagCalls(const QString &tag)
+{
+  PvbTag t;
+  if(!pvbLookupTag(tag, &t) || !tag.startsWith(t.source + "_")) return;   // un miembro suelto (Velocidad) no
+  const QList<PvbTagCall> calls = pvbTagCalls(t, tag);
+  if(calls.isEmpty()) return;
+  QTextCursor tc = edit->textCursor();
+  const QString line = tc.block().text();
+  const int blockPos = tc.block().position(), end = tc.positionInBlock(), start = end - int(tag.size());
+  if(start < 0 || line.mid(start, tag.size()) != tag) return;
+  const QString before = line.left(start).trimmed(), after = line.mid(end).trimmed();
+  if(before.endsWith('(') || before.endsWith(',') || before.endsWith('.') || after.startsWith(')') || after.startsWith(',')) return;
+  QMenu menu(edit);
+  menu.setToolTipsVisible(true);
+  QAction *first = nullptr;
+  bool writes = false;
+  QMenu *bitMenu[3] = { &menu, nullptr, nullptr };
+  // el prototipo a la derecha (la columna de los atajos); el texto que se inserta va en data
+  auto add = [](QMenu *m, const QString &text, const PvbTagCall &c, int i) {
+    QString proto = c.proto;
+    QAction *a = m->addAction(text + (proto.isEmpty() ? QString() : "\t" + proto.replace("&", "&&")));
+    a->setToolTip(c.help + "\n" + c.text);
+    a->setData(i);
+    return a;
+  };
+  for(int i = 0; i < calls.size(); i++)
+  {
+    const PvbTagCall &c = calls[i];
+    if(c.group == 0)
+    {
+      if(c.write && !writes) { menu.addSeparator(); writes = true; }
+      QAction *a = add(&menu, QString(c.text).replace("&", "&&"), c, i);
+      if(first == nullptr) first = a;
+      continue;
+    }
+    if(bitMenu[c.group] == nullptr)
+    {
+      if(c.group == 1) menu.addSeparator();
+      bitMenu[c.group] = menu.addMenu(c.group == 1 ? tr("Leer un bit") : tr("Escribir un bit"));
+      bitMenu[c.group]->setToolTipsVisible(true);
+    }
+    add(bitMenu[c.group], tr("Bit %1").arg(c.label), c, i);
+  }
+  menu.setActiveAction(first);
+  QAction *a = menu.exec(edit->viewport()->mapToGlobal(edit->cursorRect().bottomLeft()));
+  if(a == nullptr || !a->data().isValid()) return;
+  const PvbTagCall &c = calls.value(a->data().toInt());
+  tc.setPosition(blockPos + start);
+  tc.setPosition(blockPos + end, QTextCursor::KeepAnchor);
+  tc.insertText(c.text);
+  if(c.write) tc.movePosition(QTextCursor::Left);   // el valor: entre ", " y ")"
   edit->setTextCursor(tc);
 }

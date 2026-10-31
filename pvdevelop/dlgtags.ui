@@ -540,6 +540,87 @@ Las estructuras quedan siempre en el archivo del daemon.</string>
        </item>
       </layout>
      </widget>
+     <widget class="QWidget" name="tabDaemon">
+      <attribute name="title">
+       <string>Daemon</string>
+      </attribute>
+      <attribute name="toolTip">
+       <string>El resto del archivo del daemon: conexión con el PLC, memoria compartida, mailbox, ciclos y comentarios</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="layoutDaemon">
+       <item>
+        <widget class="QLabel" name="labelDaemonHelp">
+         <property name="text">
+          <string>Las líneas del archivo que no son tags: conexión con el PLC, memoria compartida, mailbox y comentarios. Los tags, las estructuras y la forma de leer se editan en las otras pestañas.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPlainTextEdit" name="textDaemon">
+         <property name="toolTip">
+          <string>Ajustes del daemon (clave=valor, una por línea; # = comentario). Se guardan con Aceptar junto con los tags</string>
+         </property>
+         <property name="lineWrapMode">
+          <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="layoutDaemonButtons">
+         <item>
+          <widget class="QPushButton" name="buttonCompile">
+           <property name="text">
+            <string>Compilar</string>
+           </property>
+           <property name="toolTip">
+            <string>Guarda, genera el daemon (su .cpp, .h y .tagmap) y lo compila en la consola de compilación</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonDaemonCode">
+           <property name="text">
+            <string>Generar código del daemon</string>
+           </property>
+           <property name="toolTip">
+            <string>Copia el código de rlopcuadaemon (y open62541) a la carpeta opcuadaemon del proyecto para modificarlo y compilarlo</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerDaemon">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonOpenDaemon">
+           <property name="text">
+            <string>Abrir...</string>
+           </property>
+           <property name="toolTip">
+            <string>Abrir otro archivo de daemon del mismo tipo (pregunta si se guardan los cambios de este)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonNewDaemon">
+           <property name="text">
+            <string>Nuevo...</string>
+           </property>
+           <property name="toolTip">
+            <string>Crear un daemon nuevo del mismo tipo (pregunta si se guardan los cambios de este)</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>

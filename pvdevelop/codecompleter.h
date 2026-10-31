@@ -89,6 +89,7 @@ private slots:
 private:
   QString wordUnderCursor() const;
   void updateModel();
+  void offerTagCalls(const QString &tag);   // Nestor: despues de elegir un tag: la funcion que lo usa (pvbTagCalls)
 
   QTextEdit *edit;
   QCompleter *completer;
