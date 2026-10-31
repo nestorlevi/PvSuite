@@ -31,6 +31,7 @@ public:
     dlgDaemon(int what);
     ~dlgDaemon();
     QString run();
+    QString run(const QString &file, const QString &tag);   // Nestor: ese archivo, con el tag seleccionado en el editor de tags
 public slots:
     void slotCompile();
     void slotClose();
@@ -48,6 +49,7 @@ private:
     void perhapsEditTags();  // Nestor: abre el editor de tags si el archivo tiene tags
     int what;
     QString filename;
+    QString selectTag;          // Nestor: run(file, tag)
     Ui_DialogDaemon *form;
 };
 

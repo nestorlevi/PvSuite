@@ -100,6 +100,13 @@ dlgDaemon::~dlgDaemon()
 {
 }
 
+QString dlgDaemon::run(const QString &file, const QString &tag)
+{
+  load(file);
+  selectTag = tag;
+  return run();
+}
+
 QString dlgDaemon::run()
 {
   perhapsEditTags();
@@ -325,6 +332,7 @@ void dlgDaemon::slotTags()
   while(true)   // Nestor: el editor puede pedir otro daemon del mismo protocolo
   {
     DlgTags dlg(protocol, QFileInfo(filename).absoluteFilePath(), form->textEdit->toPlainText(), this);
+    if(!selectTag.isEmpty()) { dlg.selectTag(selectTag); selectTag.clear(); }
     if(dlg.exec() == QDialog::Accepted)
     {
       form->textEdit->document()->setPlainText(dlg.resultText());

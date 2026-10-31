@@ -73,6 +73,7 @@ private slots:
   void slotDaemonModbus();
   void slotDaemonSiemenstcp();
   void slotDaemonPpi();
+  void openTagDefinition(const QString &source, const QString &tag);   // Nestor: Ctrl+clic en un tag del editor
   void slotAboutManual();
   void showHelp(const QString &topic = QString(), QWidget *from = nullptr);   // Nestor: Ayuda > Manual y F1
   void slotHelpPdf();

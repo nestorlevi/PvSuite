@@ -47,7 +47,8 @@ class QWidget;
 
 // de los .tagmap del proyecto (address: plcaddr=, "%MW0.0"; protocol: modbus, siemens)
 // bit: el bit de un entero que se pidio con "PLC1:Estado.3" (lo arma el generador; -1 = el tag entero)
-struct PvbTag { QString source, name, type, address, protocol; int bit = -1; bool rw = true; };   // rw: rw= del .tagmap (0 = solo lectura)
+struct PvbTag { QString source, name, type, address, protocol; int bit = -1; bool rw = true;   // rw: rw= del .tagmap (0 = solo lectura)
+               QString desc, unit, alarm, alarmText; };   // Nestor: desc=, unit=, alarm=, alarm_text= (pvtaginfo.h)
 
 QList<PvbTag> pvbProjectTags();                        // todos los tags (con los de sistema)
 QString pvbBinding(QWidget *w);                        // "clave=valor ..."

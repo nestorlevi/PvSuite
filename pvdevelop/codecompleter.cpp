@@ -38,6 +38,9 @@
 #include <QIcon>
 #include <QPixmap>
 #include <QPainter>
+#include <QToolTip>
+#include <QMouseEvent>
+#include "pvtaginfo.h"
 #include <algorithm>
 
 // palabra -> descripcion (firma de la funcion, "clase de rllib", ...)
@@ -314,6 +317,42 @@ QStringList pvbFormatCode(const QStringList &lines, const QString &unit)
   return out;
 }
 
+// Nestor: el tag que hay donde esta el mouse
+static bool tagAtPoint(QTextEdit *edit, const QPoint &pos, PvbTag *t)
+{
+  QTextCursor c = edit->cursorForPosition(pos);
+  QRect r = edit->cursorRect(c);
+  if(qAbs(pos.y() - r.center().y()) > r.height()) return false;   // debajo de la ultima linea
+  return pvbTagAt(c.block().text(), c.positionInBlock(), t);
+}
+
+bool CodeTextEdit::viewportEvent(QEvent *event)
+{
+  if(event->type() == QEvent::ToolTip)
+  {
+    QHelpEvent *he = static_cast<QHelpEvent *>(event);
+    PvbTag t;
+    if(tagAtPoint(this, he->pos(), &t))
+      QToolTip::showText(he->globalPos(), pvbTagSummary(t, true) + "<br><i>" +
+                         QCoreApplication::translate("PvbTagInfo", "Ctrl+clic: abrirlo en el editor de tags") + "</i>", viewport());
+    else QToolTip::hideText();
+    return true;
+  }
+  return QTextEdit::viewportEvent(event);
+}
+
+void CodeTextEdit::mousePressEvent(QMouseEvent *event)
+{
+  PvbTag t;
+  if(event->button() == Qt::LeftButton && (event->modifiers() & Qt::ControlModifier) && tagAtPoint(this, event->pos(), &t))
+  {
+    event->accept();
+    emit tagActivated(t.source, t.name);
+    return;
+  }
+  QTextEdit::mousePressEvent(event);
+}
+
 void CodeTextEdit::contextMenuEvent(QContextMenuEvent *event)
 {
   QMenu *menu = createStandardContextMenu(event->pos());
@@ -551,6 +590,23 @@ bool CodeCompleter::eventFilter(QObject *obj, QEvent *event)
 
   if((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_Space)
   {
+    // Nestor: una direccion antes del cursor (%MW1, 40002, DB1.DBW0): el tag que esta ahi (o crearlo)
+    QTextCursor c = edit->textCursor();
+    const QString before = c.block().text().left(c.positionInBlock());
+    int start = before.size();
+    while(start > 0 && (before[start - 1].isLetterOrNumber() || QString("%.:").contains(before[start - 1]))) start--;
+    const QString address = before.mid(start);
+    QStringList canCreate;
+    if(!c.hasSelection() && pvbLooksLikeAddress(address) && (!pvbTagsAtAddress(address, &canCreate).isEmpty() || !canCreate.isEmpty()))
+    {
+      const QString tag = pvbResolveAddress(edit, address, edit->viewport()->mapToGlobal(edit->cursorRect().bottomLeft()), true);
+      if(!tag.isEmpty())
+      {
+        c.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, address.size());
+        c.insertText(tag);
+      }
+      return true;
+    }
     perhapsShow(true);
     return true;
   }

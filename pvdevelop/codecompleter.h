@@ -47,8 +47,13 @@ public:
   QString indentUnit() const { return unit; }
   void showDocument(QTextDocument *doc);   // otro documento (con su deshacer), con la misma tabulacion y letra
 
+signals:
+  void tagActivated(const QString &source, const QString &name);   // Nestor: Ctrl+clic sobre un tag (pvtaginfo.h)
+
 protected:
   void keyPressEvent(QKeyEvent *event) override;
+  bool viewportEvent(QEvent *event) override;           // Nestor: mouse sobre un tag: direccion y comentario
+  void mousePressEvent(QMouseEvent *event) override;    // Nestor: Ctrl+clic sobre un tag
   void contextMenuEvent(QContextMenuEvent *event) override;   // Nestor: + Formatear codigo
 
 private:

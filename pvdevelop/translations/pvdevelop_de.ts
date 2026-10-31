@@ -82,17 +82,17 @@
 <context>
     <name>CodeCompleter</name>
     <message>
-        <location filename="../codecompleter.cpp" line="416"/>
+        <location filename="../codecompleter.cpp" line="455"/>
         <source>widget de %1</source>
         <translation>Widget von %1</translation>
     </message>
     <message>
-        <location filename="../codecompleter.cpp" line="430"/>
+        <location filename="../codecompleter.cpp" line="469"/>
         <source>tag de %1 (%2)</source>
         <translation>Tag von %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../codecompleter.cpp" line="434"/>
+        <location filename="../codecompleter.cpp" line="473"/>
         <source>daemon (memoria compartida)</source>
         <translation>Daemon (gemeinsamer Speicher)</translation>
     </message>
@@ -100,12 +100,12 @@
 <context>
     <name>CodeTextEdit</name>
     <message>
-        <location filename="../codecompleter.cpp" line="322"/>
+        <location filename="../codecompleter.cpp" line="361"/>
         <source>Formatear código (lineas seleccionadas)</source>
         <translation>Code formatieren (markierte Zeilen)</translation>
     </message>
     <message>
-        <location filename="../codecompleter.cpp" line="322"/>
+        <location filename="../codecompleter.cpp" line="361"/>
         <source>Formatear código (todo el archivo)</source>
         <translation>Code formatieren (ganze Datei)</translation>
     </message>
@@ -824,7 +824,7 @@ Zum Wechseln der ToolBox: Maus freigeben und erneut einfangen.</translation>
 <context>
     <name>DlgBind</name>
     <message>
-        <location filename="../dlgbind.cpp" line="48"/>
+        <location filename="../dlgbind.cpp" line="49"/>
         <source>Accion y animacion de %1</source>
         <translation>Aktion und Animation von %1</translation>
     </message>
@@ -1010,147 +1010,147 @@ Zum Wechseln der ToolBox: Maus freigeben und erneut einfangen.</translation>
         <translation>Animation</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="130"/>
+        <location filename="../dlgbind.cpp" line="131"/>
         <source>Sirve para:</source>
         <translation>Gilt für:</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="130"/>
+        <location filename="../dlgbind.cpp" line="131"/>
         <source>todos los widgets</source>
         <translation>alle Widgets</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="132"/>
+        <location filename="../dlgbind.cpp" line="133"/>
         <source>Este widget (%1) no lo usa.</source>
         <translation>Dieses Widget (%1) verwendet es nicht.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="140"/>
+        <location filename="../dlgbind.cpp" line="141"/>
         <source>Escribir valor (el de la columna Valor), alternar 0/1, sumar o restar (con los limites de Opciones), ir a la pantalla indicada, volver a la anterior o a la de inicio.</source>
         <translation>Wert schreiben (den der Spalte Wert), 0/1 umschalten, addieren oder subtrahieren (innerhalb der Grenzen unter Optionen), zur angegebenen Maske gehen, zur vorherigen oder zur Startmaske zurückkehren.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="143"/>
+        <location filename="../dlgbind.cpp" line="144"/>
         <source>Que hace el widget cuando se lo pulsa y suelta (un clic completo).</source>
         <translation>Was das Widget tut, wenn es gedrückt und losgelassen wird (ein vollständiger Klick).</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="145"/>
+        <location filename="../dlgbind.cpp" line="146"/>
         <source>Que hace en el momento en que se aprieta el boton del mouse sobre el widget.</source>
         <translation>Was beim Drücken der Maustaste auf dem Widget geschieht.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="146"/>
+        <location filename="../dlgbind.cpp" line="147"/>
         <source>Con un Label se arma un pulsador sin usar un PushButton.</source>
         <translation>Mit einem Label lässt sich eine Schaltfläche ohne PushButton bauen.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="148"/>
+        <location filename="../dlgbind.cpp" line="149"/>
         <source>Que hace al soltar el boton del mouse. Junto con Al presionar arma un pulsador momentaneo.</source>
         <translation>Was beim Loslassen der Maustaste geschieht. Zusammen mit Beim Drücken ergibt das einen Taster.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="150"/>
+        <location filename="../dlgbind.cpp" line="151"/>
         <source>Completa Al presionar = 1 y Al soltar = 0 en el tag de Al presionar (o el de Al hacer clic): el tag vale 1 solo mientras se mantiene apretado.</source>
         <translation>Setzt Beim Drücken = 1 und Beim Loslassen = 0 auf dem Tag von Beim Drücken (oder Beim Klicken): Der Tag ist nur 1, solange gedrückt gehalten wird.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="153"/>
+        <location filename="../dlgbind.cpp" line="154"/>
         <source>Tag donde se escribe lo que el operador ingresa: el numero de un LineEdit (al apretar Enter), la posicion de un Slider, Dial o SpinBox, o 1/0 de un CheckBox o RadioButton.</source>
         <translation>Tag, in den die Eingabe des Bedieners geschrieben wird: die Zahl eines LineEdit (bei Enter), die Position eines Slider, Dial oder SpinBox, oder 1/0 einer CheckBox oder RadioButton.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="156"/>
+        <location filename="../dlgbind.cpp" line="157"/>
         <source>Minimo y maximo para Sumar, Restar y lo ingresado: el valor escrito nunca sale de ese rango. Vacio = sin limite.</source>
         <translation>Minimum und Maximum für Addieren, Subtrahieren und die Eingabe: Der geschriebene Wert verlässt diesen Bereich nie. Leer = keine Grenze.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="158"/>
+        <location filename="../dlgbind.cpp" line="159"/>
         <source>Pregunta que se muestra antes de la accion de Al hacer clic (o de lo ingresado); si el operador cancela, no se escribe nada. Vacio = sin confirmar.</source>
         <translation>Frage, die vor der Aktion von Beim Klicken (oder vor der Eingabe) erscheint; bricht der Bediener ab, wird nichts geschrieben. Leer = ohne Bestätigung.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="161"/>
+        <location filename="../dlgbind.cpp" line="162"/>
         <source>La accion se hace solo si se cumple la condicion (por ejemplo PLC1:Remoto == 1). Si no se cumple, se muestra el mensaje.</source>
         <translation>Die Aktion wird nur ausgeführt, wenn die Bedingung erfüllt ist (zum Beispiel PLC1:Remoto == 1). Andernfalls erscheint die Meldung.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="163"/>
+        <location filename="../dlgbind.cpp" line="164"/>
         <source>Muestra el valor del tag como texto. Formato: vacio (el numero), %d, %.1f bar, o textos por valor como Parado|Marcha|Falla.</source>
         <translation>Zeigt den Tag-Wert als Text. Format: leer (die Zahl), %d, %.1f bar, oder Texte je Wert wie Halt|Lauf|Störung.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="166"/>
+        <location filename="../dlgbind.cpp" line="167"/>
         <source>Mueve el widget segun el valor del tag: el largo de una barra, la posicion de un Slider o Dial, el numero de un LCD o SpinBox, o marca un CheckBox / RadioButton si es distinto de 0.</source>
         <translation>Bewegt das Widget gemäß dem Tag-Wert: die Länge eines Balkens, die Position eines Slider oder Dial, die Zahl eines LCD oder SpinBox, oder hakt eine CheckBox / RadioButton an, wenn er ungleich 0 ist.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="170"/>
+        <location filename="../dlgbind.cpp" line="171"/>
         <source>Cambia el color de fondo o del texto segun reglas valor=color separadas por ; (por ejemplo 0=#808080;1=#00C000 o &gt;80=#FF0000;else=). Los colores van como #RRGGBB; vacio = el original.</source>
         <translation>Ändert die Hintergrund- oder Textfarbe nach Regeln Wert=Farbe, getrennt durch ; (zum Beispiel 0=#808080;1=#00C000 oder &gt;80=#FF0000;else=). Farben als #RRGGBB; leer = die ursprüngliche.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="172"/>
+        <location filename="../dlgbind.cpp" line="173"/>
         <source>Parpadea en rojo (o con los colores de Color) mientras se cumple la condicion.</source>
         <translation>Blinkt rot (oder mit den Farben von Farbe), solange die Bedingung erfüllt ist.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="174"/>
+        <location filename="../dlgbind.cpp" line="175"/>
         <source>Muestra el widget solo mientras se cumple la condicion; Invertir lo oculta en ese caso.</source>
         <translation>Zeigt das Widget nur, solange die Bedingung erfüllt ist; Invertieren blendet es in diesem Fall aus.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="176"/>
+        <location filename="../dlgbind.cpp" line="177"/>
         <source>Si el daemon se detiene o el dato es malo, el widget se pinta de gris y el texto muestra --- en lugar de un valor viejo.</source>
         <translation>Wenn der Daemon anhält oder der Wert schlecht ist, wird das Widget grau und der Text zeigt --- statt eines alten Wertes.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="178"/>
+        <location filename="../dlgbind.cpp" line="179"/>
         <source>Una imagen por cada valor del tag (0, 1, 2...), separadas por |.</source>
         <translation>Ein Bild für jeden Tag-Wert (0, 1, 2...), getrennt durch |.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="180"/>
+        <location filename="../dlgbind.cpp" line="181"/>
         <source>Mientras se cumple la condicion, pvbrowser pasa los cuadros uno tras otro cada tantos milisegundos.</source>
         <translation>Solange die Bedingung erfüllt ist, schaltet pvbrowser alle so viele Millisekunden von Bild zu Bild.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="225"/>
+        <location filename="../dlgbind.cpp" line="228"/>
         <source>Nada</source>
         <translation>Nichts</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="225"/>
+        <location filename="../dlgbind.cpp" line="228"/>
         <source>Escribir valor</source>
         <translation>Wert schreiben</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="225"/>
+        <location filename="../dlgbind.cpp" line="228"/>
         <source>Alternar (bool)</source>
         <translation>Umschalten (bool)</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="226"/>
+        <location filename="../dlgbind.cpp" line="229"/>
         <source>Sumar</source>
         <translation>Addieren</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="226"/>
+        <location filename="../dlgbind.cpp" line="229"/>
         <source>Restar</source>
         <translation>Subtrahieren</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="226"/>
+        <location filename="../dlgbind.cpp" line="229"/>
         <source>Ir a pantalla</source>
         <translation>Zu Bild wechseln</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="227"/>
+        <location filename="../dlgbind.cpp" line="230"/>
         <source>Volver</source>
         <translation>Zurück</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="227"/>
+        <location filename="../dlgbind.cpp" line="230"/>
         <source>Inicio</source>
         <translation>Start</translation>
     </message>
@@ -1197,7 +1197,7 @@ Zum Wechseln der ToolBox: Maus freigeben und erneut einfangen.</translation>
         <translation>Bilder werden im Projektordner gesucht; um sie in den pvserver einzubetten: Aktion &gt; Projektressourcen.</translation>
     </message>
     <message>
-        <location filename="../dlgbind.cpp" line="195"/>
+        <location filename="../dlgbind.cpp" line="197"/>
         <source>El formato &quot;%1&quot; no sirve para mostrar un numero.
 
 Tiene que tener una sola conversion de printf para un numero con decimales (%f, %.1f, %g, %e; %% para el signo de por ciento), o ser una lista de textos como Parado|Marcha.
@@ -1420,6 +1420,120 @@ fehlt es, erzeugt fake_qmake das Makefile (reicht für einen pvserver ohne Qt).<
         <location filename="../dlghelp.ui" line="62"/>
         <source>Abrir la carpeta de la documentación (manuales en PDF)</source>
         <translation>Den Dokumentationsordner öffnen (PDF-Handbücher)</translation>
+    </message>
+</context>
+<context>
+    <name>DlgNewTag</name>
+    <message>
+        <location filename="../dlgnewtag.ui" line="6"/>
+        <source>pvdevelop: crear un tag</source>
+        <translation>pvdevelop: Tag anlegen</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="8"/>
+        <source>No hay ningún tag en esa dirección. Se agrega al daemon elegido y se generan de nuevo su .tagmap y su .h (el daemon se compila con Compilar todo, Ctrl+Shift+B).</source>
+        <translation>An dieser Adresse gibt es kein Tag. Es wird dem gewählten Daemon hinzugefügt und dessen .tagmap und .h werden neu erzeugt (der Daemon wird mit Alles kompilieren, Strg+Umschalt+B, kompiliert).</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="11"/>
+        <source>Dirección:</source>
+        <translation>Adresse:</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="12"/>
+        <source>La dirección que se escribió (%MW1, 40002, HR1, DB1.DBW0...): se puede corregir</source>
+        <translation>Die eingegebene Adresse (%MW1, 40002, HR1, DB1.DBW0...): kann korrigiert werden</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="13"/>
+        <source>Daemon:</source>
+        <translation>Daemon:</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="14"/>
+        <source>Archivo del daemon (.mkmodbus, .mksiemens) donde se agrega el tag; solo los que entienden esa dirección</source>
+        <translation>Daemon-Datei (.mkmodbus, .mksiemens), in die das Tag eingefügt wird; nur die, die diese Adresse verstehen</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="15"/>
+        <source>Nombre:</source>
+        <translation>Name:</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="16"/>
+        <source>Nombre del tag: letras, números y _ (no empieza con un número); no puede repetirse en el daemon</source>
+        <translation>Tag-Name: Buchstaben, Ziffern und _ (beginnt nicht mit einer Ziffer); darf im Daemon nicht doppelt vorkommen</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="17"/>
+        <source>Tipo:</source>
+        <translation>Typ:</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="18"/>
+        <source>(auto): según la dirección (bit -&gt; bool, registro -&gt; int, %MD -&gt; dint, %MF -&gt; real)</source>
+        <translation>(auto): nach der Adresse (Bit -&gt; bool, Register -&gt; int, %MD -&gt; dint, %MF -&gt; real)</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="19"/>
+        <source>Marcado: el pvserver y la automatización pueden escribirlo; si no, solo se lee</source>
+        <translation>Markiert: pvserver und Automatisierung können es schreiben; sonst wird es nur gelesen</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="19"/>
+        <source>Lectura y escritura</source>
+        <translation>Lesen und Schreiben</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="20"/>
+        <source>Comentario:</source>
+        <translation>Kommentar:</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="21"/>
+        <source>Descripción del tag (opcional): se ve al pasar el mouse por el tag en el editor y en los diálogos</source>
+        <translation>Beschreibung des Tags (optional): erscheint, wenn die Maus im Editor und in den Dialogen über dem Tag steht</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.ui" line="24"/>
+        <source>Aceptar agrega el tag y lo pone en el campo; Cancelar no cambia nada</source>
+        <translation>OK fügt das Tag hinzu und setzt es in das Feld; Abbrechen ändert nichts</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="44"/>
+        <source>(auto)</source>
+        <translation>(auto)</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="101"/>
+        <source>Nombre invalido: &quot;%1&quot; (letras, numeros y _; no empieza con un numero)</source>
+        <translation>Ungültiger Name: &quot;%1&quot; (Buchstaben, Ziffern und _; beginnt nicht mit einer Ziffer)</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="105"/>
+        <source>Ya hay un tag %1 en %2</source>
+        <translation>Es gibt bereits ein Tag %1 in %2</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="114"/>
+        <source>No se pudo leer: %1</source>
+        <translation>Konnte nicht gelesen werden: %1</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="124"/>
+        <location filename="../dlgnewtag.cpp" line="135"/>
+        <source>No se pudo escribir %1</source>
+        <translation>%1 konnte nicht geschrieben werden</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="129"/>
+        <source>No se pudo leer %1</source>
+        <translation>%1 konnte nicht gelesen werden</translation>
+    </message>
+    <message>
+        <location filename="../dlgnewtag.cpp" line="142"/>
+        <source>Se agrego el tag, pero no se pudo generar el daemon: %1</source>
+        <translation>Das Tag wurde hinzugefügt, aber der Daemon konnte nicht erzeugt werden: %1</translation>
     </message>
 </context>
 <context>
@@ -2224,97 +2338,97 @@ Eine Variable mit Typ = Struktur nutzt ihre Adresse als Beginn; mit Anzahl &gt; 
 Im pvserver: PLC1.getReal(PLC1_Pumpe1.Drehzahl), PLC1.setBool(PLC1_Pumpen[2].Ein, 1)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="484"/>
+        <location filename="../dlgtags.cpp" line="498"/>
         <source>(auto)</source>
         <translation>(auto)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="493"/>
+        <location filename="../dlgtags.cpp" line="507"/>
         <source>(auto): segun la direccion (bit -&gt; bool, registro -&gt; int, %MD -&gt; dint, %MF -&gt; real, MW -&gt; int, MD -&gt; dint).
 Tambien puede ser una estructura (pestania Estructuras).</source>
         <translation>(auto): nach der Adresse (Bit -&gt; bool, Register -&gt; int, %MD -&gt; dint, %MF -&gt; real, MW -&gt; int, MD -&gt; dint).
 Kann auch eine Struktur sein (Reiter Strukturen).</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="502"/>
+        <location filename="../dlgtags.cpp" line="516"/>
         <source>(general)</source>
         <translation>(allgemein)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="683"/>
+        <location filename="../dlgtags.cpp" line="697"/>
         <source>Importar tags</source>
         <translation>Tags importieren</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="688"/>
+        <location filename="../dlgtags.cpp" line="702"/>
         <source>%1 variables importadas de %2</source>
         <translation>%1 Variablen aus %2 importiert</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="695"/>
+        <location filename="../dlgtags.cpp" line="709"/>
         <source>Exportar tags</source>
         <translation>Tags exportieren</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="701"/>
-        <location filename="../dlgtags.cpp" line="848"/>
-        <location filename="../dlgtags.cpp" line="863"/>
+        <location filename="../dlgtags.cpp" line="715"/>
+        <location filename="../dlgtags.cpp" line="862"/>
+        <location filename="../dlgtags.cpp" line="877"/>
         <source>No se pudo escribir %1</source>
         <translation>%1 konnte nicht geschrieben werden</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="703"/>
+        <location filename="../dlgtags.cpp" line="717"/>
         <source>Variables exportadas a %1 (las estructuras quedan en el archivo del daemon)</source>
         <translation>Variablen nach %1 exportiert (Strukturen bleiben in der Daemon-Datei)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="728"/>
+        <location filename="../dlgtags.cpp" line="742"/>
         <source>%1 direcciones convertidas%2</source>
         <translation>%1 Adressen umgerechnet%2</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="729"/>
+        <location filename="../dlgtags.cpp" line="743"/>
         <source>, %1 no se pudieron convertir (revisarlas)</source>
         <translation>, %1 konnten nicht umgerechnet werden (bitte prüfen)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="734"/>
+        <location filename="../dlgtags.cpp" line="748"/>
         <source>Archivo de tags</source>
         <translation>Tag-Datei</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="763"/>
+        <location filename="../dlgtags.cpp" line="777"/>
         <source>%1 variables (%2 valores simples); %3 bytes en la memoria compartida</source>
         <translation>%1 Variablen (%2 einfache Werte); %3 Bytes im gemeinsamen Speicher</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="768"/>
+        <location filename="../dlgtags.cpp" line="782"/>
         <source>%1 variables (%2 valores simples) en %3 bloques de lectura (%4 bytes en la memoria compartida):</source>
         <translation>%1 Variablen (%2 einfache Werte) in %3 Leseblöcken (%4 Bytes im gemeinsamen Speicher):</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="776"/>
+        <location filename="../dlgtags.cpp" line="790"/>
         <source>  esclavo %1, %2 %3..%4 (%5)%6</source>
         <translation>  Slave %1, %2 %3..%4 (%5)%6</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="777"/>
-        <location filename="../dlgtags.cpp" line="784"/>
+        <location filename="../dlgtags.cpp" line="791"/>
+        <location filename="../dlgtags.cpp" line="798"/>
         <source>, cada %1 ms</source>
         <translation>, alle %1 ms</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="783"/>
+        <location filename="../dlgtags.cpp" line="797"/>
         <source>  PLC %1, %2 bytes %3..%4 (%5)%6</source>
         <translation>  SPS %1, %2 Bytes %3..%4 (%5)%6</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="787"/>
+        <location filename="../dlgtags.cpp" line="801"/>
         <source>  ... (%1 bloques mas)</source>
         <translation>  ... (%1 weitere Blöcke)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="807"/>
+        <location filename="../dlgtags.cpp" line="821"/>
         <source>Hay errores en los tags:
 
 %1
@@ -2327,55 +2441,55 @@ Guardar igual?</source>
 Trotzdem speichern?</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="858"/>
+        <location filename="../dlgtags.cpp" line="872"/>
         <source>Falta el nombre del archivo CSV</source>
         <translation>Der Name der CSV-Datei fehlt</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="910"/>
+        <location filename="../dlgtags.cpp" line="924"/>
         <source>Marcado: se puede escribir; vacio: solo lectura; intermedio: como la variable</source>
         <translation>Markiert: beschreibbar; leer: nur lesen; teilweise: wie die Variable</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1000"/>
+        <location filename="../dlgtags.cpp" line="1014"/>
         <source>Nueva estructura</source>
         <translation>Neue Struktur</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1000"/>
+        <location filename="../dlgtags.cpp" line="1014"/>
         <source>Nombre (letras, numeros y _):</source>
         <translation>Name (Buchstaben, Ziffern und _):</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1004"/>
-        <location filename="../dlgtags.cpp" line="1030"/>
+        <location filename="../dlgtags.cpp" line="1018"/>
+        <location filename="../dlgtags.cpp" line="1044"/>
         <source>Nombre invalido: %1</source>
         <translation>Ungültiger Name: %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1006"/>
+        <location filename="../dlgtags.cpp" line="1020"/>
         <source>Ya existe %1</source>
         <translation>%1 existiert bereits</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1027"/>
+        <location filename="../dlgtags.cpp" line="1041"/>
         <source>Renombrar estructura</source>
         <translation>Struktur umbenennen</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1027"/>
+        <location filename="../dlgtags.cpp" line="1041"/>
         <source>Nombre:</source>
         <translation>Name:</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1047"/>
+        <location filename="../dlgtags.cpp" line="1061"/>
         <source>Eliminar la estructura %1?
 Las variables de ese tipo quedan con error hasta cambiarles el tipo.</source>
         <translation>Struktur %1 löschen?
 Variablen dieses Typs zeigen einen Fehler, bis ihr Typ geändert wird.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1116"/>
+        <location filename="../dlgtags.cpp" line="1130"/>
         <source>Lo que guarda el historiador (rlhistorian) de cada variable: su valor para las tendencias, sus alarmas y eventos.
 Registrar: guarda el valor cuando cambia mas que la banda muerta (0 = cualquier cambio), y cada &quot;Max. s&quot; aunque no cambie.
 Alarma: &gt;80  &gt;=80  &lt;10  &lt;=10  =1  !=0  1 (bool en 1)  0 (bool en 0)  in:10..20  out:10..20.  Reconocer: la alarma queda en la lista hasta que un usuario la reconoce.
@@ -2388,22 +2502,22 @@ Ereignis: zeichnet jedes Ein- und Ausschalten eines bool auf.
 Hier erscheinen die Variablen mit markierter Spalte Verlauf (Reiter Variablen) und die Strukturelemente mit markiertem Verlauf (Reiter Strukturen): die Alarme einer Struktur gehören zu jedem Element.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1126"/>
+        <location filename="../dlgtags.cpp" line="1140"/>
         <source>Mostrar los tags de sistema (estado de la comunicacion: SYS.Comunicacion, SYS.Ciclo...)</source>
         <translation>Systemtags anzeigen (Kommunikationsstatus: SYS.Comunicacion, SYS.Ciclo...)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1129"/>
+        <location filename="../dlgtags.cpp" line="1143"/>
         <source>No hay variables con historial: marcar la columna Historial en las variables o en los miembros de las estructuras.</source>
         <translation>Keine Variablen mit Verlauf: die Spalte Verlauf bei den Variablen oder den Strukturelementen markieren.</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1258"/>
+        <location filename="../dlgtags.cpp" line="1272"/>
         <source>En una estructura la alarma se define en cada miembro (marcar Historial en la pestania Estructuras)</source>
         <translation>In einer Struktur wird der Alarm in jedem Element definiert (Verlauf im Reiter Strukturen markieren)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1134"/>
+        <location filename="../dlgtags.cpp" line="1148"/>
         <source>Variable</source>
         <translation>Variable</translation>
     </message>
@@ -2423,119 +2537,119 @@ Hier erscheinen die Variablen mit markierter Spalte Verlauf (Reiter Variablen) u
         <translation>Änderungen von %1 vor dem Öffnen von %2 speichern?</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1134"/>
+        <location filename="../dlgtags.cpp" line="1148"/>
         <source>Registrar</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1134"/>
+        <location filename="../dlgtags.cpp" line="1148"/>
         <source>Banda muerta</source>
         <translation>Totband</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1134"/>
+        <location filename="../dlgtags.cpp" line="1148"/>
         <source>Max. s</source>
         <translation>Max. s</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1134"/>
+        <location filename="../dlgtags.cpp" line="1148"/>
         <source>Unidad</source>
         <translation>Einheit</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1134"/>
+        <location filename="../dlgtags.cpp" line="1148"/>
         <source>Alarma</source>
         <translation>Alarm</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1135"/>
+        <location filename="../dlgtags.cpp" line="1149"/>
         <source>Histeresis</source>
         <translation>Hysterese</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1135"/>
+        <location filename="../dlgtags.cpp" line="1149"/>
         <source>Texto de la alarma</source>
         <translation>Alarmtext</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1135"/>
+        <location filename="../dlgtags.cpp" line="1149"/>
         <source>Grupo</source>
         <translation>Gruppe</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1135"/>
+        <location filename="../dlgtags.cpp" line="1149"/>
         <source>Prioridad</source>
         <translation>Priorität</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1135"/>
+        <location filename="../dlgtags.cpp" line="1149"/>
         <source>Reconocer</source>
         <translation>Quittieren</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1135"/>
+        <location filename="../dlgtags.cpp" line="1149"/>
         <source>Evento</source>
         <translation>Ereignis</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1137"/>
+        <location filename="../dlgtags.cpp" line="1151"/>
         <source>Segundos: registra aunque no cambie (vacio = el del historiador, 600; 0 = nunca)</source>
         <translation>Sekunden: speichert auch ohne Änderung (leer = der des Historians, 600; 0 = nie)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1138"/>
+        <location filename="../dlgtags.cpp" line="1152"/>
         <source>&gt;80  &gt;=80  &lt;10  &lt;=10  =1  !=0  1 (bool en 1)  0 (bool en 0)  in:10..20  out:10..20</source>
         <translation>&gt;80  &gt;=80  &lt;10  &lt;=10  =1  !=0  1 (bool auf 1)  0 (bool auf 0)  in:10..20  out:10..20</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1139"/>
+        <location filename="../dlgtags.cpp" line="1153"/>
         <source>Histeresis: cuanto tiene que volver el valor para que la alarma termine (evita alarmas que van y vienen)</source>
         <translation>Hysterese: wie weit der Wert zurückgehen muss, damit der Alarm endet (verhindert flatternde Alarme)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1140"/>
+        <location filename="../dlgtags.cpp" line="1154"/>
         <source>Vacio: la descripcion de la variable (o su nombre)</source>
         <translation>Leer: die Beschreibung der Variablen (oder ihr Name)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1141"/>
+        <location filename="../dlgtags.cpp" line="1155"/>
         <source>1 = alta ... 4 = baja; vacio = sin prioridad</source>
         <translation>1 = hoch ... 4 = niedrig; leer = keine Priorität</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1145"/>
+        <location filename="../dlgtags.cpp" line="1159"/>
         <source>Historial y alarmas</source>
         <translation>Historian und Alarme</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1226"/>
+        <location filename="../dlgtags.cpp" line="1240"/>
         <source>Tag de sistema (lo actualiza el daemon): %1</source>
         <translation>Systemtag (vom Daemon aktualisiert): %1</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1228"/>
+        <location filename="../dlgtags.cpp" line="1242"/>
         <source>
 Para un esclavo o PLC en particular: linea &quot;sys name=Esclavo1 ...&quot; (o Plc0) en el archivo</source>
         <translation>
 Für einen bestimmten Slave oder eine SPS: Zeile &quot;sys name=Esclavo1 ...&quot; (oder Plc0) in der Datei</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1233"/>
+        <location filename="../dlgtags.cpp" line="1247"/>
         <source>Miembro de la estructura %1: vale para todas las variables de ese tipo</source>
         <translation>Element der Struktur %1: gilt für alle Variablen dieses Typs</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1246"/>
+        <location filename="../dlgtags.cpp" line="1260"/>
         <source>1 (alta)</source>
         <translation>1 (hoch)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1246"/>
+        <location filename="../dlgtags.cpp" line="1260"/>
         <source>4 (baja)</source>
         <translation>4 (niedrig)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="1260"/>
+        <location filename="../dlgtags.cpp" line="1274"/>
         <source>Registrar, banda muerta, grupo, prioridad, reconocer y evento: valores por defecto de los miembros (intermedio = lo que diga cada miembro)</source>
         <translation>Speichern, Totband, Gruppe, Priorität, Quittieren und Ereignis: Standardwerte der Elemente (teilweise = was jedes Element sagt)</translation>
     </message>
@@ -2635,7 +2749,7 @@ Variablen-Arrays: {i} im Topic (anlage/zone{i}) wird durch 0, 1, 2, ... ersetzt.
 Im pvserver: MQTT1.getReal(MQTT1_Zona[2].Temp)</translation>
     </message>
     <message>
-        <location filename="../dlgtags.cpp" line="555"/>
+        <location filename="../dlgtags.cpp" line="569"/>
         <source>Valor</source>
         <translation>Wert</translation>
     </message>
@@ -2780,29 +2894,29 @@ Im pvserver: MQTT1.getReal(MQTT1_Zona[2].Temp)</translation>
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../mainwindow.cpp" line="201"/>
+        <location filename="../mainwindow.cpp" line="203"/>
         <source>(sin nombre)</source>
         <translation>(ohne Namen)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="495"/>
-        <location filename="../mainwindow.cpp" line="1329"/>
-        <location filename="../mainwindow.cpp" line="1345"/>
-        <location filename="../mainwindow.cpp" line="1376"/>
-        <location filename="../mainwindow.cpp" line="1407"/>
-        <location filename="../mainwindow.cpp" line="1580"/>
-        <location filename="../mainwindow.cpp" line="1633"/>
-        <location filename="../mainwindow.cpp" line="1644"/>
+        <location filename="../mainwindow.cpp" line="497"/>
+        <location filename="../mainwindow.cpp" line="1331"/>
+        <location filename="../mainwindow.cpp" line="1347"/>
+        <location filename="../mainwindow.cpp" line="1378"/>
+        <location filename="../mainwindow.cpp" line="1409"/>
+        <location filename="../mainwindow.cpp" line="1590"/>
+        <location filename="../mainwindow.cpp" line="1643"/>
+        <location filename="../mainwindow.cpp" line="1654"/>
         <source>pvdevelop</source>
         <translation>pvdevelop</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="502"/>
+        <location filename="../mainwindow.cpp" line="504"/>
         <source>About pvdevelop</source>
         <translation>Über pvdevelop</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="503"/>
+        <location filename="../mainwindow.cpp" line="505"/>
         <source>(C) 2000-2019 Lehrig Software Engineering
 develop pvserver&apos;s easily
 IDE for editing and designing pvserver and data acquisition
@@ -2815,702 +2929,707 @@ Viel Spaß: Ihre pvbrowser-Community
 http://pvbrowser.org</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="520"/>
+        <location filename="../mainwindow.cpp" line="522"/>
         <source>O&amp;ptions</source>
         <translation>O&amp;ptionen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="521"/>
+        <location filename="../mainwindow.cpp" line="523"/>
         <source>Edit options</source>
         <translation>Optionen bearbeiten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="524"/>
+        <location filename="../mainwindow.cpp" line="526"/>
         <source>&amp;New pvserver</source>
         <translation>&amp;Neuer pvserver</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="525"/>
+        <location filename="../mainwindow.cpp" line="527"/>
         <source>Ctrl+N</source>
         <translation>Ctrl+N</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="526"/>
+        <location filename="../mainwindow.cpp" line="528"/>
         <source>Create a new visualization</source>
         <translation>Neue Visualisierung erstellen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="529"/>
+        <location filename="../mainwindow.cpp" line="531"/>
         <source>&amp;Open...</source>
         <translation>Ö&amp;ffnen...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="530"/>
+        <location filename="../mainwindow.cpp" line="532"/>
         <source>Ctrl+O</source>
         <translation>Ctrl+O</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="531"/>
+        <location filename="../mainwindow.cpp" line="533"/>
         <source>Open an existing file</source>
         <translation>Vorhandene Datei öffnen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="534"/>
+        <location filename="../mainwindow.cpp" line="536"/>
         <source>&amp;Save</source>
         <translation>&amp;Speichern</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="535"/>
+        <location filename="../mainwindow.cpp" line="537"/>
         <source>Ctrl+S</source>
         <translation>Ctrl+S</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="536"/>
+        <location filename="../mainwindow.cpp" line="538"/>
         <source>Save the document to disk</source>
         <translation>Dokument speichern</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="544"/>
+        <location filename="../mainwindow.cpp" line="546"/>
         <source>&amp;Backup</source>
         <translation>&amp;Sicherung</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="545"/>
+        <location filename="../mainwindow.cpp" line="547"/>
         <source>Ctrl+B</source>
         <translation>Ctrl+B</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="546"/>
+        <location filename="../mainwindow.cpp" line="548"/>
         <source>Create *.tar.gz file for backup purpose</source>
         <translation>*.tar.gz-Datei zur Sicherung erstellen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="550"/>
+        <location filename="../mainwindow.cpp" line="552"/>
         <source>E&amp;xit</source>
         <translation>&amp;Beenden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="551"/>
+        <location filename="../mainwindow.cpp" line="553"/>
         <source>Ctrl+Q</source>
         <translation>Ctrl+Q</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="552"/>
+        <location filename="../mainwindow.cpp" line="554"/>
         <source>Exit the application</source>
         <translation>Anwendung beenden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="555"/>
+        <location filename="../mainwindow.cpp" line="557"/>
         <source>Cu&amp;t</source>
         <translation>&amp;Ausschneiden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="556"/>
+        <location filename="../mainwindow.cpp" line="558"/>
         <source>Cut the current selection&apos;s contents to the clipboard</source>
         <translation>Auswahl in die Zwischenablage ausschneiden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="559"/>
+        <location filename="../mainwindow.cpp" line="561"/>
         <source>&amp;Copy</source>
         <translation>&amp;Kopieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="560"/>
-        <location filename="../mainwindow.cpp" line="1454"/>
+        <location filename="../mainwindow.cpp" line="562"/>
+        <location filename="../mainwindow.cpp" line="1464"/>
         <source>Ctrl+C</source>
         <translation>Ctrl+C</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="561"/>
+        <location filename="../mainwindow.cpp" line="563"/>
         <source>Copy the current selection&apos;s contents to the clipboard</source>
         <translation>Auswahl in die Zwischenablage kopieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="564"/>
+        <location filename="../mainwindow.cpp" line="566"/>
         <source>&amp;Paste</source>
         <translation>&amp;Einfügen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="565"/>
-        <location filename="../mainwindow.cpp" line="1455"/>
+        <location filename="../mainwindow.cpp" line="567"/>
+        <location filename="../mainwindow.cpp" line="1465"/>
         <source>Ctrl+V</source>
         <translation>Ctrl+V</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="566"/>
+        <location filename="../mainwindow.cpp" line="568"/>
         <source>Paste the clipboard&apos;s contents into the current selection</source>
         <translation>Inhalt der Zwischenablage einfügen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="569"/>
+        <location filename="../mainwindow.cpp" line="571"/>
         <source>&amp;Find</source>
         <translation>&amp;Suchen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="570"/>
+        <location filename="../mainwindow.cpp" line="572"/>
         <source>Ctrl+F</source>
         <translation>Ctrl+F</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="571"/>
+        <location filename="../mainwindow.cpp" line="573"/>
         <source>Find string in editor</source>
         <translation>Text im Editor suchen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="573"/>
+        <location filename="../mainwindow.cpp" line="575"/>
         <source>&amp;Replace</source>
         <translation>&amp;Ersetzen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="574"/>
+        <location filename="../mainwindow.cpp" line="576"/>
         <source>Ctrl+R</source>
         <translation>Ctrl+R</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="575"/>
+        <location filename="../mainwindow.cpp" line="577"/>
         <source>Replace strings in editor</source>
         <translation>Text im Editor ersetzen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="577"/>
-        <location filename="../mainwindow.cpp" line="610"/>
+        <location filename="../mainwindow.cpp" line="579"/>
+        <location filename="../mainwindow.cpp" line="612"/>
         <source>&amp;Editor</source>
         <translation>&amp;Editor</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="579"/>
-        <location filename="../mainwindow.cpp" line="612"/>
+        <location filename="../mainwindow.cpp" line="581"/>
+        <location filename="../mainwindow.cpp" line="614"/>
         <source>Show the Editor</source>
         <translation>Editor anzeigen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="582"/>
-        <location filename="../mainwindow.cpp" line="615"/>
+        <location filename="../mainwindow.cpp" line="584"/>
+        <location filename="../mainwindow.cpp" line="617"/>
         <source>&amp;Designer</source>
         <translation>&amp;Designer</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="584"/>
-        <location filename="../mainwindow.cpp" line="617"/>
+        <location filename="../mainwindow.cpp" line="586"/>
+        <location filename="../mainwindow.cpp" line="619"/>
         <source>Show the Designer</source>
         <translation>Designer anzeigen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="611"/>
+        <location filename="../mainwindow.cpp" line="613"/>
         <source>Ctrl+E</source>
         <translation>Ctrl+E</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="616"/>
+        <location filename="../mainwindow.cpp" line="618"/>
         <source>Ctrl+D</source>
         <translation>Ctrl+D</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="620"/>
+        <location filename="../mainwindow.cpp" line="622"/>
         <source>Design UI-&amp;File with Qt Designer</source>
         <translation>UI-Datei mit Qt Designer gestalten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="621"/>
+        <location filename="../mainwindow.cpp" line="623"/>
         <source>qtdesigner UI-File</source>
         <translation>Qt-Designer-UI-Datei</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="623"/>
+        <location filename="../mainwindow.cpp" line="625"/>
         <source>Export UI-&amp;File</source>
         <translation>UI-Datei e&amp;xportieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="625"/>
+        <location filename="../mainwindow.cpp" line="627"/>
         <source>Export UI-File</source>
         <translation>UI-Datei exportieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="628"/>
+        <location filename="../mainwindow.cpp" line="630"/>
         <source>Import &amp;UI-File</source>
         <translation>&amp;UI-Datei importieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="629"/>
+        <location filename="../mainwindow.cpp" line="631"/>
         <source>Ctrl+U</source>
         <translation>Ctrl+U</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="630"/>
+        <location filename="../mainwindow.cpp" line="632"/>
         <source>Import UI-File</source>
         <translation>UI-Datei importieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="633"/>
+        <location filename="../mainwindow.cpp" line="635"/>
         <source>&amp;Insert Mask</source>
         <translation>Maske &amp;einfügen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="634"/>
+        <location filename="../mainwindow.cpp" line="636"/>
         <source>Ctrl+I</source>
         <translation>Ctrl+I</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="635"/>
+        <location filename="../mainwindow.cpp" line="637"/>
         <source>Insert a new mask</source>
         <translation>Neue Maske einfügen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="638"/>
+        <location filename="../mainwindow.cpp" line="640"/>
         <source>&amp;Make</source>
         <translation>&amp;Kompilieren (make)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="639"/>
+        <location filename="../mainwindow.cpp" line="641"/>
         <source>Ctrl+M</source>
         <translation>Ctrl+M</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="640"/>
+        <location filename="../mainwindow.cpp" line="642"/>
         <source>Make project</source>
         <translation>Projekt kompilieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="643"/>
+        <location filename="../mainwindow.cpp" line="645"/>
         <source>&amp;StartServer</source>
         <translation>Server &amp;starten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="644"/>
+        <location filename="../mainwindow.cpp" line="646"/>
         <source>Ctrl+T</source>
         <translation>Ctrl+T</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="645"/>
+        <location filename="../mainwindow.cpp" line="647"/>
         <source>Start the Server</source>
         <translation>Server starten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="648"/>
+        <location filename="../mainwindow.cpp" line="650"/>
         <source>&amp;Compilador...</source>
         <translation>&amp;Compiler...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="649"/>
+        <location filename="../mainwindow.cpp" line="651"/>
         <source>Compilador (MSVC / MinGW), carpetas, procesadores y texto predictivo</source>
         <translation>Compiler (MSVC / MinGW), Ordner, Prozessoren und Autovervollständigung</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="651"/>
+        <location filename="../mainwindow.cpp" line="653"/>
         <source>&amp;Limpiar proyecto...</source>
         <translation>Projekt &amp;bereinigen...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="652"/>
+        <location filename="../mainwindow.cpp" line="654"/>
         <source>Borra lo compilado del proyecto (release, debug, Makefile, .o); los fuentes no se tocan</source>
         <translation>Löscht die Kompilate des Projekts (release, debug, Makefile, .o); die Quellen bleiben unverändert</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="656"/>
+        <location filename="../mainwindow.cpp" line="658"/>
         <source>&amp;pvbrowser</source>
         <translation>&amp;pvbrowser</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="657"/>
+        <location filename="../mainwindow.cpp" line="659"/>
         <source>Ctrl+P</source>
         <translation>Ctrl+P</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="658"/>
+        <location filename="../mainwindow.cpp" line="660"/>
         <source>Start pvbrowser</source>
         <translation>pvbrowser starten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="661"/>
+        <location filename="../mainwindow.cpp" line="663"/>
         <source>Uncomment &amp;rllib</source>
         <translation>&amp;rllib einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="662"/>
+        <location filename="../mainwindow.cpp" line="664"/>
         <source>Uncomment rllib</source>
         <translation>rllib einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="665"/>
+        <location filename="../mainwindow.cpp" line="667"/>
         <source>Uncomment &amp;modbus</source>
         <translation>&amp;modbus einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="666"/>
+        <location filename="../mainwindow.cpp" line="668"/>
         <source>Uncomment modbus</source>
         <translation>modbus einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="669"/>
+        <location filename="../mainwindow.cpp" line="671"/>
         <source>Uncomment &amp;Siemens TCP</source>
         <translation>&amp;Siemens TCP einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="670"/>
+        <location filename="../mainwindow.cpp" line="672"/>
         <source>Uncomment Siemens TCP</source>
         <translation>Siemens TCP einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="673"/>
+        <location filename="../mainwindow.cpp" line="675"/>
         <source>Uncomment &amp;ppi</source>
         <translation>&amp;ppi einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="674"/>
+        <location filename="../mainwindow.cpp" line="676"/>
         <source>Uncomment ppi</source>
         <translation>ppi einkommentieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="677"/>
+        <location filename="../mainwindow.cpp" line="679"/>
         <source>&amp;Modbus</source>
         <translation>&amp;Modbus</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="678"/>
+        <location filename="../mainwindow.cpp" line="680"/>
         <source>Modbus daemon</source>
         <translation>Modbus-Daemon</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="681"/>
+        <location filename="../mainwindow.cpp" line="683"/>
         <source>&amp;Siemens TCP</source>
         <translation>&amp;Siemens TCP</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="682"/>
+        <location filename="../mainwindow.cpp" line="684"/>
         <source>Siemens TCP daemon</source>
         <translation>Siemens-TCP-Daemon</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="889"/>
+        <location filename="../mainwindow.cpp" line="891"/>
         <source>&amp;Pantalla</source>
         <translation>&amp;Bildschirm</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="895"/>
+        <location filename="../mainwindow.cpp" line="897"/>
         <source>Archivos &amp;UI de Qt</source>
         <translation>Qt-&amp;UI-Dateien</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="900"/>
+        <location filename="../mainwindow.cpp" line="902"/>
         <source>&amp;Comunicaciones</source>
         <translation>&amp;Kommunikation</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="911"/>
+        <location filename="../mainwindow.cpp" line="913"/>
         <source>Compilar y p&amp;robar</source>
         <translation>Kompilieren und &amp;testen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2402"/>
+        <location filename="../mainwindow.cpp" line="2144"/>
+        <source>No se encontro el archivo del daemon %1 en el proyecto</source>
+        <translation>Die Daemon-Datei %1 wurde im Projekt nicht gefunden</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="2426"/>
         <source>Compilar todo</source>
         <translation>Alles kompilieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2404"/>
+        <location filename="../mainwindow.cpp" line="2428"/>
         <source>Compila lo que cambio (los daemons generados y el pvserver) en la consola de abajo, sin ejecutar nada</source>
         <translation>Kompiliert, was sich geändert hat (die generierten Daemons und den pvserver), in der Konsole unten, ohne etwas auszuführen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2405"/>
+        <location filename="../mainwindow.cpp" line="2429"/>
         <source>Compilar todo (Ctrl+Shift+B)</source>
         <translation>Alles kompilieren (Ctrl+Shift+B)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2444"/>
+        <location filename="../mainwindow.cpp" line="2468"/>
         <source>Tags</source>
         <translation>Tags</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2445"/>
+        <location filename="../mainwindow.cpp" line="2469"/>
         <source>Monitor de tags</source>
         <translation>Tag-Monitor</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2706"/>
+        <location filename="../mainwindow.cpp" line="2730"/>
         <source>Se cerro el %1 anterior</source>
         <translation>Der vorherige %1 wurde geschlossen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2726"/>
-        <location filename="../mainwindow.cpp" line="2790"/>
+        <location filename="../mainwindow.cpp" line="2750"/>
+        <location filename="../mainwindow.cpp" line="2814"/>
         <source>Cliente del daemon agregado: %1</source>
         <translation>Daemon-Client hinzugefügt: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2805"/>
+        <location filename="../mainwindow.cpp" line="2829"/>
         <source>No se compilo</source>
         <translation>Nicht kompiliert</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2806"/>
+        <location filename="../mainwindow.cpp" line="2830"/>
         <source>Nada para compilar: todo esta al dia</source>
         <translation>Nichts zu kompilieren: alles ist aktuell</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2809"/>
+        <location filename="../mainwindow.cpp" line="2833"/>
         <source>Compilar todo: %1</source>
         <translation>Alles kompilieren: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2815"/>
+        <location filename="../mainwindow.cpp" line="2839"/>
         <source>Compilar todo: listo</source>
         <translation>Alles kompilieren: fertig</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2823"/>
+        <location filename="../mainwindow.cpp" line="2847"/>
         <source>No se compilo %1</source>
         <translation>%1 wurde nicht kompiliert</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2927"/>
+        <location filename="../mainwindow.cpp" line="2951"/>
         <source>Pestañas</source>
         <translation>Reiter</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2940"/>
+        <location filename="../mainwindow.cpp" line="2964"/>
         <source>Abrir en una pestaña nueva</source>
         <translation>In neuem Reiter öffnen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2941"/>
+        <location filename="../mainwindow.cpp" line="2965"/>
         <source>Codigo (*.cpp *.h *.c *.pro *.lua *.py *.txt *.ini *.mk* *.tagmap);;Todos (*)</source>
         <translation>Code (*.cpp *.h *.c *.pro *.lua *.py *.txt *.ini *.mk* *.tagmap);;Alle (*)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2959"/>
+        <location filename="../mainwindow.cpp" line="2983"/>
         <source>bloque %1</source>
         <translation>Block %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2991"/>
+        <location filename="../mainwindow.cpp" line="3015"/>
         <source>%1 ya no existe: se cierra su pestaña</source>
         <translation>%1 existiert nicht mehr: Sein Reiter wird geschlossen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3128"/>
+        <location filename="../mainwindow.cpp" line="3152"/>
         <source>%1 tiene cambios sin guardar.</source>
         <translation>%1 hat ungespeicherte Änderungen.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3129"/>
+        <location filename="../mainwindow.cpp" line="3153"/>
         <source>Hay cambios sin guardar en:
 %1</source>
         <translation>Es gibt ungespeicherte Änderungen in:
 %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3131"/>
+        <location filename="../mainwindow.cpp" line="3155"/>
         <source>Guardar</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3132"/>
+        <location filename="../mainwindow.cpp" line="3156"/>
         <source>Cerrar sin guardar</source>
         <translation>Ohne Speichern schließen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3133"/>
+        <location filename="../mainwindow.cpp" line="3157"/>
         <source>Cancelar</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3164"/>
+        <location filename="../mainwindow.cpp" line="3188"/>
         <source>Todo guardado</source>
         <translation>Alles gespeichert</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3164"/>
+        <location filename="../mainwindow.cpp" line="3188"/>
         <source>No se pudo guardar todo</source>
         <translation>Nicht alles konnte gespeichert werden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="685"/>
+        <location filename="../mainwindow.cpp" line="687"/>
         <source>&amp;Monitor de tags...</source>
         <translation>Tag-&amp;Monitor...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="688"/>
+        <location filename="../mainwindow.cpp" line="690"/>
         <source>&amp;PPI</source>
         <translation>&amp;PPI</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="689"/>
+        <location filename="../mainwindow.cpp" line="691"/>
         <source>PPI daemon</source>
         <translation>PPI-Daemon</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="692"/>
+        <location filename="../mainwindow.cpp" line="694"/>
         <source>&amp;Manual</source>
         <translation>&amp;Handbuch</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="693"/>
+        <location filename="../mainwindow.cpp" line="695"/>
         <source>Ctrl+H</source>
         <translation>Ctrl+H</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="694"/>
+        <location filename="../mainwindow.cpp" line="696"/>
         <source>View Manual</source>
         <translation>Handbuch anzeigen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="697"/>
+        <location filename="../mainwindow.cpp" line="699"/>
         <source>&amp;About</source>
         <translation>Ü&amp;ber</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="698"/>
+        <location filename="../mainwindow.cpp" line="700"/>
         <source>Show the application&apos;s About box</source>
         <translation>Informationen über die Anwendung anzeigen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="701"/>
+        <location filename="../mainwindow.cpp" line="703"/>
         <source>About &amp;Qt</source>
         <translation>Über &amp;Qt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="702"/>
+        <location filename="../mainwindow.cpp" line="704"/>
         <source>Show the Qt library&apos;s About box</source>
         <translation>Informationen über die Qt-Bibliothek anzeigen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="867"/>
+        <location filename="../mainwindow.cpp" line="869"/>
         <source>&amp;File</source>
         <translation>&amp;Datei</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="880"/>
+        <location filename="../mainwindow.cpp" line="882"/>
         <source>&amp;Edit</source>
         <translation>&amp;Bearbeiten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="922"/>
+        <location filename="../mainwindow.cpp" line="924"/>
         <source>&amp;Help</source>
         <translation>&amp;Hilfe</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="929"/>
+        <location filename="../mainwindow.cpp" line="931"/>
         <source>¿&amp;Qué es esto?</source>
         <translation>&amp;Was ist das?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="940"/>
+        <location filename="../mainwindow.cpp" line="942"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="945"/>
+        <location filename="../mainwindow.cpp" line="947"/>
         <source>Edit</source>
         <translation>Bearbeiten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="950"/>
+        <location filename="../mainwindow.cpp" line="952"/>
         <source>View</source>
         <translation>Ansicht</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="954"/>
+        <location filename="../mainwindow.cpp" line="956"/>
         <source>Align</source>
         <translation>Ausrichten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="969"/>
-        <location filename="../mainwindow.cpp" line="2388"/>
+        <location filename="../mainwindow.cpp" line="971"/>
+        <location filename="../mainwindow.cpp" line="2412"/>
         <source>Compilacion</source>
         <translation>Kompilierung</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="974"/>
+        <location filename="../mainwindow.cpp" line="976"/>
         <source>Compilador de los proyectos pvserver (Ctrl+M / Ctrl+T)</source>
         <translation>Compiler der pvserver-Projekte (Strg+M / Strg+T)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="983"/>
+        <location filename="../mainwindow.cpp" line="985"/>
         <source>Version de MinGW de este proyecto (se guarda en el .pvproject)</source>
         <translation>MinGW-Version dieses Projekts (wird in der .pvproject gespeichert)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="988"/>
+        <location filename="../mainwindow.cpp" line="990"/>
         <source>Qt con el que se compila este proyecto (se guarda en el .pvproject)</source>
         <translation>Qt, mit dem dieses Projekt kompiliert wird (wird in der .pvproject gespeichert)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1011"/>
+        <location filename="../mainwindow.cpp" line="1013"/>
         <source>%1 %2: se usa %3</source>
         <translation>%1 %2: %3 wird verwendet</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1022"/>
+        <location filename="../mainwindow.cpp" line="1024"/>
         <source>MinGW predeterminado (%1)</source>
         <translation>Standard-MinGW (%1)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1022"/>
+        <location filename="../mainwindow.cpp" line="1024"/>
         <source>ninguno</source>
         <translation>keines</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1023"/>
+        <location filename="../mainwindow.cpp" line="1025"/>
         <source>La de Action &gt; Compilador...: %1</source>
         <translation>Das unter Aktion &gt; Compiler...: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1041"/>
+        <location filename="../mainwindow.cpp" line="1043"/>
         <source>Qt predeterminado (%1)</source>
         <translation>Standard-Qt (%1)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1042"/>
+        <location filename="../mainwindow.cpp" line="1044"/>
         <source>El de Action &gt; Compilador...: %1</source>
         <translation>Das unter Aktion &gt; Compiler...: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1042"/>
+        <location filename="../mainwindow.cpp" line="1044"/>
         <source>el de la distribucion</source>
         <translation>das der Distribution</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1050"/>
+        <location filename="../mainwindow.cpp" line="1052"/>
         <source>qmake6 de la distribucion</source>
         <translation>qmake6 der Distribution</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1069"/>
+        <location filename="../mainwindow.cpp" line="1071"/>
         <source>No se pudo guardar el MinGW en %1</source>
         <translation>MinGW konnte nicht in %1 gespeichert werden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1073"/>
+        <location filename="../mainwindow.cpp" line="1075"/>
         <source>El proyecto usa el MinGW predeterminado. Conviene recompilar todo (los .o de otra version no sirven).</source>
         <translation>Das Projekt verwendet das Standard-MinGW. Es empfiehlt sich, alles neu zu kompilieren (die .o einer anderen Version sind unbrauchbar).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1077"/>
+        <location filename="../mainwindow.cpp" line="1079"/>
         <source>%1 guardado en el proyecto; Qt: %2. Conviene recompilar todo (los .o de otra version no sirven).</source>
         <translation>%1 im Projekt gespeichert; Qt: %2. Es empfiehlt sich, alles neu zu kompilieren (die .o einer anderen Version sind unbrauchbar).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1078"/>
+        <location filename="../mainwindow.cpp" line="1080"/>
         <source>ninguno (fake_qmake)</source>
         <translation>keines (fake_qmake)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1088"/>
+        <location filename="../mainwindow.cpp" line="1090"/>
         <source>No se pudo guardar el Qt en %1</source>
         <translation>Qt konnte nicht in %1 gespeichert werden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1093"/>
+        <location filename="../mainwindow.cpp" line="1095"/>
         <source>%1 guardado en el proyecto</source>
         <translation>%1 im Projekt gespeichert</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1133"/>
+        <location filename="../mainwindow.cpp" line="1135"/>
         <source>%1.pro: con MinGW 8.1 de 32 bits enlaza las bibliotecas de win-mingw/bin/mingw81_32</source>
         <translation>%1.pro: Mit 32-Bit-MinGW 8.1 werden die Bibliotheken aus win-mingw/bin/mingw81_32 gelinkt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1138"/>
+        <location filename="../mainwindow.cpp" line="1140"/>
         <source>El proyecto usa %1, pero %2.pro enlaza las bibliotecas de pvserver de la suite (otro GCC).
 
 ¿Adaptarlo para que con GCC 8 use las de %3? Con el MinGW de la suite sigue igual.
@@ -3521,60 +3640,60 @@ Anpassen, damit es mit GCC 8 die von %3 verwendet? Mit dem MinGW der Suite bleib
 (Sonst wird beim Wechsel des Compilers erneut gefragt.)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1142"/>
+        <location filename="../mainwindow.cpp" line="1144"/>
         <source>Falta el componente &quot;Bibliotecas para MinGW 8.1&quot; de la instalacion de PV Suite.</source>
         <translation>Die Komponente &quot;Bibliotheken für MinGW 8.1&quot; der PV-Suite-Installation fehlt.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1143"/>
+        <location filename="../mainwindow.cpp" line="1145"/>
         <source>MinGW 8.1</source>
         <translation>MinGW 8.1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1150"/>
+        <location filename="../mainwindow.cpp" line="1152"/>
         <source>No se pudo escribir %1.pro</source>
         <translation>%1.pro konnte nicht geschrieben werden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1152"/>
+        <location filename="../mainwindow.cpp" line="1154"/>
         <source>%1.pro adaptado: con GCC 8 enlaza las bibliotecas de %2</source>
         <translation>%1.pro angepasst: Mit GCC 8 werden die Bibliotheken von %2 gelinkt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1169"/>
+        <location filename="../mainwindow.cpp" line="1171"/>
         <source>Compilador: %1, %2 procesadores</source>
         <translation>Compiler: %1, %2 Prozessoren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1177"/>
+        <location filename="../mainwindow.cpp" line="1179"/>
         <source>No hay un proyecto abierto</source>
         <translation>Es ist kein Projekt geöffnet</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1180"/>
-        <location filename="../mainwindow.cpp" line="1187"/>
-        <location filename="../mainwindow.cpp" line="1193"/>
-        <location filename="../mainwindow.cpp" line="1204"/>
+        <location filename="../mainwindow.cpp" line="1182"/>
+        <location filename="../mainwindow.cpp" line="1189"/>
+        <location filename="../mainwindow.cpp" line="1195"/>
+        <location filename="../mainwindow.cpp" line="1206"/>
         <source>Limpiar proyecto</source>
         <translation>Projekt bereinigen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1180"/>
+        <location filename="../mainwindow.cpp" line="1182"/>
         <source>Hay una compilacion en curso: esperar o Detener.</source>
         <translation>Es läuft eine Kompilierung: warten oder Stoppen.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1187"/>
+        <location filename="../mainwindow.cpp" line="1189"/>
         <source>No hay nada compilado para borrar.</source>
         <translation>Es gibt nichts Kompiliertes zu löschen.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1191"/>
+        <location filename="../mainwindow.cpp" line="1193"/>
         <source>... y %1 mas</source>
         <translation>... und %1 weitere</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1194"/>
+        <location filename="../mainwindow.cpp" line="1196"/>
         <source>Se borra lo compilado de %1 (la proxima compilacion compila todo de nuevo). Los fuentes no se tocan.
 
 %2
@@ -3587,12 +3706,12 @@ Anpassen, damit es mit GCC 8 die von %3 verwendet? Mit dem MinGW der Suite bleib
 Löschen?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1201"/>
+        <location filename="../mainwindow.cpp" line="1203"/>
         <source>Proyecto limpio: %1 elementos borrados</source>
         <translation>Projekt bereinigt: %1 Elemente gelöscht</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1205"/>
+        <location filename="../mainwindow.cpp" line="1207"/>
         <source>No se pudieron borrar (¿el pvserver sigue abierto?):
 
 %1</source>
@@ -3601,12 +3720,12 @@ Löschen?</translation>
 %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1221"/>
+        <location filename="../mainwindow.cpp" line="1223"/>
         <source>Lo compilado es de otra arquitectura</source>
         <translation>Das Kompilierte gehört zu einer anderen Architektur</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1222"/>
+        <location filename="../mainwindow.cpp" line="1224"/>
         <source>%1 archivos compilados del proyecto (por ejemplo %2) son de %3 bits, pero ahora se compila con %4.
 El enlazador no los puede usar y faltarian funciones.
 
@@ -3617,194 +3736,194 @@ Der Linker kann sie nicht verwenden, und Funktionen würden fehlen.
 Das Kompilierte löschen (Aktion &gt; Projekt bereinigen) und alles neu kompilieren?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1227"/>
+        <location filename="../mainwindow.cpp" line="1229"/>
         <source>Borrar y compilar</source>
         <translation>Löschen und kompilieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1228"/>
+        <location filename="../mainwindow.cpp" line="1230"/>
         <source>Compilar igual</source>
         <translation>Trotzdem kompilieren</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1236"/>
+        <location filename="../mainwindow.cpp" line="1238"/>
         <source>Proyecto limpio (de %1 a %2 bits): %3 elementos borrados</source>
         <translation>Projekt bereinigt (von %1 auf %2 Bit): %3 Elemente gelöscht</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1237"/>
+        <location filename="../mainwindow.cpp" line="1239"/>
         <source>No se pudieron borrar: %1</source>
         <translation>Konnten nicht gelöscht werden: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1298"/>
+        <location filename="../mainwindow.cpp" line="1300"/>
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1330"/>
+        <location filename="../mainwindow.cpp" line="1332"/>
         <source>The document has been modified.
 Do you want to save your changes?</source>
         <translation>Das Dokument wurde geändert.
 Möchten Sie die Änderungen speichern?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1346"/>
+        <location filename="../mainwindow.cpp" line="1348"/>
         <source>Cannot read file %1:
 %2.</source>
         <translation>Datei %1 kann nicht gelesen werden:
 %2.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1368"/>
+        <location filename="../mainwindow.cpp" line="1370"/>
         <source>File loaded</source>
         <translation>Datei geladen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1377"/>
-        <location filename="../mainwindow.cpp" line="3048"/>
-        <location filename="../mainwindow.cpp" line="3147"/>
+        <location filename="../mainwindow.cpp" line="1379"/>
+        <location filename="../mainwindow.cpp" line="3072"/>
+        <location filename="../mainwindow.cpp" line="3171"/>
         <source>Cannot write file %1</source>
         <translation>Datei %1 kann nicht geschrieben werden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1390"/>
+        <location filename="../mainwindow.cpp" line="1392"/>
         <source>File saved</source>
         <translation>Datei gespeichert</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1407"/>
+        <location filename="../mainwindow.cpp" line="1409"/>
         <source>%1[*] - %2</source>
         <translation>%1[*] - %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1522"/>
+        <location filename="../mainwindow.cpp" line="1532"/>
         <source>design %1</source>
         <translation>design %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1536"/>
+        <location filename="../mainwindow.cpp" line="1546"/>
         <source>%1[*]</source>
         <translation>%1[*]</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2439"/>
+        <location filename="../mainwindow.cpp" line="2463"/>
         <source>Proyecto</source>
         <translation>Projekt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2700"/>
-        <location filename="../mainwindow.cpp" line="2770"/>
+        <location filename="../mainwindow.cpp" line="2724"/>
+        <location filename="../mainwindow.cpp" line="2794"/>
         <source>Ya hay una compilacion en curso: esperar o Detener</source>
         <translation>Es läuft bereits ein Kompiliervorgang: warten oder Anhalten</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1572"/>
-        <location filename="../mainwindow.cpp" line="1624"/>
-        <location filename="../mainwindow.cpp" line="1658"/>
-        <location filename="../mainwindow.cpp" line="1729"/>
-        <location filename="../mainwindow.cpp" line="1956"/>
-        <location filename="../mainwindow.cpp" line="2186"/>
-        <location filename="../mainwindow.cpp" line="2215"/>
-        <location filename="../mainwindow.cpp" line="2765"/>
+        <location filename="../mainwindow.cpp" line="1582"/>
+        <location filename="../mainwindow.cpp" line="1634"/>
+        <location filename="../mainwindow.cpp" line="1668"/>
+        <location filename="../mainwindow.cpp" line="1739"/>
+        <location filename="../mainwindow.cpp" line="1966"/>
+        <location filename="../mainwindow.cpp" line="2210"/>
+        <location filename="../mainwindow.cpp" line="2239"/>
+        <location filename="../mainwindow.cpp" line="2789"/>
         <source>No project loaded</source>
         <translation>Kein Projekt geladen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="686"/>
+        <location filename="../mainwindow.cpp" line="688"/>
         <source>Valores de los tags de los daemons en vivo (para depurar): escribir y forzar valores; inicia el daemon normal o en simulacion</source>
         <translation>Live-Werte der Tags der Daemons (zum Debuggen): Werte schreiben und erzwingen; startet den Daemon normal oder in der Simulation</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1634"/>
+        <location filename="../mainwindow.cpp" line="1644"/>
         <source>ui-File already exists.
 Do you want to overwrite it ?</source>
         <translation>Die UI-Datei existiert bereits.
 Möchten Sie sie überschreiben?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1832"/>
+        <location filename="../mainwindow.cpp" line="1842"/>
         <source>Loaded document %1</source>
         <translation>Dokument %1 geladen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2208"/>
+        <location filename="../mainwindow.cpp" line="2232"/>
         <source>Please choose function from tree</source>
         <translation>Bitte eine Funktion aus dem Baum wählen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2395"/>
+        <location filename="../mainwindow.cpp" line="2419"/>
         <source>Consola de &amp;compilacion</source>
         <translation>&amp;Kompilierkonsole</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2396"/>
+        <location filename="../mainwindow.cpp" line="2420"/>
         <source>Ctrl+J</source>
         <translation>Ctrl+J</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2398"/>
+        <location filename="../mainwindow.cpp" line="2422"/>
         <source>Muestra u oculta la salida de la compilacion (Ctrl+M, Ctrl+T y daemons)</source>
         <translation>Zeigt oder verbirgt die Kompilierausgabe (Strg+M, Strg+T und Daemons)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2854"/>
+        <location filename="../mainwindow.cpp" line="2878"/>
         <source>%1 iniciado</source>
         <translation>%1 gestartet</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2850"/>
-        <location filename="../mainwindow.cpp" line="2854"/>
+        <location filename="../mainwindow.cpp" line="2874"/>
+        <location filename="../mainwindow.cpp" line="2878"/>
         <source>No se pudo iniciar %1</source>
         <translation>%1 konnte nicht gestartet werden</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2889"/>
+        <location filename="../mainwindow.cpp" line="2913"/>
         <source>%1 no es un archivo del proyecto</source>
         <translation>%1 ist keine Projektdatei</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1521"/>
+        <location filename="../mainwindow.cpp" line="1531"/>
         <source>bloque %1 ($M = la estructura de cada copia; al guardar se actualizan las copias)   ClickRightMouse-&gt;PopupDialog   Alt+Click-&gt;PropertyDialog</source>
         <translation>Baustein %1 ($M = die Struktur jeder Kopie; beim Speichern werden die Kopien aktualisiert)   ClickRightMouse-&gt;PopupDialog   Alt+Click-&gt;PropertyDialog</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="925"/>
+        <location filename="../mainwindow.cpp" line="927"/>
         <source>Manual en &amp;PDF</source>
         <translation>Handbuch als &amp;PDF</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="926"/>
+        <location filename="../mainwindow.cpp" line="928"/>
         <source>&amp;Referencia de las funciones del pvserver</source>
         <translation>pvserver-Funktions&amp;referenz</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="927"/>
+        <location filename="../mainwindow.cpp" line="929"/>
         <source>&amp;Atajos de teclado</source>
         <translation>&amp;Tastenkürzel</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2033"/>
+        <location filename="../mainwindow.cpp" line="2043"/>
         <source>Abrir en nueva pestaña (Designer)</source>
         <translation>In neuem Reiter öffnen (Designer)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2034"/>
+        <location filename="../mainwindow.cpp" line="2044"/>
         <source>Abrir %1 en nueva pestaña</source>
         <translation>%1 in neuem Reiter öffnen</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2160"/>
+        <location filename="../mainwindow.cpp" line="2184"/>
         <source>No se encontró el manual en PDF (carpeta doc/manual de la instalación).</source>
         <translation>Das PDF-Handbuch wurde nicht gefunden (Ordner doc/manual der Installation).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2175"/>
+        <location filename="../mainwindow.cpp" line="2199"/>
         <source>No se encontró la referencia de funciones (carpeta doc/pvslib de la instalación).</source>
         <translation>Die Funktionsreferenz wurde nicht gefunden (Ordner doc/pvslib der Installation).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2139"/>
+        <location filename="../mainwindow.cpp" line="2163"/>
         <source>No se encontró la documentación (carpeta doc de la instalación).</source>
         <translation>Die Dokumentation wurde nicht gefunden (Ordner doc der Installation).</translation>
     </message>
@@ -3820,6 +3939,69 @@ Möchten Sie sie überschreiben?</translation>
         <location filename="../designer.cpp" line="1611"/>
         <source>Select at least 2 widgets (Ctrl+click or drag a rectangle)</source>
         <translation>Mindestens 2 Widgets auswählen (Strg+Klick oder Rechteck aufziehen)</translation>
+    </message>
+</context>
+<context>
+    <name>PvbTagInfo</name>
+    <message>
+        <location filename="../codecompleter.cpp" line="337"/>
+        <source>Ctrl+clic: abrirlo en el editor de tags</source>
+        <translation>Strg+Klick: im Tag-Editor öffnen</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="135"/>
+        <source>estructura: %1</source>
+        <translation>Struktur: %1</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="147"/>
+        <source>tag de sistema</source>
+        <translation>Systemtag</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="149"/>
+        <source>bit %1 de %2</source>
+        <translation>Bit %1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="150"/>
+        <source>lectura/escritura</source>
+        <translation>Lesen/Schreiben</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="150"/>
+        <source>solo lectura</source>
+        <translation>nur Lesen</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="153"/>
+        <source>alarma %1</source>
+        <translation>Alarm %1</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="260"/>
+        <source>Enter: cambiar por este tag</source>
+        <translation>Enter: durch dieses Tag ersetzen</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="262"/>
+        <source>Enter: elegir uno de los %1 tags en %2</source>
+        <translation>Enter: eines der %1 Tags an %2 wählen</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="264"/>
+        <source>No hay ningun tag en %1. Enter: crear uno</source>
+        <translation>An %1 gibt es kein Tag. Enter: eines anlegen</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="268"/>
+        <source>No existe el tag &quot;%1&quot; en los .tagmap del proyecto</source>
+        <translation>Das Tag &quot;%1&quot; existiert nicht in den .tagmap-Dateien des Projekts</translation>
+    </message>
+    <message>
+        <location filename="../pvtaginfo.cpp" line="376"/>
+        <source>Crear un tag en %1...</source>
+        <translation>Tag an %1 anlegen...</translation>
     </message>
 </context>
 <context>
@@ -3939,7 +4121,7 @@ Möchten Sie sie überschreiben?</translation>
         <translation>pvdevelop Modbus-Daemon erstellen</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="165"/>
+        <location filename="../dlgdaemon.cpp" line="172"/>
         <source>Se genero %1.h con los tags para el pvserver.
 
 En el pvserver:
@@ -3960,25 +4142,25 @@ Der Daemon wird gestartet mit:
   rlopcuadaemon %2</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="172"/>
+        <location filename="../dlgdaemon.cpp" line="179"/>
         <source>Iniciar daemon</source>
         <translation>Daemon starten</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="134"/>
+        <location filename="../dlgdaemon.cpp" line="142"/>
         <source>libnodave is not available for OS-X</source>
         <translation>libnodave ist für macOS nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="220"/>
+        <location filename="../dlgdaemon.cpp" line="227"/>
         <source>%1.exe esta en ejecucion y no se puede reemplazar.
 Cerrarlo y compilar?</source>
         <translation>%1.exe läuft und kann nicht ersetzt werden.
 Beenden und kompilieren?</translation>
     </message>
     <message>
-        <location filename="../dlgdaemon.cpp" line="531"/>
-        <location filename="../dlgdaemon.cpp" line="585"/>
+        <location filename="../dlgdaemon.cpp" line="539"/>
+        <location filename="../dlgdaemon.cpp" line="593"/>
         <source>No se pudo generar el daemon</source>
         <translation>Der Daemon konnte nicht erzeugt werden</translation>
     </message>

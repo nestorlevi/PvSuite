@@ -60,6 +60,8 @@ public:
   QString resultText() const { return result; }
   //! Nestor: el usuario eligio otro daemon (del mismo protocolo) en el selector de arriba: abrirlo despues
   QString switchFile() const { return switchTo; }
+  //! Nestor: selecciona la variable de un tag (Ctrl+clic en el editor): "Motores[0].Marcha" -> la fila Motores
+  void selectTag(const QString &name);
 
 private slots:
   void slotAdd();

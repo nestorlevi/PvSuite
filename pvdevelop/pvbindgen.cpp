@@ -96,12 +96,27 @@ QList<PvbTag> pvbProjectTags()
       PvbTag tg;
       tg.source = source;
       tg.protocol = protocol;
+      int area = 0, address = -1, bit = -1;
       for(int k=0; k+1<kv.size(); k+=2)
       {
         if(kv[k] == "name") tg.name = kv[k+1];
         if(kv[k] == "type") tg.type = kv[k+1];
         if(kv[k] == "plcaddr") tg.address = kv[k+1];
         if(kv[k] == "rw") tg.rw = kv[k+1] != "0";
+        if(kv[k] == "desc") tg.desc = kv[k+1];
+        if(kv[k] == "unit") tg.unit = kv[k+1];
+        if(kv[k] == "alarm") tg.alarm = kv[k+1];
+        if(kv[k] == "alarm_text") tg.alarmText = kv[k+1];
+        if(kv[k] == "area") area = kv[k+1].toInt();
+        if(kv[k] == "address") address = kv[k+1].toInt();
+        if(kv[k] == "bit") bit = kv[k+1].toInt();
+      }
+      // Nestor: .tagmap anterior a plcaddr=: la direccion Modbus como en TARGET.h (40301, 00006, 40300.15)
+      if(tg.address.isEmpty() && protocol == "modbus" && area >= 1 && area <= 4 && address >= 0)
+      {
+        static const char prefix[] = { '0', '0', '1', '4', '3' };
+        tg.address = prefix[area] + QString::number(address + 1).rightJustified(4, '0');
+        if(bit >= 0 && area >= 3) tg.address += QString(".%1").arg(bit);
       }
       if(!tg.name.isEmpty()) list << tg;
     }

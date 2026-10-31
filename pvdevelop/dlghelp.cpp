@@ -446,7 +446,7 @@ void DlgHelp::slotResult(QListWidgetItem *item)
 QString pvbHelpTopicForClass(const char *cls)
 {
   static const struct { const char *cls; const char *topic; } table[] = {
-    {"DlgTags", "tags"},               {"DlgBind", "acciones"},           {"DlgTagMonitor", "s8-7"},
+    {"DlgTags", "tags"},               {"DlgNewTag", "tags"},             {"DlgBind", "acciones"},           {"DlgTagMonitor", "s8-7"},
     {"DlgCompiler", "compilar"},       {"DlgOpt", "pvdevelop"},           {"dlgDaemon", "daemons"},
     {"dlgInsertWidget", "s4-1"},       {"dlgProperty", "s4-2"},           {"dlgnewprj", "s3-1"},
     {"dlgInsertFunction", "programar"}, {"dlgPasteWidget", "s4-4"},       {"dlgsearchreplace", "pvdevelop"},

@@ -459,6 +459,20 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   connect(form->buttonBox, &QDialogButtonBox::rejected, this, &DlgTags::reject);
 }
 
+void DlgTags::selectTag(const QString &name)
+{
+  QString base = name.section('.', 0, 0).section('[', 0, 0);
+  for(int row = 0; row < form->table->rowCount(); row++)
+  {
+    QTableWidgetItem *it = form->table->item(row, C_NAME);
+    if(it == nullptr || it->text() != base) continue;
+    form->tabs->setCurrentIndex(0);   // Variables
+    form->table->setCurrentCell(row, C_NAME);
+    form->table->scrollToItem(it);
+    return;
+  }
+}
+
 DlgTags::~DlgTags()
 {
   delete form;

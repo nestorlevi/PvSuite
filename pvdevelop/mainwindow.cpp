@@ -37,6 +37,8 @@
 #include "cutil.h"
 #include "widgetgenerator.h"
 #include "pvbindgen.h"
+#include "pvtaginfo.h"
+#include "../rllib/lib/rltagdef.h"
 #include "syntax.h"
 #include <QPainter>
 #include <QPixmap>
@@ -1442,6 +1444,14 @@ void MainWindow::viewEditor()
   editor = new Editor();
   editor->setDocument(new QTextDocument(this));   // Nestor: los documentos son de MainWindow (pestanas)
   editor->edit->viewport()->installEventFilter(this);   // Nestor: clic en el codigo: se quitan las advertencias marcadas
+  // Nestor: tags en el codigo (pvtaginfo.h): Ctrl+clic abre su daemon y, con el cursor de texto encima, sus datos en la barra de estado
+  connect(static_cast<CodeTextEdit *>(editor->edit), &CodeTextEdit::tagActivated, this, &MainWindow::openTagDefinition);
+  connect(editor->edit, &QTextEdit::cursorPositionChanged, this, [this]() {
+    if(editor == nullptr) return;
+    QTextCursor c = editor->edit->textCursor();
+    PvbTag t;
+    if(!c.hasSelection() && pvbTagAt(c.block().text(), c.positionInBlock(), &t)) statusBar()->showMessage(pvbTagSummary(t, false), 8000);
+  });
   const Qt::WindowStates state = windowState();
   hide();
   //setCentralWidget(editor->edit);
@@ -2118,6 +2128,20 @@ void MainWindow::slotDaemonPpi()
     dlgDaemon dlg(PPI_DAEMON);
     dlg.run();
   }
+}
+
+// Nestor: el daemon que define el tag (target=PLC1 o PLC1.mkmodbus), con el tag seleccionado en el editor de tags
+void MainWindow::openTagDefinition(const QString &source, const QString &tag)
+{
+  if(!beginMenu()) return;
+  for(const PvbDaemonFile &d : pvbDaemonFiles())
+  {
+    if(d.source != source) continue;
+    dlgDaemon dlg(d.protocol == rlTagList::SIEMENS ? SIEMENSTCP_DAEMON : MODBUS_DAEMON);
+    dlg.run(d.file, tag);
+    return;
+  }
+  statusBar()->showMessage(tr("No se encontro el archivo del daemon %1 en el proyecto").arg(source), 10000);
 }
 
 void MainWindow::slotAboutManual()

@@ -18,6 +18,7 @@
 ** Nestor: Designer > Propiedades > Tags... (ver dlgbind.h; la ventana esta en dlgbind.ui)
 ****************************************************************************/
 #include "dlgbind.h"
+#include "pvtaginfo.h"
 #include "ui_dlgbind.h"
 #include <QCompleter>
 #include <QMap>
@@ -178,6 +179,7 @@ void DlgBind::setHelp()
        tr("Una imagen por cada valor del tag (0, 1, 2...), separadas por |."), { "TQImage" });
   help({ ui->labelAnim, ui->animTag, ui->editFrames, ui->spinPeriod },
        tr("Mientras se cumple la condicion, pvbrowser pasa los cuadros uno tras otro cada tantos milisegundos."), { "TQImage" });
+  for(QComboBox *c : findChildren<QComboBox *>()) if(c->property("pvbTagCombo").toBool()) pvbAttachTagInfo(c);   // Nestor: datos del tag
 }
 
 DlgBind::~DlgBind()
@@ -217,6 +219,7 @@ void DlgBind::fillTags(QComboBox *c)
   }
   c->completer()->setFilterMode(Qt::MatchContains);
   c->completer()->setCompletionMode(QCompleter::PopupCompletion);
+  c->setProperty("pvbTagCombo", true);   // al final del constructor: pvbAttachTagInfo
 }
 
 void DlgBind::setupEventRow(EventRow *r, QComboBox *kind, QComboBox *tag, QLineEdit *value, QSpinBox *mask)
