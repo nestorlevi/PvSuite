@@ -52,8 +52,11 @@ bool pvbStartInConsole(const QString &program, const QStringList &args, const QS
                        const QString &title, qint64 *pid = nullptr);
 //! Nestor: Linux / macOS: hay una terminal para pvbStartInConsole (x-terminal-emulator, qterminal, xterm...)
 bool pvbHasTerminal();
-//! Nestor: Linux / macOS: cierra los procesos que ejecutan ese programa (ruta completa); devuelve cuantos
+//! Nestor: cierra los procesos que ejecutan ese programa (ruta completa; en Windows tambien <exe>.oldN, el
+//! que quedo renombrado al compilar); devuelve cuantos
 int pvbKillProgram(const QString &exe);
+//! Nestor: hay un proceso que ejecuta ese programa (ruta completa; en Windows tambien <exe>.oldN)
+bool pvbProgramRunning(const QString &exe);
 //! Nestor: lo compilado del proyecto en dir y sus subproyectos (subcarpetas con un .pro):
 //! .o/.obj de otra arquitectura que bits (32/64; otherBits = la de ellos), rutas relativas a dir
 QStringList pvbObjectsOfOtherBits(const QString &dir, int bits, int *otherBits = nullptr);

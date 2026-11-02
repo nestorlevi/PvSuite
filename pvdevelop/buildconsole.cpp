@@ -46,6 +46,7 @@ static QPoint mousePos(const QMouseEvent *e) { return e->pos(); }
 
 #ifdef PVWIN32
 #include <windows.h>
+#include <tlhelp32.h>
 #else
 #include <QTemporaryFile>
 #include <QThread>
@@ -139,13 +140,42 @@ bool pvbHasTerminal()
 #endif
 }
 
-int pvbKillProgram(const QString &exe)
+#ifdef PVWIN32
+// Nestor: los procesos que ejecutan exe (ruta completa) o el mismo programa renombrado a <exe>.oldN al compilar
+// con el anterior funcionando (Windows no deja reemplazar un .exe abierto, pero si renombrarlo)
+static QList<DWORD> windowsPids(const QString &exe)
 {
-  int n = 0;
-#if defined(PVWIN32)
-  Q_UNUSED(exe);
-#elif defined(__linux__)
-  // el ejecutable de cada proceso (/proc/<pid>/exe); si se volvio a enlazar figura como "<ruta> (deleted)"
+  QList<DWORD> pids;
+  const QString target = QDir::toNativeSeparators(QFileInfo(exe).absoluteFilePath());
+  const QString name = QFileInfo(exe).fileName();
+  HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if(snap == INVALID_HANDLE_VALUE) return pids;
+  PROCESSENTRY32W pe;
+  pe.dwSize = sizeof(pe);
+  for(BOOL ok = Process32FirstW(snap, &pe); ok; ok = Process32NextW(snap, &pe))
+  {
+    if(pe.th32ProcessID == GetCurrentProcessId()) continue;
+    const QString image = QString::fromWCharArray(pe.szExeFile);
+    if(image.compare(name, Qt::CaseInsensitive) != 0 && !image.startsWith(name + ".old", Qt::CaseInsensitive)) continue;
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe.th32ProcessID);
+    if(h == NULL) continue;   // de otro usuario: no es de este proyecto
+    wchar_t buf[MAX_PATH * 4];
+    DWORD len = MAX_PATH * 4;
+    const bool got = QueryFullProcessImageNameW(h, 0, buf, &len) != 0;
+    CloseHandle(h);
+    if(!got) continue;
+    const QString path = QString::fromWCharArray(buf, (int) len);
+    if(path.compare(target, Qt::CaseInsensitive) == 0 || path.startsWith(target + ".old", Qt::CaseInsensitive)) pids << pe.th32ProcessID;
+  }
+  CloseHandle(snap);
+  return pids;
+}
+#endif
+
+#ifdef __linux__
+// Nestor: el ejecutable de cada proceso (/proc/<pid>/exe); si se volvio a enlazar figura como "<ruta> (deleted)"
+static QList<qint64> linuxPids(const QString &exe)
+{
   QFileInfo fi(exe);
   const QString target = fi.exists() ? fi.canonicalFilePath() : fi.absoluteFilePath();
   QList<qint64> pids;
@@ -156,8 +186,41 @@ int pvbKillProgram(const QString &exe)
     if(!ok) continue;
     QString t = QFileInfo("/proc/" + d + "/exe").symLinkTarget();
     if(t.endsWith(" (deleted)")) t.chop(10);
-    if(t == target && ::kill((pid_t) pid, SIGTERM) == 0) pids << pid;
+    if(t == target) pids << pid;
   }
+  return pids;
+}
+#endif
+
+bool pvbProgramRunning(const QString &exe)
+{
+#if defined(PVWIN32)
+  return !windowsPids(exe).isEmpty();
+#elif defined(__linux__)
+  return !linuxPids(exe).isEmpty();
+#else
+  // macOS: sin /proc
+  return QProcess::execute("pgrep", QStringList() << "-f" << QRegularExpression::escape(exe)) == 0;
+#endif
+}
+
+int pvbKillProgram(const QString &exe)
+{
+  int n = 0;
+#if defined(PVWIN32)
+  // Nestor: F5 (simulacion) reinicia los daemons y el pvserver que se compilaron
+  QList<HANDLE> handles;
+  for(DWORD pid : windowsPids(exe))
+  {
+    HANDLE h = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+    if(h == NULL) continue;
+    if(TerminateProcess(h, 1)) { handles << h; n++; }
+    else CloseHandle(h);
+  }
+  for(HANDLE h : handles) { WaitForSingleObject(h, 2000); CloseHandle(h); }   // que suelten el puerto
+#elif defined(__linux__)
+  QList<qint64> pids;
+  for(qint64 pid : linuxPids(exe)) if(::kill((pid_t) pid, SIGTERM) == 0) pids << pid;
   // que suelten el puerto antes de iniciar el nuevo
   for(int i = 0; i < 20 && !pids.isEmpty(); i++)
   {

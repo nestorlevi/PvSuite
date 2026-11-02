@@ -215,6 +215,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
   if(maybeSave())
   {
     writeSettings();
+    // Nestor: la simulacion que inicio este pvdevelop (F5) no queda funcionando
+    if(simRunning) stopSimulation();
     if(dlgtextbrowser != NULL) delete dlgtextbrowser;
     event->accept();
   }
@@ -2430,6 +2432,33 @@ void MainWindow::createBuildConsole()
   compileAllAct->setWhatsThis(compileAllAct->statusTip());
   connect(compileAllAct, &QAction::triggered, this, &MainWindow::compileAll);
   buildMenu->insertAction(actionStartServerAct, compileAllAct);
+  // Nestor: simulacion rapida: F5 compila y reinicia solo lo que cambio (pvbrowser sigue abierto)
+  QAction *simAct = new QAction(toolIcon(4), tr("Simulacion"), this);
+  simAct->setShortcut(QKeySequence(Qt::Key_F5));
+  simAct->setToolTip(tr("Simulacion (F5)"));
+  simAct->setStatusTip(tr("Compila lo que cambio y reinicia solo eso: los daemons (Modbus con -sim, simulation_tcpadr=) y el pvserver; pvbrowser sigue abierto"));
+  simAct->setWhatsThis(simAct->statusTip());
+  connect(simAct, &QAction::triggered, this, [this]() { startSimulation(true); });
+  QAction *simStopAct = new QAction(toolIcon(5), tr("Detener simulacion"), this);
+  simStopAct->setShortcuts(QList<QKeySequence>{ QKeySequence(Qt::SHIFT | Qt::Key_F5), QKeySequence(Qt::Key_F6) });   // como Visual Studio y VS Code; F6 tambien
+  simStopAct->setToolTip(tr("Detener simulacion (Shift+F5)"));
+  simStopAct->setStatusTip(tr("Cierra los daemons y el pvserver que inicio la simulacion (F5)"));
+  simStopAct->setWhatsThis(simStopAct->statusTip());
+  connect(simStopAct, &QAction::triggered, this, [this]() { startSimulation(false); });
+  QAction *rebuildAct = new QAction(toolIcon(35), tr("Recompilar todo y reiniciar"), this);
+  rebuildAct->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F5));
+  rebuildAct->setToolTip(tr("Recompilar todo y reiniciar (Ctrl+Shift+F5)"));
+  rebuildAct->setStatusTip(tr("Compila de nuevo el pvserver y los daemons del proyecto aunque no hayan cambiado y reinicia todos los procesos de la simulacion (pvbrowser queda abierto)"));
+  rebuildAct->setWhatsThis(rebuildAct->statusTip());
+  connect(rebuildAct, &QAction::triggered, this, [this]() { startSimulation(true, true); });
+  buildMenu->insertAction(cleanProjectAct, simAct);
+  buildMenu->insertAction(cleanProjectAct, rebuildAct);
+  buildMenu->insertAction(cleanProjectAct, simStopAct);
+  buildMenu->insertSeparator(cleanProjectAct);
+  QToolBar *simToolBar = addToolBar(tr("Simulacion"));   // al final, despues de compilacion
+  simToolBar->setObjectName("simToolBar");
+  simToolBar->addAction(simAct);
+  simToolBar->addAction(simStopAct);
   connect(buildConsole, &BuildConsole::started, buildDock, &QDockWidget::show);
   connect(buildConsole, &BuildConsole::openLocation, this, &MainWindow::openLocation);
   connect(buildConsole, &BuildConsole::finished, this, [this](bool) { hideWarningMarks = false; applyErrorMarks(); });
@@ -2698,6 +2727,23 @@ QIcon MainWindow::toolIcon(int kind)
       p.fillRect(5, 8, 14, 5, box);
       p.fillRect(7, 2, 10, 4, guide);
       break;
+    case 35:  // recompilar todo y reiniciar: iniciar con una flecha circular
+    {
+      QPolygon t;
+      t << QPoint(9, 7) << QPoint(18, 12) << QPoint(9, 17);
+      p.setBrush(QColor(46, 160, 67));
+      p.drawPolygon(t);
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setPen(QPen(box, 2.2, Qt::SolidLine, Qt::RoundCap));
+      p.setBrush(Qt::NoBrush);
+      p.drawArc(QRectF(2, 2, 20, 20), 120 * 16, 270 * 16);
+      p.setPen(Qt::NoPen);
+      p.setBrush(box);
+      QPolygon h;
+      h << QPoint(1, 5) << QPoint(8, 4) << QPoint(5, 10);
+      p.drawPolygon(h);
+      break;
+    }
     case 4:   // simulacion: iniciar
     {
       QPolygon t;
@@ -2782,73 +2828,215 @@ static QString moveRunningExe(const QString &exe)
   return QString();
 }
 
-// Nestor: Compilar todo (Ctrl+Shift+B), en la consola de abajo: primero los daemons generados (Modbus, Siemens,
-// PPI) desactualizados, despues el pvserver si sus fuentes son mas nuevos; no ejecuta nada
+// Nestor: Compilar todo (Ctrl+Shift+B): como F5 pero sin ejecutar
 void MainWindow::compileAll()
 {
   if(name.isEmpty()) { QMessageBox::information(this, "pvdevelop", tr("No project loaded"), QMessageBox::Ok); return; }
   if(designer != NULL) { if(!save()) return; }   // como Ctrl+T: guarda la mascara
   else if(!maybeSave()) return;
+  buildForSimulation(BuildOnly);
+}
+
+// Nestor: Recompilar todo: lo compilado del pvserver (.o, moc, Makefiles), sin su ejecutable (puede estar corriendo)
+static QStringList rebuildTargets(const QString &dir, const QString &project)
+{
+  QStringList ret;
+  for(const QString &t : pvbCleanTargets(dir, project))
+  {
+    const QFileInfo fi(QDir(dir).filePath(t));
+    if(fi.isDir())
+    {
+      for(const QString &f : QDir(fi.filePath()).entryList(QStringList{"*.o", "*.obj", "moc_*.cpp", "moc_predefs.h", "qrc_*.cpp"}, QDir::Files))
+        ret << t + "/" + f;
+    }
+    else if(fi.suffix() == "o" || !fi.isExecutable()) ret << t;
+  }
+  return ret;
+}
+
+// Nestor: Simulacion (F5), Recompilar todo (Ctrl+Shift+F5) y Compilar todo (Ctrl+Shift+B), en la consola de abajo:
+// primero los daemons generados (Modbus, Siemens, PPI) desactualizados, despues el pvserver si sus fuentes son mas
+// nuevos, y al final, salvo en Compilar todo, se (re)inicia lo que cambio (restartSimulation). Si algo no compila,
+// la simulacion sigue con la version anterior.
+void MainWindow::buildForSimulation(int mode)
+{
   const QString project = name;
+  const bool rebuild = (mode == BuildRebuild), run = (mode != BuildOnly);
   writePendingDocs();   // Nestor: pestanas
+  // el pvserver dentro del panel (sin terminal) ocupa la consola: se detiene y vuelve a arrancar al final
+  if(run && buildConsole->serverRunning()) buildConsole->stopServer();
   if(buildConsole->running()) { buildConsole->appendLine(tr("Ya hay una compilacion en curso: esperar o Detener"), "#b00000"); return; }
   const bool lua = (opt_develop.script == PV_LUA);
   QString cleanLog;
   if(!lua && !checkBuiltBits(project, &cleanLog)) return;   // Nestor: .o de otra arquitectura
 
   QStringList log, errors;
-  QList<PvbDaemonJob> jobs;
-  const bool generated = pvbDaemonJobs(false, &jobs, &errors);   // genera los daemons (y su .tagmap) antes del pvserver
+  QList<PvbDaemonJob> jobs, all;
+  const bool generated = pvbDaemonJobs(rebuild, &jobs, &errors, &all);   // genera los daemons (y su .tagmap) antes del pvserver
   log << errors;
   if(!cleanLog.isEmpty()) log << cleanLog;
+  // lo que inicia la simulacion: los daemons (Modbus con -sim) y el pvserver
+  simTargets.clear();
+  for(const PvbDaemonJob &j : all)
+    simTargets.append(SimProc{ j.title, QDir::current().absoluteFilePath(j.exe), j.simulation ? QStringList{"-sim"} : QStringList(), false });
+  if(!lua) simTargets.append(SimProc{ project, serverExePath(project), QStringList(), true });
   struct Step { QString title, program, exe, moved; QStringList args; QProcessEnvironment env; };
   auto steps = std::make_shared<QList<Step>>();
   if(generated)
   {
     for(const PvbDaemonJob &j : jobs) steps->append(Step{ j.title, j.program, j.exe, QString(), j.args, j.env });
-    const QString exe = serverExePath(project);
-    if(!lua && projectNeedsBuild(exe))
+    if(!lua)
     {
-      QStringList clientsAdded;
-      log << pvbEnsureDaemonClients(project, &clientsAdded);
-      for(const QString &a : clientsAdded) log << tr("Cliente del daemon agregado: %1").arg(a);
+      if(rebuild)
+      {
+        const QStringList failed = pvbRemoveTargets(QDir::currentPath(), rebuildTargets(QDir::currentPath(), project));
+        if(!failed.isEmpty()) log << tr("No se pudieron borrar: %1").arg(failed.mid(0, 5).join(", "));
+      }
+      const QString exe = serverExePath(project);
+      if(rebuild || projectNeedsBuild(exe))
+      {
+        QStringList clientsAdded;
+        log << pvbEnsureDaemonClients(project, &clientsAdded);
+        for(const QString &a : clientsAdded) log << tr("Cliente del daemon agregado: %1").arg(a);
 #ifdef PVWIN32
-      offerMinGWLibDir(project);
-      perhapsAddMsvcScope(project.toUtf8().constData());
-      steps->append(Step{ project, "cmd.exe", exe, QString(), QStringList() << "/C" << "pvb_build.bat" << project, QProcessEnvironment() });
+        offerMinGWLibDir(project);
+        perhapsAddMsvcScope(project.toUtf8().constData());
+        steps->append(Step{ project, "cmd.exe", exe, QString(), QStringList() << "/C" << "pvb_build.bat" << project, QProcessEnvironment() });
 #else
-      QString cmd = QString("fake_qmake %1 '%2.pro' && make -j%3").arg(opt_develop.fake_qmake).arg(QString(project).replace("'", "'\\''")).arg(buildJobs());
-      steps->append(Step{ project, "sh", exe, QString(), QStringList() << "-c" << cmd, QProcessEnvironment() });
+        QString cmd = QString("fake_qmake %1 '%2.pro' && make -j%3").arg(opt_develop.fake_qmake).arg(QString(project).replace("'", "'\\''")).arg(buildJobs());
+        steps->append(Step{ project, "sh", exe, QString(), QStringList() << "-c" << cmd, QProcessEnvironment() });
 #endif
+      }
     }
   }
 
   buildConsole->clear();
   if(buildDock) buildDock->show();
   for(const QString &l : log) buildConsole->appendLine(l, errors.contains(l) ? "#b00000" : "#606060");
-  if(!generated) { buildConsole->appendLine(tr("No se compilo"), "#b00000"); return; }
-  if(steps->isEmpty()) { buildConsole->appendLine(tr("Nada para compilar: todo esta al dia"), "#006000"); return; }
+  if(!generated)
+  {
+    buildConsole->appendLine(run ? tr("No se compilo: la simulacion sigue con la version anterior") : tr("No se compilo"), "#b00000");
+    return;
+  }
+  if(steps->isEmpty())
+  {
+    if(run) { restartSimulation(rebuild); return; }
+    buildConsole->appendLine(tr("Nada para compilar: todo esta al dia"), "#006000");
+    return;
+  }
   QStringList titles;
   for(const Step &s : *steps) titles << s.title;
-  buildConsole->appendLine(tr("Compilar todo: %1").arg(titles.join(", ")), "#606060");
+  buildConsole->appendLine(run ? tr("Simulacion: se compila %1 (la simulacion sigue funcionando)").arg(titles.join(", "))
+                               : tr("Compilar todo: %1").arg(titles.join(", ")), "#606060");
 
   // un paso detras de otro; el siguiente arranca despues de que la consola termino con el anterior
   auto next = std::make_shared<std::function<void(int)>>();
   std::weak_ptr<std::function<void(int)>> weak = next;
-  *next = [this, steps, weak](int k) {
-    if(k == steps->size()) { buildConsole->appendLine(tr("Compilar todo: listo"), "#006000"); return; }
+  *next = [this, steps, weak, run, rebuild](int k) {
+    if(k == steps->size())
+    {
+      if(run) restartSimulation(rebuild);
+      else    buildConsole->appendLine(tr("Compilar todo: listo"), "#006000");
+      return;
+    }
     Step &s = (*steps)[k];
     s.moved = moveRunningExe(s.exe);
     auto self = weak.lock();
-    const bool started = buildConsole->run(s.title, s.program, s.args, [this, steps, self, k](bool ok) {
+    const bool started = buildConsole->run(s.title, s.program, s.args, [this, steps, self, k, run](bool ok) {
       if(ok) { QTimer::singleShot(0, this, [self, k]() { (*self)(k + 1); }); return; }
       const Step &f = steps->at(k);
       if(!f.moved.isEmpty() && !QFile::exists(f.exe)) QFile::rename(f.moved, f.exe);   // vuelve el anterior
-      buildConsole->appendLine(tr("No se compilo %1").arg(f.title), "#b00000");
+      buildConsole->appendLine(run ? tr("No se compilo %1: la simulacion sigue con la version anterior").arg(f.title)
+                                   : tr("No se compilo %1").arg(f.title), "#b00000");
     }, s.env, true);
     if(!started && !s.moved.isEmpty() && !QFile::exists(s.exe)) QFile::rename(s.moved, s.exe);
   };
   (*next)(0);
+}
+
+// Nestor: Simulacion (F5): guarda, compila lo que cambio y reinicia solo eso; los daemons Modbus con -sim
+// (simulation_tcpadr=) y el pvserver; pvbrowser sigue abierto (se abre la primera vez si no esta).
+// Detener (Shift+F5 o F6): cierra lo que inicio la simulacion. Recompilar todo (Ctrl+Shift+F5): compila de
+// nuevo aunque no haya cambiado nada y reinicia todo.
+void MainWindow::startSimulation(bool start, bool rebuild)
+{
+  if(name.isEmpty()) { QMessageBox::information(this, "pvdevelop", tr("No project loaded"), QMessageBox::Ok); return; }
+  if(!start) { stopSimulation(); return; }
+  if(designer != NULL) { if(!save()) return; }   // como Ctrl+T: guarda la mascara
+  else if(!maybeSave()) return;
+  buildForSimulation(rebuild ? BuildRebuild : BuildChanged);
+}
+
+// Nestor: el pvbrowser instalado (para no abrir otro si ya hay uno); vacio si no se encuentra
+static QString browserExe()
+{
+#ifdef PVWIN32
+  const QString suite = qEnvironmentVariable("SUITEDIR");
+  if(!suite.isEmpty() && QFile::exists(suite + "/win-msvc/bin/pvbrowser.exe")) return QDir(suite).absoluteFilePath("win-msvc/bin/pvbrowser.exe");
+#endif
+  return QStandardPaths::findExecutable("pvbrowser");
+}
+
+// despues de compilar: reinicia lo que corre y cambio (el programa es mas nuevo que su inicio, o no lo inicio F5),
+// inicia lo que no corre y deja lo demas funcionando
+void MainWindow::restartSimulation(bool rebuild)
+{
+  const QString gray = "#606060";
+  QStringList restarted, startedNow, kept, missing;
+  for(const SimProc &p : simTargets)
+  {
+    const bool server = p.server;
+    if(!QFile::exists(p.exe)) { missing << p.title; continue; }   // no compilo nunca
+    const bool panel = server && buildConsole->serverRunning();
+    const bool running = panel || pvbProgramRunning(p.exe);
+    const QDateTime since = simStarted.value(p.exe);
+    const bool changed = rebuild || !since.isValid() || QFileInfo(p.exe).lastModified() > since;
+    if(running && !changed) { kept << p.title; continue; }
+    if(running)
+    {
+      if(panel) buildConsole->stopServer();
+      pvbKillProgram(p.exe);
+      restarted << p.title;
+    }
+    else startedNow << p.title;
+    bool ok = true;
+    if(server) startServerProcess(p.title);   // en su ventana (o en el panel si no hay terminal)
+    else ok = pvbStartInConsole(QDir::toNativeSeparators(p.exe), p.args, QDir::currentPath(),
+                                p.title + (p.args.contains("-sim") ? tr(" (simulacion)") : QString()));
+    if(ok) simStarted[p.exe] = QDateTime::currentDateTime();
+    else   buildConsole->appendLine(tr("No se pudo iniciar %1").arg(p.title), "#b00000");
+  }
+  simRunning = true;
+  if(!restarted.isEmpty()) buildConsole->appendLine(tr("Simulacion: se reinicia %1").arg(restarted.join(", ")), gray);
+  if(!startedNow.isEmpty()) buildConsole->appendLine(tr("Simulacion: se inicia %1").arg(startedNow.join(", ")), gray);
+  if(!kept.isEmpty()) buildConsole->appendLine(tr("Simulacion: no cambio, sigue funcionando: %1").arg(kept.join(", ")), gray);
+  if(!missing.isEmpty()) buildConsole->appendLine(tr("Simulacion: falta compilar %1").arg(missing.join(", ")), "#b06000");
+  if(opt_develop.script == PV_LUA) buildConsole->appendLine(tr("Lua: el pvserver se inicia con Ctrl+T"), "#b06000");
+  buildConsole->appendLine(tr("Simulacion funcionando (Shift+F5 o F6: detener)"), "#006000");
+  // pvbrowser: la primera vez, si no hay uno abierto (despues: sigue abierto y se reconecta solo)
+  if(!simBrowserOpened)
+  {
+    simBrowserOpened = true;
+    const QString b = browserExe();
+    if(b.isEmpty() || !pvbProgramRunning(b)) QTimer::singleShot(1500, this, [this]() { slotStartPvbrowser(); });
+  }
+}
+
+// Nestor: Detener simulacion (Shift+F5 o F6): cierra los daemons y el pvserver que inicio F5
+void MainWindow::stopSimulation()
+{
+  QStringList stopped;
+  for(const SimProc &p : simTargets)
+  {
+    if(!simStarted.contains(p.exe)) continue;
+    if(p.server && buildConsole->serverRunning()) { buildConsole->stopServer(); stopped << p.title; }
+    else if(pvbKillProgram(p.exe) > 0) stopped << p.title;
+  }
+  simStarted.clear();
+  simRunning = false;
+  statusBar()->showMessage(stopped.isEmpty() ? tr("Simulacion: no habia nada funcionando")
+                                             : tr("Simulacion detenida: %1").arg(stopped.join(", ")), 8000);
+  if(!stopped.isEmpty()) buildConsole->appendLine(tr("Simulacion detenida: %1").arg(stopped.join(", ")), "#606060");
 }
 
 // Nestor: el ejecutable del pvserver del proyecto (en la carpeta actual)

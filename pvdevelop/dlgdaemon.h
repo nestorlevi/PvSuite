@@ -64,9 +64,11 @@ struct PvbDaemonJob
   QString program;
   QStringList args;
   QProcessEnvironment env;
+  bool simulation = false;  // Nestor: el daemon entiende -sim (Modbus: simulation_tcpadr=)
 };
 //! force: aunque no haya cambiado nada. false si un generador dio error (en messages)
-bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages);
+//! all: todos los daemons del proyecto, se compilen o no (F5: los que hay que iniciar)
+bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages, QList<PvbDaemonJob> *all = nullptr);
 
 #endif
 

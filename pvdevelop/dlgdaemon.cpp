@@ -573,7 +573,7 @@ static bool daemonOutdated(const QString &mk, const QString &out)
   return fcsv.exists() && fcsv.lastModified() > fout.lastModified();
 }
 
-bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages)
+bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages, QList<PvbDaemonJob> *all)
 {
   bool ok = true;
   const QDir dir = QDir::current();
@@ -592,6 +592,8 @@ bool pvbDaemonJobs(bool force, QList<PvbDaemonJob> *jobs, QStringList *messages)
       PvbDaemonJob job;
       QString error;
       if(!daemonBuildCommand(k.what, src, &job, &error)) { *messages << mk + ": " + error; continue; }
+      job.simulation = (k.what == MODBUS_DAEMON);
+      if(all != nullptr) all->append(job);
       if(!force && !daemonOutdated(mk, job.exe)) continue;
       g_daemon_error.clear();
       const int ret = (k.what == MODBUS_DAEMON) ? gmodbus(arg.constData())

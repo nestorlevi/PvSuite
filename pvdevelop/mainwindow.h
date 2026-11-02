@@ -18,6 +18,8 @@
 
 #include <QMainWindow>
 #include <QDateTime>
+#include <QMap>
+#include <QStringList>
 #include <QPointer>
 #include "editor.h"
 #include "dlghelp.h"   // Nestor: ayuda integrada
@@ -99,6 +101,17 @@ private:
   void createBuildConsole();
   void buildProject(bool startServer);
   void compileAll();                     // Nestor: Ctrl+Shift+B: los daemons y el pvserver que cambiaron, sin ejecutar
+  // Nestor: simulacion: F5 compila y reinicia lo que cambio, Shift+F5 / F6 detiene, Ctrl+Shift+F5 recompila todo
+  enum { BuildChanged, BuildRebuild, BuildOnly };
+  void buildForSimulation(int mode);
+  void startSimulation(bool start, bool rebuild = false);
+  void restartSimulation(bool rebuild);
+  void stopSimulation();
+  struct SimProc { QString title, exe; QStringList args; bool server; };
+  QList<SimProc> simTargets;             // los daemons del proyecto y el pvserver (los arma buildForSimulation)
+  QMap<QString, QDateTime> simStarted;   // programa -> cuando lo inicio F5
+  bool simRunning = false;
+  bool simBrowserOpened = false;
   void startServerProcess(const QString &project);
   static QString serverExePath(const QString &project);
   void applyErrorMarks();
