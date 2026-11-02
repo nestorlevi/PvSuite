@@ -253,6 +253,12 @@ int rlSpawn::spawn(const char *command)
     {
         hProcess = pi.hProcess;
         hThread  = pi.hThread;
+        // Nestor: las puntas del hijo las tiene el hijo: si el padre no las cierra, ReadFile no recibe el fin
+        // del archivo cuando el hijo termina y readLine()/printAll() quedaban bloqueados para siempre
+        CloseHandle(fromChildWR);
+        fromChildWR = NULL;
+        CloseHandle(toChildRD);
+        toChildRD = NULL;
         return 1;
     }
 
@@ -275,7 +281,7 @@ int rlSpawn::spawn(const char *command)
     ret = ::pipe(to_child);
     if(ret == -1) return -1;
     ret = ::pipe(from_child);
-    if(ret == -1) return -1;
+    if(ret == -1) { ::close(to_child[0]); ::close(to_child[1]); return -1; }   // Nestor: sin perder el primero
 
     if((pid = ::fork()) == 0)
     {
@@ -296,7 +302,7 @@ int rlSpawn::spawn(const char *command)
         ::close(to_child[1]);
         ::close(from_child[0]);
         ::rlexec(command);
-        ::exit(0);
+        ::_exit(127);   // Nestor: exit() corria los atexit y vaciaba los buffers de stdio del padre (salida doble)
     }
 
     ::close(to_child[0]);
@@ -505,6 +511,7 @@ int rlSpawn::sigkill()
   if(pid == -1) return -1;
   if(pid ==  0) return -1;
   kill(pid,SIGKILL);
+  waitpid(pid, NULL, 0);   // Nestor: sin esto el hijo quedaba como zombi
   //printf("kill pid=%ld\n",m_pid);
 #endif
 

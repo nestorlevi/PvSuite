@@ -14,6 +14,17 @@
  *                                                                         *
  ***************************************************************************/
 #include "rlsharedmemory.h"
+
+#ifdef RLUNIX
+#include <mutex>
+// Nestor: flock es por descripcion de archivo abierta: los hilos que usan el mismo objeto no se excluyen
+// entre si (entre procesos si). Un mutex por objeto (repartidos en una tabla, sin cambiar la clase).
+static std::mutex &threadLock(const void *who)
+{
+  static std::mutex table[64];
+  return table[((unsigned long long) (size_t) who >> 4) % 64];
+}
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +36,75 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/file.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <errno.h>
+
+// Nestor: la memoria compartida es POSIX (shm_open/mmap) con un nombre que sale del camino completo del .shm.
+// Antes era System V con ftok(name,'b'): ftok usa 16 bits del inodo y 8 del dispositivo, y dos .shm podian dar
+// la misma clave (dos daemons escribiendo el mismo segmento sin aviso). Ademas en macOS System V tiene limites
+// chicos (8 segmentos por proceso, 4 MB). En Linux se abre /dev/shm directamente (es lo que hace shm_open, y
+// asi no hace falta -lrt con glibc viejas); en macOS shm_open (nombres de hasta 31 caracteres).
+static unsigned long long rlShmFnv64(const char *s)
+{
+  unsigned long long h = 1469598103934665603ULL;
+  for(; *s != '\0'; s++) { h ^= (unsigned char) *s; h *= 1099511628211ULL; }
+  return h;
+}
+
+static void rlShmPosixName(const char *file, char *out, size_t n)
+{
+  char abs[PATH_MAX];
+  const char *path = (realpath(file, abs) != NULL) ? abs : file;
+  snprintf(out, n, "/pvb_%016llx", rlShmFnv64(path));
+}
+
+#ifndef __APPLE__
+static const char *rlShmDir()
+{
+  static const char *dir = (access("/dev/shm", W_OK) == 0) ? "/dev/shm" : "/tmp";
+  return dir;
+}
+#endif
+
+static int rlShmOpen(const char *pname, int flags, int mode)
+{
+#ifdef __APPLE__
+  return shm_open(pname, flags, mode);
+#else
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s%s", rlShmDir(), pname);
+  return open(path, flags | O_CLOEXEC, mode);
+#endif
+}
+
+static int rlShmUnlink(const char *pname)
+{
+#ifdef __APPLE__
+  return shm_unlink(pname);
+#else
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s%s", rlShmDir(), pname);
+  return unlink(path);
+#endif
+}
+
+// el segmento System V que creaban las versiones anteriores para este archivo: si nadie lo usa se borra
+// (si no, quedaba ocupando RAM hasta reiniciar la PC)
+static void rlShmRemoveOldSysV(const char *file)
+{
+  key_t key = ftok(file, 'b');
+  if(key == (key_t) -1) return;
+  int oldid = shmget(key, 0, 0);
+  if(oldid < 0) return;
+  struct shmid_ds ds;
+  if(shmctl(oldid, IPC_STAT, &ds) != 0) return;
+  if(ds.shm_nattch != 0) return;
+  if(ds.shm_perm.cuid != geteuid() && geteuid() != 0) return;
+  shmctl(oldid, IPC_RMID, NULL);
+}
 #endif
 
 #ifdef __VMS
@@ -114,16 +193,27 @@ int rlMkdirParents(const char *filepath)
   return 0;
 }
 
+// Nestor: espacio reservado al principio, antes de los datos. En Windows es fijo de 8 bytes:
+// sizeof(pthread_mutex_t) da 4 en 32 bits y 8 en 64, y un daemon de 32 bits dejaba los datos
+// corridos 4 bytes para las herramientas de 64 (el candado real es LockFileEx, no este espacio)
+#ifdef RLWIN32
+#define RLSHM_HEADER ((unsigned long) 8)
+#else
+#define RLSHM_HEADER ((unsigned long) sizeof(pthread_mutex_t))
+#endif
+
 rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmode)
 {
   rlMkdirParents(shmname); // Nestor: la carpeta de la memoria compartida (p. ej. automation del proyecto)
 #ifdef RLUNIX
-  struct shmid_ds buf;
-
   status  = OK;
+  id = shmkey = -1;
+  posixName[0] = 0;
+  base_adr = user_adr = NULL;
+  mutex = NULL;
   name = new char[strlen(shmname)+1];
   strcpy(name,shmname);
-  _size    = Size + sizeof(*mutex);
+  _size    = Size + RLSHM_HEADER;
 
   // create file
   fdlock = open(name, O_RDWR | O_CREAT, rwmode );
@@ -141,41 +231,54 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
     exit(-1);
   }
 
-  // old stuff, without suggestions from Stefan Lievens 
-  //shmkey  = ftok(name,0);
-  //
-  //id  = shmget(shmkey, _size, IPC_CREAT);
-
-  //shmkey  = ftok(name, 'R');
-  shmkey  = ftok(name, 'b');
-
-  //id  = shmget(shmkey, _size, 0600 | IPC_CREAT);
-  id  = shmget(shmkey, _size, rwmode | IPC_CREAT);
-  if(id < 0 && errno == EINVAL)
+  // Nestor: POSIX con nombre por el camino completo (ver rlShmPosixName). El lock del archivo ordena la
+  // creacion entre procesos (el primero le da el tamanio).
+  flock(fdlock,LOCK_EX);
+  rlShmRemoveOldSysV(name);
+  rlShmPosixName(name, posixName, sizeof(posixName));
+  const char *pname = posixName;
+  int fd = rlShmOpen(pname, O_RDWR | O_CREAT, rwmode);
+  struct stat st;
+  if(fd >= 0 && fstat(fd, &st) == 0 && (unsigned long) st.st_size < _size)
   {
-    // Nestor: ya hay un segmento mas chico con esta clave (se agregaron tags y se regenero el daemon).
-    // Si nadie lo tiene enganchado se borra y se crea con el tamanio nuevo; si no, hay que cerrar
-    // los procesos que lo usan (daemon, pvserver, historiador...) o reiniciar.
-    int oldid = shmget(shmkey, 0, 0);
-    if(oldid >= 0 && shmctl(oldid, IPC_STAT, &buf) == 0)
+    // nueva, o mas chica (se agregaron tags y se regenero el daemon). Linux la agranda aunque otros la tengan
+    // mapeada (siguen usando su parte); macOS solo deja darle tamanio una vez: se crea de nuevo y los procesos
+    // que tenian la vieja (pvserver, historiador...) hay que reiniciarlos.
+    if(ftruncate(fd, _size) != 0 && st.st_size != 0)
     {
-      if(buf.shm_nattch == 0 && shmctl(oldid, IPC_RMID, NULL) == 0)
-        id = shmget(shmkey, _size, rwmode | IPC_CREAT);
-      else
-        fprintf(stderr, "rlSharedMemory: %s: la memoria compartida existente tiene %lu bytes y se piden %lu; "
-                        "esta en uso por %lu proceso(s): cerrarlos para que se cree de nuevo\n",
-                shmname, (unsigned long) buf.shm_segsz, (unsigned long) _size, (unsigned long) buf.shm_nattch);
+      fprintf(stderr, "rlSharedMemory: %s: la memoria compartida existente tiene %lu bytes y se piden %lu: "
+                      "se crea de nuevo; reiniciar los procesos que la usaban\n",
+              shmname, (unsigned long) st.st_size, (unsigned long) _size);
+      close(fd);
+      rlShmUnlink(pname);
+      fd = rlShmOpen(pname, O_RDWR | O_CREAT, rwmode);
+      if(fd >= 0 && ftruncate(fd, _size) != 0) { close(fd); fd = -1; }
     }
   }
-  if(id < 0)           { status=ERROR_SHMGET; return; }
+  if(fd >= 0) fchmod(fd, rwmode);  // como antes shmget: sin la umask
+  // Nestor: ante un error se dice la causa (antes los tags se leian como 0 sin otro aviso) y se libera el
+  // lock del archivo (antes quedaba tomado y frenaba a los demas procesos que abrian esta memoria).
+  if(fd < 0)
+  {
+    int err = errno;
+    fprintf(stderr, "rlSharedMemory: %s: shm_open %s: %s\n", shmname, pname, strerror(err));
+    flock(fdlock,LOCK_UN);
+    status=ERROR_SHMGET; return;
+  }
 
-  base_adr = (char *) shmat(id,NULL,0);
-  if(base_adr == (char *) -1 || base_adr == NULL) { base_adr = NULL; status=ERROR_SHMAT;  return; }
-
-  if(shmctl(id, IPC_STAT, &buf) != 0) { status=ERROR_SHMCTL; return; };
+  void *adr = mmap(NULL, _size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  close(fd);
+  if(adr == MAP_FAILED)
+  {
+    int err = errno;
+    fprintf(stderr, "rlSharedMemory: %s: mmap: %s\n", shmname, strerror(err));
+    flock(fdlock,LOCK_UN); status=ERROR_SHMAT; return;
+  }
+  base_adr = (char *) adr;
+  id = shmkey = 0;
 
   mutex     = (pthread_mutex_t *) base_adr;
-  user_adr  = base_adr + sizeof(*mutex);
+  user_adr  = base_adr + RLSHM_HEADER;
   flock(fdlock,LOCK_UN);
 #endif
 
@@ -190,7 +293,7 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
   status  = OK;
   name = new char[strlen(shmname)+1];
   strcpy(name,shmname);
-  _size    = Size + sizeof(*mutex);
+  _size    = Size + RLSHM_HEADER;
   // The file block size is fixed
   file_block_size = 512; // Bytes
   // Get the page size
@@ -217,7 +320,7 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
   if(ret != SS$_NORMAL) { status=ERROR_FILE; return; }
   // Set the addresses
   base_adr = (char *) add_ret.start;
-  user_adr = base_adr + sizeof(*mutex);
+  user_adr = base_adr + RLSHM_HEADER;
   mutex    = (pthread_mutex_t *) base_adr;
   if(base_adr == NULL) { status=ERROR_SHMAT;  return; }
   // Fill the fab
@@ -295,7 +398,7 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
 
     name = new char[strlen(shmname)+1];
     strcpy(name, shmname);
-    _size = Size + sizeof(*mutex);
+    _size = Size + RLSHM_HEADER;
 
     // Crear archivo con nombre Unicode
     hSharedFile = CreateFileW(wname,
@@ -343,7 +446,7 @@ rlSharedMemory::rlSharedMemory(const char *shmname, unsigned long Size, int rwmo
     id     = hShmem;
     shmkey = hSharedFile;
     mutex     = (pthread_mutex_t *) base_adr;
-    user_adr  = base_adr + sizeof(*mutex);
+    user_adr  = base_adr + RLSHM_HEADER;
     memset(&overlapped, 0, sizeof(overlapped));
     UnlockFileEx(hSharedFile,0,_size,0,&overlapped);
 #endif
@@ -361,6 +464,7 @@ rlSharedMemory::~rlSharedMemory()
   CloseHandle((HANDLE) id);
   CloseHandle((HANDLE) shmkey);     // shmkey es hSharedFile
 #elif defined(RLUNIX)
+  if(base_adr != NULL) munmap(base_adr, _size);
   if(fdlock >= 0) close(fdlock);
 #endif
 }
@@ -368,12 +472,11 @@ rlSharedMemory::~rlSharedMemory()
 int rlSharedMemory::deleteSharedMemory()
 {
 #ifdef RLUNIX
-  struct shmid_ds buf;
   if(status != OK) return -1;
   //rlwthread_mutex_destroy(mutex);
   flock(fdlock,LOCK_UN);
-  shmctl(id, IPC_RMID, &buf);
-  _size = 0;
+  // Nestor: como antes IPC_RMID: se borra el nombre y la memoria sigue mapeada hasta el destructor
+  rlShmUnlink(posixName);
   return 0;
 #endif
 
@@ -420,11 +523,12 @@ int rlSharedMemory::write(unsigned long offset, const void *buf, int len)
   void *ptr;
   if(status != OK)       return -1;
   if(len <= 0)           return -1;
-  if(offset+len > _size - sizeof(*mutex)) return -1; // Nestor: user_adr ya esta corrido sizeof(*mutex)
+  if(offset+len > _size - RLSHM_HEADER) return -1; // Nestor: user_adr ya esta corrido RLSHM_HEADER
   ptr = user_adr + offset;
 #ifdef RLWIN32
   LockFileEx(hSharedFile,LOCKFILE_EXCLUSIVE_LOCK,0,_size,0,&overlapped); // Changed by FMakkinga 18-03-2013
 #elif defined(RLUNIX)
+  threadLock(this).lock();   // Nestor: flock no excluye a los hilos del mismo proceso (mismo descriptor)
   flock(fdlock,LOCK_EX);
 #else
   mylock(mutex,1);
@@ -434,6 +538,7 @@ int rlSharedMemory::write(unsigned long offset, const void *buf, int len)
   UnlockFileEx(hSharedFile,0,_size,0,&overlapped);                       // Changed by FMakkinga 18-03-2013
 #elif defined(RLUNIX)
   flock(fdlock,LOCK_UN);
+  threadLock(this).unlock();
 #else
   myunlock(mutex);
 #endif
@@ -445,11 +550,12 @@ int rlSharedMemory::read(unsigned long offset, void *buf, int len)
   void *ptr;
   if(status != OK)       return -1;
   if(len <= 0)           return -1;
-  if(offset+len > _size - sizeof(*mutex)) return -1; // Nestor: user_adr ya esta corrido sizeof(*mutex)
+  if(offset+len > _size - RLSHM_HEADER) return -1; // Nestor: user_adr ya esta corrido RLSHM_HEADER
   ptr = user_adr + offset;
 #ifdef RLWIN32
   LockFileEx(hSharedFile,LOCKFILE_EXCLUSIVE_LOCK,0,_size,0,&overlapped); // Changed by FMakkinga 18-03-2013
 #elif defined(RLUNIX)
+  threadLock(this).lock();   // Nestor: flock no excluye a los hilos del mismo proceso (mismo descriptor)
   flock(fdlock,LOCK_EX);
 #else
   mylock(mutex,1);
@@ -459,6 +565,7 @@ int rlSharedMemory::read(unsigned long offset, void *buf, int len)
   UnlockFileEx(hSharedFile,0,_size,0,&overlapped);                       // Changed by FMakkinga 18-03-2013
 #elif defined(RLUNIX)
   flock(fdlock,LOCK_UN);
+  threadLock(this).unlock();
 #else
   myunlock(mutex);
 #endif

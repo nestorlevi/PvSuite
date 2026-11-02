@@ -76,6 +76,7 @@ private:
   OVERLAPPED overlapped;
 #elif defined(RLUNIX)
   int fdlock;
+  char posixName[32];  // Nestor: nombre POSIX ("/pvb_<hash del camino>"), ver rlsharedmemory.cpp
 #endif
 };
 

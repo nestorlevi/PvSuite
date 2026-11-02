@@ -63,6 +63,8 @@ public:
           MAILBOX_FULL
   </pre> */
   int write(const void *buf, int len);
+  //! Nestor: lo mismo sin esperar si la cola esta llena (Unix: IPC_NOWAIT; devuelve MAILBOX_FULL)
+  int writeNoWait(const void *buf, int len);
 
   /*! <pre>
   similar to printf
@@ -118,11 +120,19 @@ public:
   </pre> */
   char *name;
 
+#ifdef WIN32
+  /*! <pre>
+  Windows: handle del mailslot del lector (NULL hasta el primer read); para consultar sus permisos
+  </pre> */
+  PVOID winHandle() const { return chanid; }
+#endif
+
 private:
 #ifdef WIN32
   PVOID chanid;
 #else
   int chanid;
+  long mtype;   // Nestor: tipo de los mensajes de este mailbox (hash de su camino), ver rlmailbox.cpp
 #endif
   //HANDLE chanid;
   int buffer_size;

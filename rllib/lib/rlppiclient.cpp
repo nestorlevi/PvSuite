@@ -56,7 +56,7 @@ int rlPPIClient::write(int slave, int area, int dbnum, int start, int len, const
   buf[6] = len / 256;
   buf[7] = len & 0x0ff;
   memcpy(&buf[8],data,len);
-  if(rlMailbox::write((void *) buf,len+8) < 0) return -1; // Nestor: antes devolvia 0 aunque fallara
+  if(rlMailbox::writeNoWait((void *) buf,len+8) < 0) return -1; // Nestor: antes devolvia 0 aunque fallara
   return 0;
 }
     

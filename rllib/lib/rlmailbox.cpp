@@ -18,10 +18,12 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #ifndef RLWIN32
 #include <unistd.h>
 #endif
 #include "rlmailbox.h"
+#include <vector>
 #include "rlcutil.h"
 #include "rlsharedmemory.h"   // rlMkdirParents
 #include <string>
@@ -32,6 +34,21 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <limits.h>
+
+// Nestor: la clave de la cola sigue saliendo de ftok(name,'b'), que usa 16 bits del inodo y 8 del dispositivo:
+// dos .mbx pueden caer en la misma cola. Por eso cada mensaje lleva como mtype un hash del camino completo del
+// mailbox y el lector toma solo los suyos (antes mtype=1 y msgrcv tomaba cualquiera: las escrituras al PLC1
+// las podia recibir el daemon del PLC2). Nunca vale 1: lo que quedo en la cola de una version anterior se descarta.
+static long rlMbxType(const char *file)
+{
+  char abs[PATH_MAX];
+  const char *path = (realpath(file, abs) != NULL) ? abs : file;
+  unsigned int h = 2166136261u;
+  for(; *path != 0; path++) { h ^= (unsigned char) *path; h *= 16777619u; }
+  h &= 0x7fffffff;
+  return (h < 2) ? (long) h + 2 : (long) h;
+}
 #endif
 
 #ifdef __VMS
@@ -52,6 +69,29 @@ typedef struct
 
 #ifdef RLWIN32
 #include <windows.h>
+#include <sddl.h>
+
+// Nestor (revision D4): el buzon con permisos explicitos (control total para el usuario del proceso, Administradores
+// y SYSTEM; nadie mas), lo mismo que Windows pone hoy por omision pero sin depender de la configuracion de la PC.
+// Devuelve NULL si no se pudo armar (se crea como antes, con la DACL por omision); liberar con LocalFree
+static PSECURITY_DESCRIPTOR rlMailboxSecurity()
+{
+  HANDLE token = NULL;
+  if(!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) return NULL;
+  DWORD size = 0;
+  GetTokenInformation(token, TokenUser, NULL, 0, &size);
+  std::vector<unsigned char> info(size ? size : 1);
+  LPWSTR sid = NULL;
+  if(size > 0 && GetTokenInformation(token, TokenUser, &info[0], size, &size))
+    ConvertSidToStringSidW(((TOKEN_USER *) &info[0])->User.Sid, &sid);
+  CloseHandle(token);
+  if(sid == NULL) return NULL;
+  std::wstring sddl = std::wstring(L"D:P(A;;FA;;;") + sid + L")(A;;FA;;;BA)(A;;FA;;;SY)";
+  LocalFree(sid);
+  PSECURITY_DESCRIPTOR sd = NULL;
+  if(!ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl.c_str(), SDDL_REVISION_1, &sd, NULL)) return NULL;
+  return sd;
+}
 #endif
 
 rlMailbox::rlMailbox(const char *mbxname)
@@ -63,6 +103,7 @@ key_t key;
   status = OK;
   buffer = NULL;
   buffer_size = 0;
+  mtype = 2;
   name = new char[strlen(mbxname)+1];
   strcpy(name,mbxname);
   // create file
@@ -100,6 +141,12 @@ key_t key;
   // chanid = msgget(key,IPC_CREAT);
   chanid = msgget(key, 0600 | IPC_CREAT);
   if(chanid == -1) { status=COULD_NOT_GET_CHAN_ID; return; }
+  mtype = rlMbxType(name);
+  {
+    // mensajes viejos (mtype=1) que nadie va a leer: llenarian la cola
+    std::vector<unsigned char> old(sizeof(long) + 256);
+    while(msgrcv(chanid, (struct msgbuf *) old.data(), 256, 1, IPC_NOWAIT | MSG_NOERROR) >= 0);
+  }
 #endif
 
 #ifdef __VMS
@@ -160,6 +207,24 @@ rlMailbox::~rlMailbox()
 #endif
 }
 
+int rlMailbox::writeNoWait(const void *buf, int len)
+{
+#ifdef RLUNIX
+  status = OK;
+  unsigned char *message = new unsigned char [sizeof(long) + len];
+  long *lptr = (long *) message;
+  *lptr = mtype;
+  memcpy(&message[sizeof(long)],buf,len);
+  int retlen = msgsnd(chanid,(struct msgbuf *) message, len, IPC_NOWAIT);
+  int err = errno;
+  delete [] message;
+  if(retlen == 0) return len;
+  return (err == EAGAIN) ? MAILBOX_FULL : MAILBOX_ERROR;
+#else
+  return write(buf, len);   // Windows / VMS: la escritura no se queda esperando
+#endif
+}
+
 int rlMailbox::write(const void *buf, int len)
 {
   status = OK;
@@ -168,7 +233,7 @@ int rlMailbox::write(const void *buf, int len)
   int retlen;
   unsigned char *message = new unsigned char [sizeof(long) + len];
   long *lptr = (long *) message;
-  *lptr = 1; // mtype
+  *lptr = mtype;
   memcpy(&message[sizeof(long)],buf,len);
   retlen = msgsnd(chanid,(struct msgbuf *) message, len, 0);
   delete [] message;
@@ -269,10 +334,25 @@ int rlMailbox::read(void *buf, int maxlen, int wait)
     // Implementación para Unix/Linux
     int len;
     unsigned char *message = new unsigned char[sizeof(long) + maxlen];
-    if (wait == WAIT)
-        len = msgrcv(chanid, (struct msgbuf *)message, maxlen, 0, 0);
-    else
-        len = msgrcv(chanid, (struct msgbuf *)message, maxlen, 0, IPC_NOWAIT);
+    for (;;)
+    {
+        if (wait == WAIT)
+            len = msgrcv(chanid, (struct msgbuf *)message, maxlen, mtype, 0);
+        else
+            len = msgrcv(chanid, (struct msgbuf *)message, maxlen, mtype, IPC_NOWAIT);
+        if (len >= 0) break;
+        // Nestor: esperando, una senal (EINTR: un SIGSTOP/SIGCONT, gdb) o un mensaje mas largo que maxlen
+        // (E2BIG: de otro programa o de un cliente viejo) no son el fin del mailbox. Antes el daemon salia del
+        // bucle de lectura y las escrituras al PLC dejaban de llegar sin aviso. El mensaje largo se descarta.
+        if (wait == WAIT && errno == EINTR) continue;
+        if (errno == E2BIG)
+        {
+            msgrcv(chanid, (struct msgbuf *)message, maxlen, mtype, IPC_NOWAIT | MSG_NOERROR);
+            fprintf(stderr, "rlMailbox: se descarto un mensaje de mas de %d bytes (%s)\n", maxlen, name ? name : "");
+            if (wait == WAIT) continue;
+        }
+        break;
+    }
 
     if (len >= 0)
     {
@@ -342,7 +422,11 @@ int rlMailbox::read(void *buf, int maxlen, int wait)
         if(full.size() >= sizeof(mbxname) / sizeof(mbxname[0])) { status = ERROR_FILENAME_EXCED_RANGE; return MAILBOX_ERROR; }
         wcscpy(mbxname, full.c_str());
 
-        h = CreateMailslotW(mbxname, MAX_MAILBOX, MAILSLOT_WAIT_FOREVER, NULL);
+        PSECURITY_DESCRIPTOR sd = rlMailboxSecurity();
+        if(sd == NULL) ::printf("rlMailbox: sin permisos propios para %s (error %lu): se usan los de Windows por omision\n", name, GetLastError());
+        SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), sd, FALSE };
+        h = CreateMailslotW(mbxname, MAX_MAILBOX, MAILSLOT_WAIT_FOREVER, sd ? &sa : NULL);
+        if(sd) LocalFree(sd);
         if (h == INVALID_HANDLE_VALUE) {
             status = GetLastError();
             return MAILBOX_ERROR;
@@ -376,9 +460,27 @@ int rlMailbox::read(void *buf, int maxlen, int wait)
         return lenRead;
     }
 
-    lenRead = 0;
-    bret = ReadFile(chanid, buf, maxlen, &lenRead, NULL);
-    if (!bret) { status = GetLastError(); return MAILBOX_ERROR; }
+    for (;;)
+    {
+        lenRead = 0;
+        bret = ReadFile(chanid, buf, maxlen, &lenRead, NULL);
+        if (bret) break;
+        status = GetLastError();
+        // Nestor: un mensaje mas largo que maxlen se queda en el mailslot y cada ReadFile fallaba igual: se
+        // descarta y se sigue esperando (antes el daemon salia del bucle y las escrituras dejaban de llegar)
+        DWORD next = 0, count = 0;
+        if (status == ERROR_INSUFFICIENT_BUFFER && GetMailslotInfo(chanid, NULL, &next, &count, NULL) &&
+            next != MAILSLOT_NO_MESSAGE && next > 0)
+        {
+            std::vector<char> big(next);
+            DWORD n = 0;
+            ReadFile(chanid, big.data(), next, &n, NULL);
+            fprintf(stderr, "rlMailbox: se descarto un mensaje de %lu bytes (mas de %d)\n", (unsigned long) next, maxlen);
+            status = OK;
+            continue;
+        }
+        return MAILBOX_ERROR;
+    }
     if ((int)lenRead < maxlen && (int)lenRead >= 0) cbuf[lenRead] = '\0';
     return lenRead;
 #endif

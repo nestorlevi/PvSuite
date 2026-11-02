@@ -18,6 +18,7 @@
 #include <string.h>
 #include <map>
 #include <mutex>
+#include <thread>
 #include <chrono>
 
 // Nestor: ultimo intento de conexion por objeto (sin agregar miembros a rlModbus: los daemons ya
@@ -33,6 +34,11 @@ static bool reconnectCheck(const void *who, bool done)
   return !(it != last.end() && now - it->second < 3000);
 }
 
+static long long rlModbusNowMs()
+{
+  return (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 static bool reconnectAllowed(const void *who) { return reconnectCheck(who, false); }
 static void reconnectDone(const void *who)    { reconnectCheck(who, true); }
 
@@ -46,6 +52,10 @@ rlModbus::rlModbus(long max_telegram_length, int _mode, char end_delimitor)
   s = NULL;
   tty = NULL;
   autoreconnectSocket = 1;
+  tidNext = 0;
+  tidSent = 0;
+  tidEcho = 0;
+  lastException = -1;
 }
 
 rlModbus::~rlModbus()
@@ -94,16 +104,17 @@ int rlModbus::write(int slave, int function, const unsigned char *data, int data
   {
     if(s != NULL)
     {
+      // Nestor: bytes 0,1 Transaction ID. El equipo lo copia en la respuesta: sin el del que llama, uno que
+      // aumenta en cada pedido, y response() descarta las respuestas de otro pedido (atrasadas tras un timeout)
       if(transactionID == NULL)
       {
-        tel[len++] = 0;       // bytes 0,1 Transaction ID. Not important. Usually zero when making a request, the server will copy them faithfully into the response.
-        tel[len++] = 0;
+        tidNext = (tidNext + 1) & 0xFFFF;
+        if(tidNext == 0) tidNext = 1;
+        tidSent = tidNext;
       }
-      else
-      {
-        tel[len++] = ((*transactionID) & 0xFF00) / 256;         // bytes 0,1 Transaction ID.
-        tel[len++] = (*transactionID) & 0xFF;
-      }
+      else tidSent = (*transactionID) & 0xFFFF;
+      tel[len++] = (tidSent & 0xFF00) / 256;
+      tel[len++] = tidSent & 0xFF;
       tel[len++] = 0;         // bytes 2,3 Protocol number. Must be zero.
       tel[len++] = 0;
       tel[len++] = 0;         // byte 4 Length (upper byte). Since all requests will be less than 256 bytes in length (!), this will always be zero.
@@ -133,6 +144,7 @@ int rlModbus::write(int slave, int function, const unsigned char *data, int data
   }
   else if(tty != NULL)
   {
+    tty->flushInput();   // Nestor: la basura de una respuesta atrasada hacia fallar el pedido siguiente
     if(tty->writeBlock(tel,len) < 0) return MODBUS_ERROR;
   }
   else return MODBUS_ERROR;
@@ -162,56 +174,71 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
     if(s->isConnected() == 0) return MODBUS_ERROR;
     if(mode == MODBUS_RTU)
     {
-      if(s->read((char *) tel, 6, timeout) <= 0) return MODBUS_ERROR;
-      // bytes 0,1 Transaction ID faithfully copied from the request message
-      // bytes 2,3 Protocol number always zero
-      // byte 4 Response length (upper byte) Always zero
-      // byte 5 Response length (lower byte). Equal to the number of bytes which follow
-      // Here comes the normal Modus telegram
-      if(s->read((char *) tel, 2, timeout) <= 0) return MODBUS_ERROR;
-      *slave     = tel[0];
-      *function  = tel[1];
-      // Nestor: el largo del encabezado MBAP tiene que ser razonable (antes no se miraba el byte alto)
-      if(tel[4] != 0 || tel[5] < 3) { s->disconnect(); return MODBUS_ERROR; }
-      byte_count = tel[5] - 3;
-      if(s->read((char *) tel, 1, timeout) <= 0)            return MODBUS_ERROR;
-      switch(*function)
+      // Nestor: Modbus TCP. Se lee la trama entera (encabezado MBAP + lo que dice su largo):
+      // - una trama cortada a la mitad deja el flujo corrido: se corta la conexion;
+      // - el Transaction ID tiene que ser el del pedido; una respuesta de otro pedido (atrasada) se descarta y
+      //   se sigue esperando hasta el timeout. Un equipo que nunca lo copia (siempre 0) se acepta;
+      // - una excepcion (funcion | 0x80) devuelve MODBUS_EXCEPTION con el codigo en exceptionCode().
+      // bytes 0,1 Transaction ID, 2,3 Protocol ID = 0, 4,5 largo de lo que sigue (unidad + funcion + datos)
+      long long deadline = rlModbusNowMs() + (timeout > 0 ? timeout : 0);
+      for(;;)
       {
-        case ReadCoilStatus:
-        case ReadInputStatus:
-        case ReadHoldingRegisters:
-        case ReadInputRegisters:
-        case FetchCommEventLog:
-        case ReportSlaveID:
-        case ReadGeneralReference:
-        case WriteGeneralReference:
-        case ReadWrite4XRegisters:
-          //byte_count = tel[0];
-          if(s->read((char *) data, byte_count, timeout) <= 0)  return MODBUS_ERROR;
-          return byte_count;
-        case ForceSingleCoil:
-        case PresetSingleRegister:
-        case FetchCommEventCtr:
-        case ForceMultipleCoils:
-        case PresetMultipleRegs:
-          //byte_count = 4;
-          if(s->read((char *) data, byte_count, timeout) <= 0)  return MODBUS_ERROR;
-          return byte_count;
-        case ReadExceptionStatus:
-          //byte_count = 1;
-          if(s->read((char *) data, byte_count, timeout) <= 0)  return MODBUS_ERROR;
-          return byte_count;
-        case MaskWrite4XRegisters:
-          //byte_count = 6;
-          if(s->read((char *) data, byte_count, timeout) <= 0)  return MODBUS_ERROR;
-          return byte_count;
-        case ReadFifoQueue:
-          if(s->read((char *) tel, 2, timeout) <= 0)            return MODBUS_ERROR;
-          //byte_count = tel[0]*256 + tel[1];
-          if(s->read((char *) data, byte_count, timeout) <= 0)  return MODBUS_ERROR;
-          return byte_count;
-        default:
-          return MODBUS_ERROR;
+        long long left = deadline - rlModbusNowMs();
+        if(left < 1) left = 1;
+        if(s->read((char *) tel, 1, (int) left) <= 0) return MODBUS_ERROR;     // nada: timeout sin bytes leidos
+        if(s->read((char *) &tel[1], 5, timeout) <= 0) { s->disconnect(); return MODBUS_ERROR; }
+        if(tel[2] != 0 || tel[3] != 0 || tel[4] != 0 || tel[5] < 2) { s->disconnect(); return MODBUS_ERROR; }
+        int tid  = tel[0]*256 + tel[1];
+        int flen = tel[5];
+        if(s->read((char *) tel, flen, timeout) <= 0) { s->disconnect(); return MODBUS_ERROR; }
+        if(tid != tidSent && !(tid == 0 && !tidEcho))
+        {
+          if(rlModbusNowMs() >= deadline) return MODBUS_ERROR;
+          continue;                                                            // de otro pedido: se descarta
+        }
+        if(tid == tidSent && tid != 0) tidEcho = 1;
+        *slave     = tel[0];
+        *function  = tel[1];
+        if(*function & 0x80)
+        {
+          lastException = (flen >= 3) ? tel[2] : -1;
+          return MODBUS_EXCEPTION;
+        }
+        switch(*function)
+        {
+          case ReadCoilStatus:
+          case ReadInputStatus:
+          case ReadHoldingRegisters:
+          case ReadInputRegisters:
+          case FetchCommEventLog:
+          case ReportSlaveID:
+          case ReadGeneralReference:
+          case WriteGeneralReference:
+          case ReadWrite4XRegisters:
+            if(flen < 3 || tel[2] != flen - 3) return MODBUS_ERROR;              // byte count distinto del largo
+            byte_count = flen - 3;
+            memcpy(data, &tel[3], byte_count);
+            return byte_count;
+          case ForceSingleCoil:
+          case PresetSingleRegister:
+          case FetchCommEventCtr:
+          case ForceMultipleCoils:
+          case PresetMultipleRegs:
+          case ReadExceptionStatus:
+          case MaskWrite4XRegisters:
+            // como antes: lo que sigue al tercer byte de la trama
+            if(flen < 3) return MODBUS_ERROR;
+            byte_count = flen - 3;
+            memcpy(data, &tel[3], byte_count);
+            return byte_count;
+          case ReadFifoQueue:
+            if(flen < 5) return MODBUS_ERROR;
+            byte_count = flen - 5;
+            memcpy(data, &tel[5], byte_count);
+            return byte_count;
+          default:
+            return MODBUS_ERROR;
+        }
       }
     }
   }
@@ -238,8 +265,16 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
       memset(&tel[i], 0, maxtel - i);
       int tlen = (int) strlen((const char *) telptr);
       len++;
+      if(tlen < 5) return MODBUS_ERROR;
       sscanf((char *) &telptr[len],"%02X",slave);       len += 2;
       sscanf((char *) &telptr[len],"%02X",function);    len += 2;
+      if(*function & 0x80)
+      { // Nestor: respuesta de excepcion: codigo + LRC
+        if(tlen < len + 4) return MODBUS_ERROR;
+        sscanf((char *) &telptr[len],"%02X",&val);
+        lastException = val;
+        return MODBUS_EXCEPTION;
+      }
       switch(*function)
       {
         case ReadCoilStatus:
@@ -294,7 +329,8 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
           return byte_count;
         case ReadFifoQueue:
           sscanf((char *) &telptr[len],"%04X",&byte_count); len += 4;
-          if(byte_count < 0 || len + byte_count + 2 > tlen) return MODBUS_ERROR;
+          // Nestor: el FIFO tiene hasta 31 registros; data es del que llama (el daemon: 257 bytes)
+          if(byte_count < 0 || byte_count > 254 || len + byte_count + 2 > tlen) return MODBUS_ERROR;
           for(idata=0; idata<(byte_count/2); idata++)
           {
             data[idata] = buf2int_ascii(&telptr[len]);     len += 2;
@@ -311,14 +347,16 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
     {
       ret = tty->select(timeout);
       if(ret == 0)                             return MODBUS_ERROR;
-      if(tty->readBlock(tel, 2, timeout) <= 0) return MODBUS_ERROR;
+      if(tty->readBlock(tel, 2, timeout) < 2)  return MODBUS_ERROR;   // Nestor: antes <= 0 aceptaba 1 byte
       *slave     = tel[len++];
       *function  = tel[len++];
       if(*function & 0x80)
       { // Nestor: respuesta de excepcion (codigo + CRC): se lee entera para no dejar bytes en el puerto
         if(tty->select(timeout) == 0)                          return MODBUS_ERROR;
-        if(tty->readBlock(&tel[len], 3, timeout) <= 0)         return MODBUS_ERROR;
-        return MODBUS_ERROR;
+        if(tty->readBlock(&tel[len], 3, timeout) < 3)          return MODBUS_ERROR;
+        if(CRCerror(len + 3) == 1)                             return MODBUS_CHECKSUM_ERROR;
+        lastException = tel[2];
+        return MODBUS_EXCEPTION;
       }
       // Nestor: la cantidad de bytes sale de la respuesta. Antes era tel[5]-3, que en serie es un byte
       // del pedido que se acaba de mandar: fallaba el CRC en cada lectura y quedaban bytes en el puerto
@@ -358,10 +396,12 @@ int rlModbus::response(int *slave, int *function, unsigned char *data, int timeo
         default:
           return MODBUS_ERROR;
       }
-      if(len + byte_count + 2 > maxtel)                        return MODBUS_ERROR;
+      // Nestor: se lee en tel y se copian solo los datos: data es del que llama (el daemon: 257 bytes) y con
+      // ReadFifoQueue la cantidad que manda el equipo podia llegar a 507
+      if(byte_count > 255 || len + byte_count + 2 > maxtel)    return MODBUS_ERROR;
       if(tty->select(timeout) == 0)                            return MODBUS_ERROR;
-      if(tty->readBlock(data, byte_count+2, timeout) < byte_count+2) return MODBUS_ERROR;
-      memcpy(&tel[len],data,byte_count+2); len += byte_count + 2;
+      if(tty->readBlock(&tel[len], byte_count+2, timeout) < byte_count+2) return MODBUS_ERROR;
+      memcpy(data, &tel[len], byte_count); len += byte_count + 2;
       if(CRCerror(len) == 1)                                   return MODBUS_CHECKSUM_ERROR;
       return byte_count;
     }
@@ -795,7 +835,7 @@ int rlModbus::readCoilStatus(int slave, int start_adr, int number_of_coils, unsi
 {
   int ret;
   int ret_slave, ret_function;
-  unsigned char data[256];
+  unsigned char data[260];   // Nestor: response() copia hasta 255 bytes
 
   data[0] = (start_adr / 256) & 0x0ff;
   data[1] = start_adr & 0x0ff;
@@ -804,13 +844,16 @@ int rlModbus::readCoilStatus(int slave, int start_adr, int number_of_coils, unsi
   ret = write(slave, ReadCoilStatus, data, 4);
   if(ret < 0) return MODBUS_ERROR;
 
-  ret = response(&ret_slave, &ret_function, status, timeout);
+  ret = response(&ret_slave, &ret_function, data, timeout);
   if(ret < 0 || ret_slave != slave || ret_function != ReadCoilStatus) 
   {
     printf("rlMOdbus::ERROR response ret=%d slave=%d ret_slave=%d function=%d ret_function=%d timeout=%d\n", 
                                      ret, slave, ret_slave, ReadCoilStatus, ret_function, timeout);
     return MODBUS_ERROR;
-  }  
+  }
+  // Nestor: la cantidad la manda el equipo: tiene que ser la pedida (antes se escribia en status lo que llegara)
+  if(ret != (number_of_coils + 7) / 8) return MODBUS_ERROR;
+  memcpy(status, data, ret);
 
   return ret;
 }
@@ -819,7 +862,7 @@ int rlModbus::readInputStatus(int slave, int start_adr, int number_of_inputs, un
 {
   int ret;
   int ret_slave, ret_function;
-  unsigned char data[256];
+  unsigned char data[260];   // Nestor: response() copia hasta 255 bytes
 
   data[0] = (start_adr / 256) & 0x0ff;
   data[1] = start_adr & 0x0ff;
@@ -828,13 +871,15 @@ int rlModbus::readInputStatus(int slave, int start_adr, int number_of_inputs, un
   ret = write(slave, ReadInputStatus, data, 4);
   if(ret < 0) return MODBUS_ERROR;
 
-  ret = response(&ret_slave, &ret_function, status, timeout);
+  ret = response(&ret_slave, &ret_function, data, timeout);
   if(ret < 0 || ret_slave != slave || ret_function != ReadInputStatus) 
   {
     printf("rlMOdbus::ERROR response ret=%d slave=%d ret_slave=%d function=%d ret_function=%d timeout=%d\n", 
                                      ret, slave, ret_slave, ReadInputStatus, ret_function, timeout);
     return MODBUS_ERROR;
-  }  
+  }
+  if(ret != (number_of_inputs + 7) / 8) return MODBUS_ERROR;   // Nestor: la cantidad la manda el equipo
+  memcpy(status, data, ret);
 
   return ret;
 }
@@ -843,7 +888,7 @@ int rlModbus::readHoldingRegisters(int slave, int start_adr, int number_of_regis
 {
   int ret;
   int ret_slave, ret_function;
-  unsigned char data[256];
+  unsigned char data[260];   // Nestor: response() copia hasta 255 bytes
 
   data[0] = (start_adr / 256) & 0x0ff;
   data[1] = start_adr & 0x0ff;
@@ -858,7 +903,8 @@ int rlModbus::readHoldingRegisters(int slave, int start_adr, int number_of_regis
     printf("rlMOdbus::ERROR response ret=%d slave=%d ret_slave=%d function=%d ret_function=%d timeout=%d\n", 
                                      ret, slave, ret_slave, ReadHoldingRegisters, ret_function, timeout);
     return MODBUS_ERROR;
-  }  
+  }
+  if(ret != 2 * number_of_registers) return MODBUS_ERROR;   // Nestor: la cantidad la manda el equipo
   int j = 0;
   for(int i=0; i<ret; i+=2) 
   {
@@ -872,7 +918,7 @@ int rlModbus::readInputRegisters(int slave, int start_adr, int number_of_registe
 {
   int ret;
   int ret_slave, ret_function;
-  unsigned char data[256];
+  unsigned char data[260];   // Nestor: response() copia hasta 255 bytes
 
   data[0] = (start_adr / 256) & 0x0ff;
   data[1] = start_adr & 0x0ff;
@@ -887,7 +933,8 @@ int rlModbus::readInputRegisters(int slave, int start_adr, int number_of_registe
     printf("rlMOdbus::ERROR response ret=%d slave=%d ret_slave=%d function=%d ret_function=%d timeout=%d\n", 
                                      ret, slave, ret_slave, ReadInputRegisters, ret_function, timeout);
     return MODBUS_ERROR;
-  }  
+  }
+  if(ret != 2 * number_of_registers) return MODBUS_ERROR;   // Nestor: la cantidad la manda el equipo
   int j=0;
   for(int i=0; i<ret; i+=2) 
   {
@@ -1007,3 +1054,111 @@ int rlModbus::presetMultipleRegisters(int slave, int start_adr, int number_of_re
 }
 
 
+//------------------------------------------------------------------------------------------------
+// Nestor: escrituras que llegan por el mailbox del daemon (ver rlmodbus.h)
+
+// un pedido y su respuesta: el esclavo y la funcion tienen que ser los del pedido; *exception = respondio
+// con una excepcion (funcion | 0x80)
+int rlModbus::exceptionCode()
+{
+  return lastException;   // lo deja response() con MODBUS_EXCEPTION (TCP, RTU y ASCII)
+}
+
+static int transact(rlModbus *m, int slave, int function, const unsigned char *data, int len, int timeout,
+                    unsigned char *resp, bool *exception, int *code = NULL)
+{
+  unsigned char buf[512];
+  int rslave = slave, rfunction = function;
+  if(exception != NULL) *exception = false;
+  if(resp == NULL) resp = buf;
+  int ret = m->write(slave, function, data, len);
+  if(ret < 0) return ret;
+  ret = m->response(&rslave, &rfunction, resp, timeout);
+  if(rfunction == (function | 0x80))
+  {
+    if(exception != NULL) *exception = true;
+    if(code != NULL) *code = m->exceptionCode();
+    return rlModbus::MODBUS_EXCEPTION;
+  }
+  if(ret < 0) return ret;
+  if(rslave != slave || rfunction != function) return rlModbus::MODBUS_ERROR;
+  return ret;
+}
+
+static void mbxPause(int ms)
+{
+  if(ms > 0) std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+// funcion 22 emulada: leer el registro, cambiar los bits y escribirlo (con el puerto tomado: nada en el medio)
+static int maskWriteRmw(rlModbus *m, int slave, int adr, int and_mask, int or_mask, int idletime, int timeout)
+{
+  unsigned char d[4], resp[512];
+  d[0] = adr / 256; d[1] = adr & 0x0ff; d[2] = 0; d[3] = 1;
+  int ret = transact(m, slave, rlModbus::ReadHoldingRegisters, d, 4, timeout, resp, NULL);
+  if(ret != 2) return rlModbus::MODBUS_ERROR;
+  int val = resp[0]*256 + resp[1];
+  val = (val & and_mask) | (or_mask & ~and_mask & 0x0ffff);
+  d[2] = val / 256; d[3] = val & 0x0ff;
+  mbxPause(idletime);
+  return transact(m, slave, rlModbus::PresetSingleRegister, d, 4, timeout, NULL, NULL);
+}
+
+int rlModbus::writeFromMailbox(int slave, int function, const unsigned char *data, int len, int bitWrite,
+                               unsigned char *noFc22, int idletime, int timeout)
+{
+  if(data == NULL || len < 0 || slave < 0 || slave > 255) return MODBUS_ERROR;
+  if(function == PresetMultipleRegs && len >= 5)
+  {
+    // hasta 123 registros por pedido (lo que entra en un telegrama)
+    int adr = data[0]*256 + data[1], qty = data[2]*256 + data[3], ret = MODBUS_ERROR;
+    if(qty < 1 || len < 5 + 2*qty || adr + qty > 65536) return MODBUS_ERROR;
+    for(int done=0; done<qty; done += 123)
+    {
+      unsigned char d[5 + 2*123];
+      int n = (qty - done < 123) ? qty - done : 123, a = adr + done;
+      d[0] = a / 256; d[1] = a & 0x0ff; d[2] = n / 256; d[3] = n & 0x0ff; d[4] = 2*n;
+      memcpy(&d[5], &data[5 + 2*done], 2*n);
+      if(done > 0) mbxPause(idletime);
+      ret = transact(this, slave, function, d, 5 + 2*n, timeout, NULL, NULL);
+      if(ret < 0) return ret;
+    }
+    return ret;
+  }
+  if(function == ForceMultipleCoils && len >= 5)
+  {
+    // hasta 1968 coils (246 bytes) por pedido; 1968 es multiplo de 8: los bytes no se reacomodan
+    int adr = data[0]*256 + data[1], qty = data[2]*256 + data[3], ret = MODBUS_ERROR;
+    if(qty < 1 || len < 5 + (qty + 7) / 8 || adr + qty > 65536) return MODBUS_ERROR;
+    for(int done=0; done<qty; done += 1968)
+    {
+      unsigned char d[5 + 246];
+      int n = (qty - done < 1968) ? qty - done : 1968, a = adr + done, bytes = (n + 7) / 8;
+      d[0] = a / 256; d[1] = a & 0x0ff; d[2] = n / 256; d[3] = n & 0x0ff; d[4] = bytes;
+      memcpy(&d[5], &data[5 + done / 8], bytes);
+      if(n % 8) d[4 + bytes] &= (unsigned char) ((1 << (n % 8)) - 1);   // los bits de mas en 0
+      if(done > 0) mbxPause(idletime);
+      ret = transact(this, slave, function, d, 5 + bytes, timeout, NULL, NULL);
+      if(ret < 0) return ret;
+    }
+    return ret;
+  }
+  if(function == MaskWrite4XRegisters && len >= 6)
+  {
+    int adr = data[0]*256 + data[1], and_mask = data[2]*256 + data[3], or_mask = data[4]*256 + data[5];
+    bool fc22 = (bitWrite == 1) || (bitWrite == 2 && !(noFc22 != NULL && noFc22[slave]));
+    if(!fc22) return maskWriteRmw(this, slave, adr, and_mask, or_mask, idletime, timeout);
+    bool exception = false;
+    int code = -1;
+    int ret = transact(this, slave, function, data, 6, timeout, NULL, &exception, &code);
+    if(ret >= 0 || bitWrite == 1 || !exception) return ret;
+    // automatico: solo la excepcion 01 (funcion ilegal) dice que el esclavo no tiene la 22; con Modbus ASCII
+    // no se sabe el codigo: se prueba leer-modificar-escribir sin recordarlo
+    if(code != 1 && code != -1) return ret;
+    mbxPause(idletime);
+    ret = maskWriteRmw(this, slave, adr, and_mask, or_mask, idletime, timeout);
+    if(ret >= 0 && code == 1 && noFc22 != NULL) noFc22[slave] = 1;
+    return ret;
+  }
+  return transact(this, slave, function, data, len, timeout, NULL, NULL);
+}

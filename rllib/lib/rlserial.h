@@ -110,6 +110,7 @@ class rlSerial
     int writeChar(unsigned char uchar);
     int readBlock(unsigned char *buf, int len, int timeout=-1);
     int writeBlock(const unsigned char *buf, int len);
+    int flushInput();   // descarta lo recibido sin leer
     int readLine(unsigned char *buf, int maxlen, int timeout=1000);
     int closeDevice();
 		//! on := 0 | 1 (bool)

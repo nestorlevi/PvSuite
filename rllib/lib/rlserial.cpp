@@ -423,6 +423,20 @@ int rlSerial::readBlock(unsigned char *buf, int len, int timeout)
 #endif
 }
 
+//! Nestor: descarta lo que haya llegado y no se leyo (la cola de una respuesta atrasada) antes de un pedido
+int rlSerial::flushInput()
+{
+#ifdef RLUNIX
+  if(fd == -1) return -1;
+  return tcflush(fd, TCIFLUSH);
+#elif defined(RLWIN32)
+  if(hdl == INVALID_HANDLE_VALUE) return -1;
+  return PurgeComm(hdl, PURGE_RXCLEAR) ? 0 : -1;
+#else
+  return 0;
+#endif
+}
+
 int rlSerial::writeBlock(const unsigned char *buf, int len)
 {
 #ifdef RLUNIX

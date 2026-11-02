@@ -64,7 +64,7 @@ int rlSiemensTCPClient::write(int slave, int org, int dbnr, int start_adr, int l
   buf[7] = len & 0x0ff;
   buf[8] = function;
   memcpy(&buf[9],inbuf,len_byte);
-  if(rlMailbox::write((void *) buf, len_byte + 9) < 0) return -1; // Nestor: antes devolvia 0 aunque fallara
+  if(rlMailbox::writeNoWait((void *) buf, len_byte + 9) < 0) return -1; // Nestor: antes devolvia 0 aunque fallara
   return 0;
 }
 

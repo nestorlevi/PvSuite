@@ -27,21 +27,27 @@
 #include <mutex>
 #include <chrono>
 
-// Nestor: ultimo intento de conexion por objeto: con el PLC apagado doConnect hace 3 intentos con el
-// timeout de rlSocket cada uno, y antes se repetia en cada bloque del ciclo
-static bool reconnectCheck(const void *who, bool done)
+// Nestor: proximo intento de conexion por objeto. Con el PLC apagado (sin RST) cada connect espera el
+// timeout de rlSocket y, como todos los PLC de un daemon se leen en el mismo hilo, frenaba a los demas:
+// un solo intento por llamada y espera creciente por PLC (3 s, 6 s, ... hasta 60 s) mientras no conecte
+struct rlSiemensRetry { long long at = 0; long long wait = 0; };
+static bool reconnectCheck(const void *who, int done)   // done: -1 = preguntar, 0 = fallo, 1 = conecto, 2 = olvidar
 {
   static std::mutex m;
-  static std::map<const void *, long long> last;
+  static std::map<const void *, rlSiemensRetry> retry;
   long long now = (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
   std::lock_guard<std::mutex> lock(m);
-  std::map<const void *, long long>::iterator it = last.find(who);
-  if(done) { last[who] = now; return true; }   // fin del intento: el plazo cuenta desde aca (el connect puede tardar)
-  return !(it != last.end() && now - it->second < 3000);
+  if(done == 2) { retry.erase(who); return true; }   // el objeto se destruye (otro en la misma direccion empieza de cero)
+  rlSiemensRetry &r = retry[who];
+  if(done < 0) return r.at == 0 || now >= r.at;
+  r.wait = done ? 3000 : (r.wait <= 0 ? 3000 : (r.wait * 2 > 60000 ? 60000 : r.wait * 2));
+  r.at = now + r.wait;   // el plazo cuenta desde el fin del intento (el connect puede tardar)
+  return true;
 }
 
-static bool reconnectAllowed(const void *who) { return reconnectCheck(who, false); }
-static void reconnectDone(const void *who)    { reconnectCheck(who, true); }
+static bool reconnectAllowed(const void *who) { return reconnectCheck(who, -1); }
+static void reconnectDone(rlSocket *who) { reconnectCheck(who, who->isConnected() ? 1 : 0); }
+
 #define TIMEOUT 2000
 #define ISO_PORT 102
 
@@ -64,6 +70,7 @@ rlSiemensTCP::rlSiemensTCP(const char *a, int _plc_type, int _fetch_write, int _
 rlSiemensTCP::~rlSiemensTCP()
 {
   rlSocket::disconnect();
+  reconnectCheck(this, 2);
 }
 
 int rlSiemensTCP::getDefaultConnectBlock(unsigned char *connect_block)
@@ -151,7 +158,7 @@ void rlSiemensTCP::doConnect()
     if(rack_slot != -1) connect_block[18] = rack_slot;
   }
 
-  for(i=0; i<3; i++)
+  for(i=0; i<1; i++)   // Nestor: un intento; los siguientes, con espera creciente (reconnectCheck)
   {
     if(rlSocket::connect() >= 0)
     {
@@ -235,7 +242,7 @@ int rlSiemensTCP::getOrg(int org)
 int rlSiemensTCP::write(int org, int dbnr, int start_adr, int len, const unsigned char *buf, int function)
 {
   int i,ibuf,ret,len_byte,length;
-  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: 3 s entre intentos
+  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: espera creciente entre intentos
   if(rlSocket::isConnected() == 0) return -1;
 
   len_byte = len;
@@ -263,9 +270,9 @@ int rlSiemensTCP::write(int org, int dbnr, int start_adr, int len, const unsigne
     wh.len_org_block   = 8;
     wh.org_block       = (unsigned char) org;
     wh.dbnr            = (unsigned char) dbnr;
-    wh.start_adr[0]    = (unsigned char) start_adr / 256;
+    wh.start_adr[0]    = (unsigned char) (start_adr / 256);   // Nestor: antes ((unsigned char) start_adr) / 256 = 0
     wh.start_adr[1]    = (unsigned char) start_adr & 0x0ff;;
-    wh.len[0]          = (unsigned char) len / 256;
+    wh.len[0]          = (unsigned char) (len / 256);
     wh.len[1]          = (unsigned char) len & 0x0ff;;
     wh.spare1          = 0x0ff;
     wh.spare1_len      = 2;
@@ -286,12 +293,14 @@ int rlSiemensTCP::write(int org, int dbnr, int start_adr, int len, const unsigne
     rlDebugPrintf("write buf ret=%d\n",ret);
     if(ret < 0) return ret;
     */
+    // Nestor: en un timeout se corta la conexion (como read_iso): si no, la respuesta atrasada se leia
+    // como la del pedido siguiente
     ret = rlSocket::read(&ih,sizeof(ih),TIMEOUT);
     rlDebugPrintf("read ih ret=%d\n",ret);
-    if(ret <= 0) return ret;
+    if(ret <= 0) { rlSocket::disconnect(); return -1; }
     ret = rlSocket::read(&wa,sizeof(wa),TIMEOUT);
     rlDebugPrintf("read wa ret=%d\n",ret);
-    if(ret <= 0) return ret;
+    if(ret <= 0) { rlSocket::disconnect(); return -1; }
     if(wa.error_block != 0) return -1;
   }
   else
@@ -440,7 +449,9 @@ int rlSiemensTCP::write_byte(int& i, int org, int dbnr, int start_adr, int len, 
   pdu[i++] = dbnr / 256;                      //8 0x00;
   pdu[i++] = dbnr & 0x0ff;                    //9 0x00;
   pdu[i++] = getOrg(org);                     //10 
-  pdu[i++] =   start_adr   /0x10000  & 0x0ff;
+  // Nestor: la direccion va en bits en 3 bytes, como en fetch; antes el byte alto era start_adr/0x10000
+  // (la formula del S7-200) y una escritura en un byte >= 8192 iba a otra direccion del PLC
+  pdu[i++] = (plc_type == S7_200) ? ((start_adr / 0x10000) & 0x0ff) : (((start_adr*8)/0x010000) & 0x0ff);
   pdu[i++] = ((start_adr*8)/0x0100)  & 0x0ff; //0x00;  // [12] start adr/bits
   pdu[i++] =  (start_adr*8)          & 0x0ff; //0x00;  // [13] start adr/bits     
   pdu[i++] = 0x00;
@@ -459,7 +470,7 @@ int rlSiemensTCP::fetch(int org, int dbnr, int start_adr, int len, unsigned char
 {
   int i,ret,len_byte,length;
 
-  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: 3 s entre intentos
+  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: espera creciente entre intentos
   if(rlSocket::isConnected() == 0) return -1;
 
   len_byte = len;
@@ -484,9 +495,9 @@ int rlSiemensTCP::fetch(int org, int dbnr, int start_adr, int len, unsigned char
     fh.len_org_block   = 8;
     fh.org_block       = (unsigned char) org;
     fh.dbnr            = (unsigned char) dbnr;
-    fh.start_adr[0]    = (unsigned char) start_adr / 256;
+    fh.start_adr[0]    = (unsigned char) (start_adr / 256);   // Nestor: antes ((unsigned char) start_adr) / 256 = 0
     fh.start_adr[1]    = (unsigned char) start_adr & 0x0ff;;
-    fh.len[0]          = (unsigned char) len / 256;
+    fh.len[0]          = (unsigned char) (len / 256);
     fh.len[1]          = (unsigned char) len & 0x0ff;;
     fh.spare1          = 0x0ff;
     fh.spare1_len      = 2;
@@ -504,16 +515,18 @@ int rlSiemensTCP::fetch(int org, int dbnr, int start_adr, int len, unsigned char
     rlDebugPrintf("fetch write fh ret=%d\n",ret);
     if(ret < 0) return ret;
     */
+    // Nestor: en un timeout se corta la conexion (como read_iso): si no, la respuesta atrasada se leia
+    // como la del pedido siguiente
     ret = rlSocket::read(&ih,sizeof(ih),TIMEOUT);
     rlDebugPrintf("fetch read ih ret=%d\n",ret);
-    if(ret <= 0) return ret;
+    if(ret <= 0) { rlSocket::disconnect(); return -1; }
     ret = rlSocket::read(&fa,sizeof(fa),TIMEOUT);
     rlDebugPrintf("fetch read fa ret=%d\n",ret);
-    if(ret <= 0) return ret;
+    if(ret <= 0) { rlSocket::disconnect(); return -1; }
     if(fa.error_block != 0) return -1;
     ret = rlSocket::read(buf,len_byte,TIMEOUT);
     rlDebugPrintf("fetch read buf ret=%d\n",ret);
-    if(ret <= 0) return ret;
+    if(ret <= 0) { rlSocket::disconnect(); return -1; }
   }
   else
   {
@@ -633,7 +646,7 @@ int rlSiemensTCP::write_iso(unsigned char *buf, int len)
   int i,ret;
 
   if(len > (int) sizeof(pdu)) return -1;
-  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: 3 s entre intentos
+  if(rlSocket::isConnected() == 0 && reconnectAllowed(this)) { doConnect(); reconnectDone(this); } // Nestor: espera creciente entre intentos
   if(rlSocket::isConnected() == 0) return -1;
  
   // speedup siemens communication as suggested by Vincent Segui Pascual

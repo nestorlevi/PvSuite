@@ -547,22 +547,36 @@ bindv6:
 
       //::printf("debug: gethostbyname\n");
       // fill destblk structure 
-      host = gethostbyname(adr);
-      if(host == NULL)
+      // Nestor: primero la IP numerica (sin resolver nombres: con el DNS caido gethostbyname frenaba el ciclo
+      // del daemon), y los nombres con getaddrinfo, que se puede llamar desde varios hilos (gethostbyname no)
+      RemoteIpAddress.s_addr = inet_addr(adr);
+      if(RemoteIpAddress.s_addr == INADDR_NONE || strcmp(adr, "255.255.255.255") == 0)
       {
-        // See if the host is specified in "dot address" form
-        RemoteIpAddress.s_addr = inet_addr(adr);
-        if(RemoteIpAddress.s_addr == INADDR_NONE)
+#ifdef AF_INET6_IS_AVAILABLE
+        struct addrinfo hints4, *res4 = NULL;
+        memset(&hints4, 0, sizeof(hints4));
+        hints4.ai_family = AF_INET;
+        hints4.ai_socktype = SOCK_STREAM;
+        if(getaddrinfo(adr, NULL, &hints4, &res4) != 0 || res4 == NULL || res4->ai_addr == NULL)
         {
+          if(res4 != NULL) freeaddrinfo(res4);
           // mur was here: without disconnect the sockets will be created over and over
           disconnect();
           s = -1;
           return INET_ADDR_ERR; // -1
         }
-      }
-      else
-      {
+        RemoteIpAddress = ((struct sockaddr_in *) res4->ai_addr)->sin_addr;
+        freeaddrinfo(res4);
+#else
+        host = gethostbyname(adr);
+        if(host == NULL)
+        {
+          disconnect();
+          s = -1;
+          return INET_ADDR_ERR; // -1
+        }
         memcpy(&RemoteIpAddress,host->h_addr,host->h_length);
+#endif
       }
 
       memset(&remoteAddr,0,sizeof(remoteAddr));
@@ -655,6 +669,17 @@ int rlSocket::select(int timeout)
   timout.tv_usec = (timeout % 1000) * 1000;
 
   ret = ::select(maxfdp1,&rset,&wset,&eset,&timout);
+#ifndef RLWIN32
+  // Nestor: con una senal (EINTR) se devolvia 1 y el recv siguiente quedaba bloqueado sin timeout
+  for(int retry = 0; ret < 0 && errno == EINTR && retry < 100; retry++)
+  {
+    FD_ZERO(&rset);
+    FD_SET (s,&rset);
+    timout.tv_sec  =  timeout / 1000;   // se vuelve a esperar el plazo entero (no se sabe cuanto paso)
+    timout.tv_usec = (timeout % 1000) * 1000;
+    ret = ::select(maxfdp1,&rset,&wset,&eset,&timout);
+  }
+#endif
   if(ret == 0) return 0; /* timeout */
   return 1;
 }

@@ -172,6 +172,7 @@ printf("print registers[0] as signed int value=%d\n", data.s_short[0]);
 
     enum Modbus
     {
+      MODBUS_EXCEPTION      = -3, // Nestor: el esclavo respondio con una excepcion (writeFromMailbox)
       MODBUS_CHECKSUM_ERROR = -2,
       MODBUS_ERROR          = -1,
       MODBUS_SUCCESS        = 0,
@@ -235,6 +236,26 @@ We assume positive values for registers: 0 <= registers < 256*256
 We assume positive values for registers: 0 <= registers < 256*256
 </pre> */
     int  presetMultipleRegisters (int slave, int start_adr,    int number_of_registers, int *registers,        int timeout=1000);
+/*! <pre>
+Nestor: una escritura que un pvserver le pide al daemon por el mailbox (la usa el daemon que genera pvdevelop):
+data = los datos del pedido Modbus de "function" (sin esclavo ni funcion).
+  16 / 15 con mas de 123 registros / 1968 coils: se parten en varios pedidos seguidos (en el mailbox
+          la cantidad va completa en los bytes 2..3 y el byte "byte count" no se usa)
+  22 (Mask Write Register): bitWrite = 0: leer el registro (3), cambiar los bits y escribirlo (6),
+          sin otro pedido en el medio; 1: la funcion 22; 2: la 22 y, si el esclavo responde con la
+          excepcion 01 (funcion ilegal: no la tiene), leer-modificar-escribir; noFc22[esclavo] = 1 lo
+          recuerda. Otra excepcion (06 ocupado, 0B sin respuesta del equipo...) no cambia nada.
+  16 / 15 que pasan del registro / coil 65535: rechazadas.
+  las demas: tal cual.
+Hay que llamarla con el puerto tomado (thread.lock). idletime: ms entre los pedidos de una misma escritura.
+Devuelve >= 0 si el esclavo la acepto (todas las partes), MODBUS_EXCEPTION si la rechazo (la conexion
+esta bien) u otro valor < 0 si no respondio.
+</pre> */
+    int  writeFromMailbox(int slave, int function, const unsigned char *data, int len, int bitWrite,
+                          unsigned char *noFc22, int idletime = 0, int timeout = 1000);
+    //! Nestor: el codigo de la ultima respuesta de excepcion (01 funcion ilegal, 02 direccion ilegal...);
+    //! valido solo despues de una respuesta con funcion | 0x80. -1 si no se sabe (Modbus ASCII)
+    int  exceptionCode();
 
   private:
     int  buf2int_rtu(unsigned char *buf);
@@ -251,6 +272,8 @@ We assume positive values for registers: 0 <= registers < 256*256
     long     maxtel;
     int      mode;
     char     delimitor;
+    int      tidNext, tidSent, tidEcho;   // Nestor: Transaction ID de Modbus TCP (response() descarta los de otro pedido)
+    int      lastException;               // codigo de la ultima excepcion (exceptionCode)
 };
 
 #endif
