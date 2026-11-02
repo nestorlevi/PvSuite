@@ -77,6 +77,7 @@ private slots:
   void slotImport();
   void slotExport();
   void slotCheck();
+  void slotScanGroups();   // Nestor: Grupos de lectura...
   void slotNotation(int index);
   void slotBrowseCsv();
   void slotStoreChanged();
@@ -144,6 +145,8 @@ private:
   QString mkfile;
   QStringList otherLines;                        // lineas del .mk que no son de tags
   std::vector<rlTagStruct> structs;
+  std::vector< std::pair<std::string, int> > scanGroups;   // Nestor: scan_group del .mk
+  int colLen = -1, memberColLen = -1;            // Nestor: columna Largo (string; solo Modbus)
   int currentStruct;
   QString result;
   // Nestor: estructuras compartidas del proyecto y cambio de daemon

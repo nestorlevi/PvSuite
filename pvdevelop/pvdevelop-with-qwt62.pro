@@ -151,9 +151,9 @@ win32-msvc*:LIBS += $$PWD/../rllib/lib/rllib.lib ws2_32.lib iphlpapi.lib advapi3
 unix:LIBS        += -L$$PWD/../rllib/lib -lrllib
 unix:!macx:QMAKE_RPATHDIR += $$PWD/../rllib/lib
 
-HEADERS      += dlgtags.h dlgtagmonitor.h buildconsole.h pvbindgen.h dlgbind.h pvtablesort.h pvimages.h doctabs.h dlghelp.h pvtaginfo.h dlgnewtag.h
-SOURCES      += dlgtags.cpp dlgtagmonitor.cpp buildconsole.cpp pvbindgen.cpp dlgbind.cpp pvtablesort.cpp pvimages.cpp doctabs.cpp dlghelp.cpp pvtaginfo.cpp dlgnewtag.cpp
-FORMS        += dlgtags.ui
+HEADERS      += dlgtags.h dlgtagmonitor.h buildconsole.h pvbindgen.h dlgbind.h pvtablesort.h pvimages.h doctabs.h dlghelp.h pvtaginfo.h dlgnewtag.h dlgscangroups.h
+SOURCES      += dlgtags.cpp dlgtagmonitor.cpp buildconsole.cpp pvbindgen.cpp dlgbind.cpp pvtablesort.cpp pvimages.cpp doctabs.cpp dlghelp.cpp pvtaginfo.cpp dlgnewtag.cpp dlgscangroups.cpp
+FORMS        += dlgtags.ui dlgscangroups.ui
 FORMS        += dlgbind.ui   # Nestor
 FORMS        += dlghelp.ui dlgnewtag.ui
 

@@ -63,6 +63,8 @@ static char eventhost[4096];
 static int  eventport;
 static int  idletime; // Nestor: ms de espera antes de cada pedido (-1 = automatico)
 static int  cycletime; // Nestor: duracion minima de una vuelta en ms (-1 = 50)
+static int  slavedown;  // Nestor: slave_down_after= lecturas seguidas sin respuesta para dar un esclavo por caido (0 = nunca)
+static int  slaveretry; // Nestor: slave_retry_s= cada cuanto se vuelve a probar un esclavo caido
 static rlTagList *tags = NULL;
 static std::vector<int> plcs;   // Nestor: esclavos leidos (tags de sistema Esclavo<n>)
 static std::vector<std::string> cycleLabels; // Nestor: "FC3 0..9 (cycle1)" para los mensajes del daemon
@@ -91,6 +93,8 @@ static int init(const char *name)
   eventport = -1;
   idletime = -1;
   cycletime = -1;
+  slavedown = 3;
+  slaveretry = 5;
   rtscts = 1;
   parity = 0;
   protocol = 0; // RTU
@@ -144,6 +148,17 @@ static int init(const char *name)
     else if(strncmp("cycletime=",line,10) == 0)
     {
       sscanf(line,"cycletime=%d",&cycletime);
+    }
+    else if(strncmp("slave_down_after=",line,17) == 0)
+    {
+      sscanf(line,"slave_down_after=%d",&slavedown);
+      if(slavedown < 0) slavedown = 0;
+    }
+    else if(strncmp("default_slave=",line,14) == 0) { }   // Nestor: solo lo usa el editor de tags (esclavo inicial de lo nuevo)
+    else if(strncmp("slave_retry_s=",line,14) == 0)
+    {
+      sscanf(line,"slave_retry_s=%d",&slaveretry);
+      if(slaveretry < 1) slaveretry = 1;
     }
     else if(strncmp("protocol=",line,9) == 0)
     {
@@ -400,6 +415,7 @@ static int generate(const char *name)
   fprintf(fout,"#include \"rlthread.h\"\n");
   fprintf(fout,"#include \"rlcutil.h\"\n");
   fprintf(fout,"#include \"rldaemonstatus.h\"\n");
+  fprintf(fout,"#include \"rltag.h\"\n");
   if(eventport != -1)
   {
     fprintf(fout,"%s","#include \"rlevent.h\"\n");
@@ -425,16 +441,27 @@ static int generate(const char *name)
   fprintf(fout,"#define MODBUS_CYCLE_TIME %d // duracion minima de una vuelta en ms (cycletime= en el .mkmodbus)\n",
           (cycletime >= 0) ? cycletime : 50);
   fprintf(fout,"#define SERIAL_DEVICE   \"%s\"\n",gdaemonCString(tty).c_str());
-  // Nestor: bits de registros (setBool): 1 = funcion 22 (Mask Write Register) en el PLC;
-  // 0 = el daemon lee el registro, cambia el bit y lo escribe (sirve con cualquier PLC)
-  fprintf(fout,"#define BIT_WRITE_FC22  %d\n", tags->bit_write_fc22);
+  // Nestor: bits de registros (setBool de un bit, setBit, setMask): 1 = funcion 22 (Mask Write Register);
+  // 0 = el daemon lee el registro, cambia los bits y lo escribe (sirve con cualquier PLC); 2 = la 22 y, si el
+  // esclavo responde con una excepcion, leer-modificar-escribir desde ahi (rlModbus::writeFromMailbox)
+  fprintf(fout,"#define BIT_WRITE  %d // bit_write= en el .mkmodbus: 0 = rmw, 1 = fc22, 2 = auto\n", tags->bit_write_fc22);
+  fprintf(fout,"static unsigned char noFc22[256]; // auto: esclavos que no tienen la funcion 22\n");
+  // Nestor: un esclavo que no contesta frena la vuelta (cada pedido espera el timeout): tras SLAVE_DOWN_AFTER
+  // lecturas seguidas sin respuesta se lo da por caido (calidad mala sin preguntarle) y se lo vuelve a probar
+  // cada SLAVE_RETRY_MS. Una excepcion es una respuesta: el esclavo esta vivo. Las escrituras se intentan igual.
+  fprintf(fout,"#define SLAVE_DOWN_AFTER %d // slave_down_after= en el .mkmodbus (0 = nunca)\n", slavedown);
+  fprintf(fout,"#define SLAVE_RETRY_MS %d // slave_retry_s= en el .mkmodbus\n", slaveretry * 1000);
+  fprintf(fout,"static int slaveFails[256];\n");
+  fprintf(fout,"static long long slaveRetryAt[256]; // > 0: caido, se vuelve a probar a esa hora (msNow)\n");
+  fprintf(fout,"static unsigned char slaveAnswered[256]; // contesto alguna vez\n");
+  // Nestor: 512: una escritura de 123 registros (funcion 16) por TCP ocupa 259 bytes
   if(protocol == 1 && communication == SERIAL)
   {
     fprintf(fout,"rlModbus       modbus(1024+1,rlModbus::MODBUS_ASCII);\n");
   }
   else
   {
-    fprintf(fout,"rlModbus       modbus(256+1,rlModbus::MODBUS_RTU);\n");
+    fprintf(fout,"rlModbus       modbus(512+1,rlModbus::MODBUS_RTU);\n");
   }
   if(communication == SERIAL)
   {
@@ -443,15 +470,17 @@ static int generate(const char *name)
   if(communication != SERIAL || simadr[0] != '\0')
   {
     // con serie y simulation_tcpadr: el socket solo se usa en simulacion
-    if(communication == SERIAL) fprintf(fout,"rlSocket       sock(\"%s\",%d,1);\n", simadr, (simport > 0) ? simport : 502);
-    else                        fprintf(fout,"rlSocket       sock(\"%s\",%d,1);\n",tcpadr,tcpport);
+    // Nestor (revision A-16): las direcciones van escapadas como las otras cadenas (una " rompia el .cpp)
+    if(communication == SERIAL) fprintf(fout,"rlSocket       sock(\"%s\",%d,1);\n", gdaemonCString(simadr).c_str(), (simport > 0) ? simport : 502);
+    else                        fprintf(fout,"rlSocket       sock(\"%s\",%d,1);\n",gdaemonCString(tcpadr).c_str(),tcpport);
   }
   // Nestor: simulacion (simulation_tcpadr= en el .mkmodbus): con -sim (o PVB_SIMULATION=1) el daemon se
   // conecta a esa direccion; los tags, la memoria compartida y el .h son los mismos
-  fprintf(fout,"#define SIM_TCPADR \"%s\" // simulation_tcpadr= (vacio = sin simulacion)\n", simadr);
+  fprintf(fout,"#define SIM_TCPADR \"%s\" // simulation_tcpadr= (vacio = sin simulacion)\n", gdaemonCString(simadr).c_str());
   fprintf(fout,"#define SIM_TCPPORT %d\n", (simport > 0) ? simport : ((communication == SOCKET && tcpport > 0) ? tcpport : 502));
   fprintf(fout,"static int     useSocket = %d; // 1 = Modbus TCP (o simulacion)\n", (communication == SERIAL) ? 0 : 1);
-  fprintf(fout,"rlSharedMemory shm(\"%s\",%d);\n",gdaemonCString(shared_memory).c_str(),base);
+  fprintf(fout,"#define SHM_SIZE %d // al final: respuestas a los pedidos y contador de escrituras (rltag.h)\n",base);
+  fprintf(fout,"rlSharedMemory shm(\"%s\",SHM_SIZE);\n",gdaemonCString(shared_memory).c_str());
   fprintf(fout,"rlMailbox      mbx(\"%s\");\n",gdaemonCString(mailbox).c_str());
   fprintf(fout,"rlThread       thread;\n");
   fprintf(fout,"rlThread       watchdog;\n");
@@ -482,46 +511,89 @@ static int generate(const char *name)
   fprintf(fout,"  return arg;\n");
   fprintf(fout,"}\n");
   fprintf(fout,"\n");
+  fprintf(fout,"int refreshTagBlocks(int offset, int bytes);\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"static long long msNow()\n");
+  fprintf(fout,"{\n");
+  fprintf(fout,"  return (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();\n");
+  fprintf(fout,"}\n");
+  fprintf(fout,"\n");
+  fprintf(fout,"// con el puerto tomado: cuenta las fallas seguidas de un esclavo (ret < 0 y no excepcion)\n");
+  fprintf(fout,"static void slaveHealth(int slave, int ret)\n");
+  fprintf(fout,"{\n");
+  fprintf(fout,"  if(SLAVE_DOWN_AFTER <= 0) return;\n");
+  fprintf(fout,"  slave &= 255;\n");
+  fprintf(fout,"  if(ret >= 0 || ret == rlModbus::MODBUS_EXCEPTION)\n");
+  fprintf(fout,"  {\n");
+  fprintf(fout,"    slaveAnswered[slave] = 1;\n");
+  fprintf(fout,"    if(slaveRetryAt[slave] > 0) { printf(\"esclavo %%d: volvio a contestar\\n\", slave); fflush(stdout); }\n");
+  fprintf(fout,"    slaveFails[slave] = 0; slaveRetryAt[slave] = 0;\n");
+  fprintf(fout,"    return;\n");
+  fprintf(fout,"  }\n");
+  fprintf(fout,"  if(++slaveFails[slave] < SLAVE_DOWN_AFTER) return;\n");
+  fprintf(fout,"  if(slaveRetryAt[slave] == 0) { printf(\"esclavo %%d: %%d lecturas seguidas sin respuesta; se lo vuelve a probar cada %%d s\\n\", slave, slaveFails[slave], SLAVE_RETRY_MS / 1000); fflush(stdout); }\n");
+  fprintf(fout,"  slaveFails[slave] = SLAVE_DOWN_AFTER;\n");
+  fprintf(fout,"  slaveRetryAt[slave] = msNow() + SLAVE_RETRY_MS;\n");
+  fprintf(fout,"}\n");
+  fprintf(fout,"\n");
+  // Nestor: cortar el socket tras un timeout obliga a reconectar (rlModbus espera 3 s entre intentos): los demas
+  // esclavos (un gateway con varios) se quedaban sin datos por uno que no contesta. Si otro esclavo contesta, la
+  // conexion esta bien y un timeout no la corta; si no contesta ninguno (el equipo o la red), se corta como antes.
+  // Una respuesta que no corresponde (atrasada: el flujo quedo corrido) la corta siempre
+  fprintf(fout,"// 1 = otro esclavo de esta conexion contesta: un timeout de este no la corta\n");
+  fprintf(fout,"static int keepConnection(int slave)\n");
+  fprintf(fout,"{\n");
+  fprintf(fout,"  if(SLAVE_DOWN_AFTER <= 0) return 0;\n");
+  fprintf(fout,"  for(int i=0; i<256; i++) if(i != (slave & 255) && slaveAnswered[i] && slaveRetryAt[i] == 0) return 1;\n");
+  fprintf(fout,"  return 0;\n");
+  fprintf(fout,"}\n");
+  fprintf(fout,"\n");
   fprintf(fout,"// read mailbox and write to modbus\n");
+  // Nestor: mensajes del mailbox (rltag.h): [esclavo][funcion][datos] de siempre; [esclavo][RLTAG_MBX_REQUEST][id 4]
+  // [funcion][datos] = lo mismo con respuesta en la memoria (setIntWait...); [esclavo][RLTAG_MBX_REFRESH][id 4]
+  // [offset 4][bytes 4] = leer ya los bloques de ese tramo (refresh). Las funciones 15/16 de mas de un telegrama
+  // y la 22 (con o sin el esclavo) las resuelve rlModbus::writeFromMailbox.
   fprintf(fout,"void *reader(void *arg)\n");
   fprintf(fout,"{\n");
-  fprintf(fout,"  int ret,slave,function,buflen;\n");
-  fprintf(fout,"  unsigned char buf[256+1];\n");
+  fprintf(fout,"  int ret,slave,function,buflen,len;\n");
+  fprintf(fout,"  static unsigned char buf[4096+64];\n");
+  fprintf(fout,"  unsigned char *data;\n");
+  fprintf(fout,"  unsigned int id;\n");
   fprintf(fout,"\n");
   fprintf(fout,"  mbx.clear(); // clear old messages\n");
-  fprintf(fout,"  while((buflen = mbx.read(buf,sizeof(buf))) > 0)\n");
+  // Nestor (revision 8): un error de lectura del mailbox no termina el hilo (las escrituras dejaban de funcionar)
+  fprintf(fout,"  for(;;)\n");
   fprintf(fout,"  {\n");
+  fprintf(fout,"    buflen = mbx.read(buf,sizeof(buf));\n");
+  fprintf(fout,"    if(buflen < 0) { rlsleep(10); continue; }\n");
+  fprintf(fout,"    if(buflen < 2) continue;\n");
   fprintf(fout,"    slave        = buf[0];\n");
   fprintf(fout,"    function     = buf[1];\n");
+  fprintf(fout,"    data = &buf[2]; len = buflen - 2; id = 0;\n");
+  fprintf(fout,"    if(function == RLTAG_MBX_REFRESH)\n");
+  fprintf(fout,"    {\n");
+  fprintf(fout,"      if(buflen < 14) continue;\n");
+  fprintf(fout,"      id = ((unsigned) buf[2] << 24) | (buf[3] << 16) | (buf[4] << 8) | buf[5];\n");
+  fprintf(fout,"      int off = (buf[6] << 24) | (buf[7] << 16) | (buf[8] << 8) | buf[9];\n");
+  fprintf(fout,"      int bytes = (buf[10] << 24) | (buf[11] << 16) | (buf[12] << 8) | buf[13];\n");
+  fprintf(fout,"      rlTagAck(&shm, SHM_SIZE, id, refreshTagBlocks(off, bytes) ? RLTAG_OK : RLTAG_ERROR);\n");
+  fprintf(fout,"      continue;\n");
+  fprintf(fout,"    }\n");
+  fprintf(fout,"    if(function == RLTAG_MBX_REQUEST)\n");
+  fprintf(fout,"    {\n");
+  fprintf(fout,"      if(buflen < 7) continue;\n");
+  fprintf(fout,"      id = ((unsigned) buf[2] << 24) | (buf[3] << 16) | (buf[4] << 8) | buf[5];\n");
+  fprintf(fout,"      function = buf[6]; data = &buf[7]; len = buflen - 7;\n");
+  fprintf(fout,"    }\n");
   fprintf(fout,"    thread.lock();\n");
   fprintf(fout,"    rlsleep(MODBUS_IDLETIME);\n");
-  fprintf(fout,"    if(function == rlModbus::MaskWrite4XRegisters && BIT_WRITE_FC22 == 0 && buflen >= 8)\n");
-  fprintf(fout,"    { // Nestor: funcion 22 emulada: leer el registro, cambiar los bits y escribirlo\n");
-  fprintf(fout,"      int adr = buf[2]*256 + buf[3], and_mask = buf[4]*256 + buf[5], or_mask = buf[6]*256 + buf[7];\n");
-  fprintf(fout,"      int rslave = slave, rfunction = 0, val;\n");
-  fprintf(fout,"      unsigned char data[256+1];\n");
-  fprintf(fout,"      ret = modbus.request(slave, rlModbus::ReadHoldingRegisters, adr, 1);\n");
-  fprintf(fout,"      if(ret >= 0) ret = modbus.response(&rslave, &rfunction, data);\n");
-  fprintf(fout,"      if(ret == 2)\n");
-  fprintf(fout,"      {\n");
-  fprintf(fout,"        val = data[0]*256 + data[1];\n");
-  fprintf(fout,"        val = (val & and_mask) | (or_mask & ~and_mask & 0x0ffff);\n");
-  fprintf(fout,"        data[0] = adr/256; data[1] = adr & 0x0ff; data[2] = val/256; data[3] = val & 0x0ff;\n");
-  fprintf(fout,"        rlsleep(MODBUS_IDLETIME);\n");
-  fprintf(fout,"        ret = modbus.write(slave, rlModbus::PresetSingleRegister, data, 4);\n");
-  fprintf(fout,"        ret = modbus.response(&rslave, &rfunction, data);\n");
-  fprintf(fout,"      }\n");
-  fprintf(fout,"      else if(ret >= 0) ret = -1;\n");
-  fprintf(fout,"    }\n");
-  fprintf(fout,"    else\n");
-  fprintf(fout,"    {\n");
-  fprintf(fout,"      ret = modbus.write( slave, function, &buf[2], buflen-2);\n");
-  fprintf(fout,"      ret = modbus.response( &slave, &function, buf);\n");
-  fprintf(fout,"    }\n");
-  if(communication != SERIAL || simadr[0] != '\0') fprintf(fout,"    if(useSocket && ret != rlModbus::MODBUS_SUCCESS && ret < 0) sock.disconnect();\n");
+  fprintf(fout,"    int wasDown = slaveRetryAt[slave & 255] > 0; (void) wasDown; // las escrituras: solo si ya estaba caido\n");
+  fprintf(fout,"    ret = modbus.writeFromMailbox(slave, function, data, len, BIT_WRITE, noFc22, MODBUS_IDLETIME);\n");
+  fprintf(fout,"    if(ret >= 0 || ret == rlModbus::MODBUS_EXCEPTION) slaveHealth(slave, ret); // contesto: ya no esta caido\n");
+  if(communication != SERIAL || simadr[0] != '\0') fprintf(fout,"    if(useSocket && ret < 0 && ret != rlModbus::MODBUS_EXCEPTION && !(wasDown && keepConnection(slave))) sock.disconnect(); // una excepcion no es la conexion\n");
   if(eventport != -1)
   {
-    fprintf(fout,"%s","    if(ret <= 0) { rlEvent(rlWarning,\"modbus.response mbx ret=%d slave=%d function=%d\",ret, slave, function); }\n");
+    fprintf(fout,"%s","    if(ret < 0) { rlEvent(rlWarning,\"modbus.response mbx ret=%d slave=%d function=%d\",ret, slave, function); }\n");
   }
   fprintf(fout,"    rlsleep(MODBUS_IDLETIME);\n");
   fprintf(fout,"    thread.unlock();\n");
@@ -532,6 +604,7 @@ static int generate(const char *name)
   fprintf(fout,"      shm.write(%s_WRITE_ERROR_COUNT_BASE,&writeErrorCount,2);\n",target);
   fprintf(fout,"    }\n");
   fprintf(fout,"    { char what[32]; sprintf(what, \"FC%%d\", function); status.write(slave, what, ret); }\n");
+  fprintf(fout,"    if(id != 0) rlTagAck(&shm, SHM_SIZE, id, (ret >= 0) ? RLTAG_OK : RLTAG_ERROR);\n");
   fprintf(fout,"  }\n");
   fprintf(fout,"  return arg;\n");
   fprintf(fout,"}\n");
@@ -541,15 +614,22 @@ static int generate(const char *name)
   fprintf(fout,"int modbusCycle(int offset, int slave, int function, int start_adr, int num_register, int index, const char *what)\n");
   fprintf(fout,"{\n");
   fprintf(fout,"  unsigned char data[256+1];\n");
-  fprintf(fout,"  int ret, plc = slave, rslave = slave, rfunction = function, expected = -1;\n");
+  fprintf(fout,"  int ret, plc = slave, rslave = slave, rfunction = function, expected = -1, sent, mismatch = 0;\n");
+  fprintf(fout,"  (void) mismatch;\n");
   fprintf(fout,"  long long t0;\n");
   fprintf(fout,"\n");
   fprintf(fout,"  watchcnt1++;\n");
   fprintf(fout,"  if(watchcnt1 > 10000) watchcnt1 = 0;\n");
+  fprintf(fout,"  if(slaveRetryAt[slave & 255] > msNow()) // caido: calidad mala sin esperar el timeout\n");
+  fprintf(fout,"  {\n");
+  fprintf(fout,"    status.block(index, plc, what, -1, 0);\n");
+  fprintf(fout,"    return -1;\n");
+  fprintf(fout,"  }\n");
   fprintf(fout,"  rlsleep(MODBUS_IDLETIME);\n");
   fprintf(fout,"  thread.lock();\n");
   fprintf(fout,"  t0 = rlDaemonStatus::now();\n");
   fprintf(fout,"  ret = modbus.request(slave, function, start_adr, num_register);\n");
+  fprintf(fout,"  sent = ret >= 0; // si no salio (sin conexion) no es una falla del esclavo\n");
   fprintf(fout,"  if(ret >= 0) ret = modbus.response(&rslave, &rfunction, data);\n");
   // Nestor: una respuesta de otro pedido (atrasada, de otro esclavo o una excepcion) no se escribe en la memoria:
   // esclavo, funcion y cantidad de bytes tienen que ser los del pedido; si no, es un error (calidad mala)
@@ -558,12 +638,15 @@ static int generate(const char *name)
   fprintf(fout,"  if(ret >= 0 && (rslave != slave || rfunction != function || (expected >= 0 && ret != expected)))\n");
   fprintf(fout,"  {\n");
   fprintf(fout,"    if(DAEMON_CONSOLE > 0) printf(\"respuesta que no corresponde (%%s): esclavo %%d funcion %%d bytes %%d (se esperaba %%d %%d %%d)\\n\", what ? what : \"\", rslave, rfunction, ret, slave, function, expected);\n");
-  fprintf(fout,"    ret = -1;\n");
+  fprintf(fout,"    ret = -1; mismatch = 1;\n");
   fprintf(fout,"  }\n");
-  if(communication == SOCKET || simadr[0] != '\0') fprintf(fout,"  if(useSocket && ret < 0) sock.disconnect();\n");
+  // Nestor: una excepcion (el esclavo contesto que no) no es la conexion: no se corta ni lo marca caido (slaveHealth)
+  if(communication == SOCKET || simadr[0] != '\0') fprintf(fout,"  if(useSocket && ret < 0 && ret != rlModbus::MODBUS_EXCEPTION && (mismatch || !sent || !keepConnection(slave))) sock.disconnect();\n");
+  // Nestor: con el puerto tomado (un solo escritor del contador de escrituras: getBlock copia de nuevo si cambio)
+  fprintf(fout,"  if(ret > 0) rlTagWriteBlock(&shm, SHM_SIZE, offset, data, ret);\n");
+  fprintf(fout,"  if(sent) slaveHealth(slave, ret);\n");
   fprintf(fout,"  thread.unlock();\n");
-  fprintf(fout,"  if(ret > 0) shm.write(offset,data,ret);\n");
-  fprintf(fout,"  else\n");
+  fprintf(fout,"  if(ret <= 0)\n");
   fprintf(fout,"  {\n");
   fprintf(fout,"    readErrorCount++;\n");
   fprintf(fout,"    if(readErrorCount >= 256*128) readErrorCount = 0;\n");
@@ -578,11 +661,6 @@ static int generate(const char *name)
   fprintf(fout,"}\n");
   fprintf(fout,"\n");
 
-  fprintf(fout,"static long long msNow()\n");
-  fprintf(fout,"{\n");
-  fprintf(fout,"  return (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();\n");
-  fprintf(fout,"}\n");
-  fprintf(fout,"\n");
   if(!tags->blocks.empty())
   {
     // Nestor: bloques de los tags (direcciones contiguas o cercanas leidas de una vez)
@@ -618,6 +696,30 @@ static int generate(const char *name)
     fprintf(fout,"  return n;\n");
     fprintf(fout,"}\n");
     fprintf(fout,"\n");
+    // Nestor: refresh: leer ya los bloques que tienen bytes en [offset, offset+bytes); 1 si se leyeron todos bien
+    fprintf(fout,"int refreshTagBlocks(int offset, int bytes)\n");
+    fprintf(fout,"{\n");
+    fprintf(fout,"  int i, ret, found = 0, ok = 1;\n");
+    fprintf(fout,"  unsigned char q;\n");
+    fprintf(fout,"  for(i=0; i<NUM_TAG_BLOCKS; i++)\n");
+    fprintf(fout,"  {\n");
+    fprintf(fout,"    TagBlock *b = &tagBlock[i];\n");
+    fprintf(fout,"    int nbytes = (b->function == 1 || b->function == 2) ? (b->count + 7) / 8 : 2 * b->count;\n");
+    fprintf(fout,"    if(offset >= b->offset + nbytes || offset + bytes <= b->offset) continue;\n");
+    fprintf(fout,"    found = 1;\n");
+    fprintf(fout,"    ret = modbusCycle(b->offset, b->slave, b->function, b->start, b->count, NUM_CYCLES + i, tagBlockLabel[i]);\n");
+    fprintf(fout,"    q = (ret > 0) ? 1 : 0;\n");
+    fprintf(fout,"    shm.write(b->status, &q, 1);\n");
+    fprintf(fout,"    if(ret <= 0) ok = 0;\n");
+    fprintf(fout,"  }\n");
+    fprintf(fout,"  return found && ok;\n");
+    fprintf(fout,"}\n");
+    fprintf(fout,"\n");
+  }
+  else
+  {
+    fprintf(fout,"int refreshTagBlocks(int offset, int bytes) { (void) offset; (void) bytes; return 0; } // sin tags\n");
+    fprintf(fout,"\n");
   }
 
   fprintf(fout,"int main(int ac, char **av)\n");
@@ -630,6 +732,9 @@ static int generate(const char *name)
        fprintf(fout,"  rlEventInit(3,argv,\"%s:\");\n",target);
   }
   fprintf(fout,"  if(ac > 0) av0 = av[0];\n");
+  // Nestor (revision A-12): sin la memoria compartida (otra de distinto tamanio en uso) el daemon no publica nada:
+  // sale con error para que pvlauncher lo muestre caido y lo reintente
+  fprintf(fout,"  if(shm.status != rlSharedMemory::OK) { printf(\"ERROR: no se pudo abrir la memoria compartida (status=%%d): cerrar los programas que usan la anterior\\n\", shm.status); return 1; }\n");
   fprintf(fout,"  first = 1;\n");
   // Nestor: -sim o PVB_SIMULATION=1: conectarse al simulador (simulation_tcpadr=)
   fprintf(fout,"  int simulation = (getenv(\"PVB_SIMULATION\") != NULL && atoi(getenv(\"PVB_SIMULATION\")) == 1);\n");
@@ -677,6 +782,7 @@ static int generate(const char *name)
   {
     fprintf(fout,"  modbus.registerSocket(&sock);\n");
   }
+  fprintf(fout,"  rlTagTrailerInit(&shm, SHM_SIZE); // pedidos con respuesta (setIntWait, refresh)\n");
   fprintf(fout,"  thread.create(reader,NULL);\n");
   fprintf(fout,"  watchdog.create(watchdogthread,NULL);\n");
   if(hasPlcTags()) fprintf(fout,"  status.setPlcs(sysPlcs, (int) (sizeof(sysPlcs) / sizeof(sysPlcs[0])));\n");
@@ -744,6 +850,7 @@ static int generate(const char *name)
   // Nestor: una vuelta dura al menos MODBUS_CYCLE_TIME ms (no satura el PLC ni la CPU)
   if(communication == SOCKET || simadr[0] != '\0') fprintf(fout,"    status.endCycle(useSocket ? (sock.isConnected() ? 1 : 0) : -1);\n");
   else                                             fprintf(fout,"    status.endCycle(-1);\n");
+  fprintf(fout,"    rlTagTrailerAlive(&shm, SHM_SIZE); // el daemon atiende los pedidos con respuesta\n");
   fprintf(fout,"    long long used = msNow() - cycleStart;\n");
   fprintf(fout,"    if(used < MODBUS_CYCLE_TIME) rlsleep((long) (MODBUS_CYCLE_TIME - used));\n");
 

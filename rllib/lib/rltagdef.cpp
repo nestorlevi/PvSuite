@@ -22,6 +22,13 @@
 #include <locale>
 #include <cmath>
 #include <math.h>
+#include <stdio.h>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>   // MoveFileExA (writeSharedStructs)
+#endif
 
 // ORG de rlSiemensTCP (rlsiemenstcp.h)
 #define S7_ORG_DB 1
@@ -246,9 +253,9 @@ int rlTagList::parseAlarm(const std::string &cond0, rlTagAlarmCond &c)
 
 rlTagDef::rlTagDef()
 {
-  type = 0; count = 1; stride = 0; rw = 0; slave = 1; scan = 0; scale = 1.0; scale_offset = 0.0; order = -1;
+  type = 0; len = 0; count = 1; stride = 0; rw = 0; slave = 1; scan = 0; scale = 1.0; scale_offset = 0.0; order = -1;
   area = 0; dbnum = 0; addr = 0; bit = -1;
-  group = -1;
+  group = -1; elemFirst = -1; elemUnits = 0; elemGap = 0;
   size = 0; offset = -1; status = -1; block = -1;
 }
 
@@ -272,7 +279,7 @@ const std::vector<std::string> &rlTagList::mqttOptionNames()
 
 rlTagMember::rlTagMember()
 {
-  type = 0; count = 1; rw = -1; scale = 1.0; scale_offset = 0.0; order = -1;
+  type = 0; len = 0; count = 1; rw = -1; scale = 1.0; scale_offset = 0.0; order = -1;
   pos = 0; bit = -1; units = 0;
 }
 
@@ -283,7 +290,7 @@ rlTagList::rlTagList(int _protocol)
   order = RLTAG_ABCD;
   max_gap = -1;
   max_block = -1;
-  bit_write_fc22 = 0;
+  bit_write_fc22 = BIT_WRITE_AUTO;   // Nestor: antes rmw; auto usa la 22 si el esclavo la tiene
   console = CONSOLE_NORMAL;
   console_interval = 10;
   sys_base = -1;
@@ -301,7 +308,15 @@ int rlTagList::typeFromString(const std::string &s0)
   if(s == "udint"|| s == "dword"|| s == "uint32") return RLTAG_UDINT;
   if(s == "real" || s == "float")                 return RLTAG_REAL;
   if(s == "lreal"|| s == "double")                return RLTAG_LREAL;
+  if(s == "lint" || s == "int64")                 return RLTAG_LINT;     // Nestor: 64 bits
+  if(s == "ulint"|| s == "uint64"|| s == "lword") return RLTAG_ULINT;
+  if(s == "string" || s == "str")                 return RLTAG_STRING;   // Nestor: texto (len=)
   return 0;
+}
+
+int rlTagList::maxStringLen(int protocol)
+{
+  return (protocol == MODBUS) ? 246 : 0;   // 123 registros: una escritura (funcion 16) en un telegrama
 }
 
 const char *rlTagList::typeName(int type)
@@ -316,6 +331,9 @@ const char *rlTagList::typeName(int type)
     case RLTAG_UDINT: return "udint";
     case RLTAG_REAL:  return "real";
     case RLTAG_LREAL: return "lreal";
+    case RLTAG_LINT:  return "lint";
+    case RLTAG_ULINT: return "ulint";
+    case RLTAG_STRING: return "string";
     default:          return "";
   }
 }
@@ -566,8 +584,9 @@ int rlTagList::parseSiemensAddress(const std::string &text, rlTagDef &t, std::st
   }
   int need = (width == 'B') ? 1 : (width == 'W') ? 2 : (width == 'D') ? 4 : 0;
   int have = (t.type == RLTAG_BYTE) ? 1 : (t.type == RLTAG_INT || t.type == RLTAG_UINT) ? 2 :
-             (t.type == RLTAG_LREAL) ? 8 : (t.type == RLTAG_BOOL) ? 0 : 4;
-  if(width != 'X' && t.type != RLTAG_BOOL && need != have)
+             (t.type == RLTAG_LREAL || t.type == RLTAG_LINT || t.type == RLTAG_ULINT) ? 8 : (t.type == RLTAG_BOOL) ? 0 : 4;
+  // Nestor: string no existe en S7 (check lo dice con un mensaje claro)
+  if(width != 'X' && t.type != RLTAG_BOOL && t.type != RLTAG_STRING && need != have)
   {
     err = M(QT_TRANSLATE_NOOP("rlTagList", "el tipo %1 no coincide con el tamanio de %2"), typeName(t.type), text);
     return -1;
@@ -682,7 +701,12 @@ int rlTagList::valueSize(const rlTagDef &t) const
     case RLTAG_DINT:
     case RLTAG_UDINT:
     case RLTAG_REAL:  return 4;
-    case RLTAG_LREAL: return 8;
+    case RLTAG_LREAL:
+    case RLTAG_LINT:
+    case RLTAG_ULINT: return 8;
+    case RLTAG_STRING:
+      if(t.len < 1) return 0;
+      return (protocol == MODBUS) ? ((t.len + 1) & ~1) : t.len;   // Modbus: registros enteros
     default:          return 0;
   }
 }
@@ -692,7 +716,19 @@ int rlTagList::check(rlTagDef &t, std::string &err) const
   // los de "flat" (Temp[3], Bomba.Marcha) se revisaron al expandir
   if(t.group < 0 && !validName(t.name)) { err = M(QT_TRANSLATE_NOOP("rlTagList", "nombre invalido: \"%1\" (letras, numeros y _; no empieza con numero)"), t.name); return -1; }
   if(parseAddress(t.address, t, err) < 0) { err = t.name + ": " + err; return -1; }
-  if(t.type == 0) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: falta el tipo (bool, int, uint, dint, udint, real, lreal)"), t.name); return -1; }
+  if(t.type == 0) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: falta el tipo (bool, int, uint, dint, udint, real, lreal, lint, ulint, string)"), t.name); return -1; }
+  if(t.type == RLTAG_STRING)
+  {
+    // Nestor: texto de len caracteres
+    int mx = maxStringLen(protocol);
+    if(mx == 0) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: el tipo string solo existe en Modbus (en este protocolo no se puede usar)"), t.name); return -1; }
+    if(t.len < 1 || t.len > mx) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: un string necesita len=1..%2 (caracteres)"), t.name, itos(mx)); return -1; }
+    int maxb = (max_block > 0 && max_block < 125) ? max_block : 125;
+    if((t.len + 1) / 2 > maxb)
+    { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: un string de %2 caracteres no entra en un bloque de lectura (max_block=%3 registros)"), t.name, itos(t.len), itos(maxb)); return -1; }
+    if(t.hist.log > 0 || !t.hist.alarm.empty() || t.hist.event > 0)
+    { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: un string no se registra en el historial ni tiene alarmas"), t.name); return -1; }
+  }
   if(protocol == MODBUS)
   {
     if((t.area == RLTAG_COIL || t.area == RLTAG_DISCRETE) && t.type != RLTAG_BOOL)
@@ -750,7 +786,15 @@ int rlTagList::parseSetting(const char *cline)
     else      order = o;
     return 1;
   }
-  if(key == "bit_write") { bit_write_fc22 = (lower(val) == "fc22") ? 1 : 0; return 1; }
+  if(key == "bit_write")
+  {
+    std::string v = lower(val);
+    if(v == "fc22")      bit_write_fc22 = BIT_WRITE_FC22;
+    else if(v == "auto") bit_write_fc22 = BIT_WRITE_AUTO;
+    else if(v == "rmw")  bit_write_fc22 = BIT_WRITE_RMW;
+    else errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "bit_write desconocido: %1 (auto, fc22, rmw)"), val));
+    return 1;
+  }
   if(key == "max_gap")   { max_gap   = atoi(val.c_str()); return 1; }
   if(key == "max_block") { max_block = atoi(val.c_str()); return 1; }
   if(key == "tags")      { csvfile   = val; return 1; }
@@ -812,6 +856,27 @@ std::vector< std::pair<std::string, std::string> > rlTagList::splitPairs(const s
   return out;
 }
 
+// Nestor: scan= en ms o el nombre de un grupo de lectura (scan_group)
+static void setScan(rlTagDef &t, const std::string &val0)
+{
+  std::string val = trim(val0);
+  if(!val.empty() && (isalpha((unsigned char) val[0]) || val[0] == '_')) { t.scanGroup = val; t.scan = 0; }
+  else { t.scanGroup.clear(); t.scan = atoi(val.c_str()); }
+}
+
+int rlTagList::scanGroupMs(const std::string &name) const
+{
+  for(size_t i=0; i<scanGroups.size(); i++) if(scanGroups[i].first == name) return scanGroups[i].second;
+  return -1;
+}
+
+std::vector<std::string> rlTagList::scanGroupLines() const
+{
+  std::vector<std::string> out;
+  for(size_t i=0; i<scanGroups.size(); i++) out.push_back("scan_group name=" + scanGroups[i].first + " ms=" + itos(scanGroups[i].second));
+  return out;
+}
+
 // tipo simple o nombre de estructura
 static void setType(rlTagDef &t, const std::string &val)
 {
@@ -835,11 +900,12 @@ int rlTagList::parseTagLine(const char *cline, const std::string &where)
     else if(key == "address" || key == "adr" || (key == "topic" && protocol == MQTT)) t.address = val;
     else if(protocol == MQTT && std::find(mqttOptionNames().begin(), mqttOptionNames().end(), key) != mqttOptionNames().end()) t.setOpt(key, val);
     else if(key == "type")    setType(t, val);
+    else if(key == "len")     t.len    = atoi(val.c_str());
     else if(key == "count")   t.count  = atoi(val.c_str());
     else if(key == "stride")  t.stride = atoi(val.c_str());
     else if(key == "rw")      t.rw    = atoi(val.c_str()) ? 1 : 0;
     else if(key == "slave" || key == "plc") t.slave = atoi(val.c_str());
-    else if(key == "scan")    t.scan  = atoi(val.c_str());
+    else if(key == "scan")    setScan(t, val);
     else if(key == "scale")   t.scale = stod_c(val);
     else if(key == "offset")  t.scale_offset = stod_c(val);
     else if(key == "order")
@@ -885,6 +951,29 @@ int rlTagList::parseLine(const char *cline, const std::string &where)
     parseTagLine(line.c_str(), where);
     return 1;
   }
+  if(startsWith(line, "scan_group ") || startsWith(line, "scan_group\t"))
+  {
+    // Nestor: grupo de lectura con su periodo: scan_group name=rapido ms=200
+    std::string name;
+    int ms = -1;
+    std::vector< std::pair<std::string, std::string> > p = parsePairs(line.substr(10), where);
+    for(size_t i=0; i<p.size(); i++)
+    {
+      if(p[i].first == "name") name = p[i].second;
+      else if(p[i].first == "ms" || p[i].first == "scan") ms = atoi(p[i].second.c_str());
+      else errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: clave desconocida %2"), where, p[i].first));
+    }
+    if(!validName(name)) errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: scan_group necesita name= (letras, numeros y _)"), where));
+    else if(ms < 0) errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: scan_group necesita ms= (0 = en cada ciclo)"), where));
+    else
+    {
+      size_t k = 0;
+      while(k < scanGroups.size() && scanGroups[k].first != name) k++;
+      if(k < scanGroups.size()) scanGroups[k].second = ms;
+      else scanGroups.push_back(std::make_pair(name, ms));
+    }
+    return 1;
+  }
   // Nestor: MQTT: "publish ..." y "lwt ..." los lee el daemon (rlmqtt), no son tags
   if(protocol == MQTT && (startsWith(line, "publish ") || startsWith(line, "publish\t") ||
                           startsWith(line, "lwt ") || startsWith(line, "lwt\t"))) return 0;
@@ -919,6 +1008,7 @@ int rlTagList::parseLine(const char *cline, const std::string &where)
         if(m.type == 0) errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: tipo de miembro desconocido %2 (un miembro es de un tipo simple)"), where, val));
       }
       else if(key == "count")  m.count = atoi(val.c_str());
+      else if(key == "len")    m.len = atoi(val.c_str());
       else if(key == "rw")     m.rw = atoi(val.c_str()) ? 1 : 0;
       else if(key == "scale")  m.scale = stod_c(val);
       else if(key == "offset") m.scale_offset = stod_c(val);
@@ -947,7 +1037,7 @@ int rlTagList::readCsv(const char *filename)
   FILE *fp = fopen(filename, "r");
   if(fp == NULL) { errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "no se puede abrir %1"), filename)); return -1; }
   char buf[4096];
-  enum { NAME, ADDRESS, TYPE, COUNT, STRIDE, RW, SLAVE, SCAN, SCALE, OFFSET, ORDER, DESC, NCOL };
+  enum { NAME, ADDRESS, TYPE, COUNT, STRIDE, RW, SLAVE, SCAN, SCALE, OFFSET, ORDER, DESC, LEN, NCOL };
   std::vector<int> col(NCOL, -1);
   std::vector< std::pair<int, std::string> > histcol; // columnas del historiador: indice, clave
   std::vector< std::pair<int, std::string> > optcol;  // Nestor: columnas de opciones MQTT (cmd_topic, format...)
@@ -982,6 +1072,7 @@ int rlTagList::readCsv(const char *filename)
         else if(k == "offset")                                          c = OFFSET;
         else if(k == "order" || k == "orden")                           c = ORDER;
         else if(k == "description" || k == "descripcion")               c = DESC;
+        else if(k == "len" || k == "largo")                             c = LEN;
         if(c >= 0) col[c] = (int) i;
         else if(protocol == MQTT && std::find(mqttOptionNames().begin(), mqttOptionNames().end(), k) != mqttOptionNames().end())
           optcol.push_back(std::make_pair((int) i, k));
@@ -1017,11 +1108,12 @@ int rlTagList::readCsv(const char *filename)
         case STRIDE:  t.stride = atoi(v.c_str()); break;
         case RW:      t.rw = atoi(v.c_str()) ? 1 : 0; break;
         case SLAVE:   t.slave = atoi(v.c_str()); break;
-        case SCAN:    t.scan = atoi(v.c_str()); break;
+        case SCAN:    setScan(t, v); break;
         case SCALE:   t.scale = stod_c(v); break;
         case OFFSET:  t.scale_offset = stod_c(v); break;
         case ORDER:   t.order = orderFromString(v); break;
         case DESC:    t.description = v; break;
+        case LEN:     t.len = atoi(v.c_str()); break;
       }
     }
     for(size_t h=0; h<histcol.size(); h++)
@@ -1059,20 +1151,21 @@ int rlTagList::writeCsv(const char *filename) const
   FILE *fp = fopen(filename, "w");
   if(fp == NULL) return -1;
   // las columnas del historiador solo si alguna variable las usa
-  bool hist = false;
+  bool hist = false, len = false;
   for(size_t i=0; i<tags.size(); i++) if(tags[i].hist.used()) hist = true;
-  fprintf(fp, "name;address;type;count;stride;rw;slave;scan;scale;offset;order;description%s",
-          hist ? ";log;deadband;log_max;unit;alarm;hyst;alarm_text;group;priority;ack;event" : "");
+  for(size_t i=0; i<tags.size(); i++) if(tags[i].type == RLTAG_STRING) len = true;   // Nestor: columna len solo si hay textos
+  fprintf(fp, "name;address;type;count;stride;rw;slave;scan;scale;offset;order;description%s%s",
+          hist ? ";log;deadband;log_max;unit;alarm;hyst;alarm_text;group;priority;ack;event" : "", len ? ";len" : "");
   const std::vector<std::string> &on = mqttOptionNames();   // Nestor: opciones MQTT
   if(protocol == MQTT) for(size_t o=0; o<on.size(); o++) fprintf(fp, ";%s", on[o].c_str());
   fprintf(fp, "\n");
   for(size_t i=0; i<tags.size(); i++)
   {
     const rlTagDef &t = tags[i];
-    fprintf(fp, "%s;%s;%s;%s;%s;%d;%d;%d;%s;%s;%s;%s",
+    fprintf(fp, "%s;%s;%s;%s;%s;%d;%d;%s;%s;%s;%s;%s",
             csvField(t.name).c_str(), csvField(t.address).c_str(), typeText(t).c_str(),
             (t.count > 1) ? itos(t.count).c_str() : "", (t.stride > 0) ? itos(t.stride).c_str() : "",
-            t.rw, t.slave, t.scan, dtos(t.scale).c_str(), dtos(t.scale_offset).c_str(),
+            t.rw, t.slave, t.scanGroup.empty() ? itos(t.scan).c_str() : t.scanGroup.c_str(), dtos(t.scale).c_str(), dtos(t.scale_offset).c_str(),
             (t.order < 0) ? "" : orderName(t.order), csvField(t.description).c_str());
     if(hist)
     {
@@ -1084,6 +1177,7 @@ int rlTagList::writeCsv(const char *filename) const
               (h.priority >= 0) ? itos(h.priority).c_str() : "", (h.ack >= 0) ? itos(h.ack).c_str() : "",
               (h.event >= 0) ? itos(h.event).c_str() : "");
     }
+    if(len) fprintf(fp, ";%s", (t.len > 0) ? itos(t.len).c_str() : "");
     if(protocol == MQTT) for(size_t o=0; o<on.size(); o++) fprintf(fp, ";%s", csvField(t.opt(on[o].c_str())).c_str());
     fprintf(fp, "\n");
   }
@@ -1103,12 +1197,14 @@ std::string rlTagList::tagLine(const rlTagDef &t) const
 {
   std::string s = "tag name=" + t.name + " address=" + quoteIfNeeded(t.address);
   if(t.type != 0 || !t.structName.empty()) s += " type=" + typeText(t);
+  if(t.type == RLTAG_STRING || t.len > 0) s += " len=" + itos(t.len);
   if(t.count > 1)  s += " count=" + itos(t.count);
   if(t.stride > 0) s += " stride=" + itos(t.stride);
   s += " rw=" + itos(t.rw);
   if(!textAddress()) s += " slave=" + itos(t.slave);
   for(size_t i=0; i<t.opts.size(); i++) if(!t.opts[i].second.empty()) s += " " + t.opts[i].first + "=" + quoteIfNeeded(t.opts[i].second);
-  if(t.scan > 0) s += " scan=" + itos(t.scan);
+  if(!t.scanGroup.empty()) s += " scan=" + t.scanGroup;
+  else if(t.scan > 0) s += " scan=" + itos(t.scan);
   if(t.scale != 1.0) s += " scale=" + dtos(t.scale);
   if(t.scale_offset != 0.0) s += " offset=" + dtos(t.scale_offset);
   if(t.order >= 0) s += std::string(" order=") + orderName(t.order);
@@ -1169,13 +1265,22 @@ int rlTagList::readSharedStructs(const char *mkfile)
 
 int rlTagList::writeSharedStructs(const char *filename, const std::vector<std::string> &lines)
 {
-  FILE *fp = fopen(filename, "w");
+  // Nestor: se escribe al lado y se reemplaza de una vez (un corte de luz dejaba el .mkstruct compartido truncado)
+  const std::string tmp = std::string(filename) + ".nuevo";
+  FILE *fp = fopen(tmp.c_str(), "w");
   if(fp == NULL) return -1;
   fprintf(fp, "# Estructuras compartidas por los daemons del proyecto (pvdevelop: editor de tags, pestania Estructuras).\n");
   fprintf(fp, "# Cada daemon las usa con la linea \"structs=<este archivo>\" en su .mk. Con la posicion (at) vacia\n");
   fprintf(fp, "# la misma estructura sirve para Modbus, Siemens y OPC UA.\n");
   for(size_t i=0; i<lines.size(); i++) fprintf(fp, "%s\n", lines[i].c_str());
-  fclose(fp);
+  bool ok = fflush(fp) == 0 && !ferror(fp);
+  if(fclose(fp) != 0) ok = false;
+  if(!ok) { remove(tmp.c_str()); return -1; }
+#ifdef _WIN32
+  if(!MoveFileExA(tmp.c_str(), filename, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { remove(tmp.c_str()); return -1; }
+#else
+  if(rename(tmp.c_str(), filename) != 0) { remove(tmp.c_str()); return -1; }
+#endif
   return 0;
 }
 
@@ -1195,6 +1300,7 @@ static std::vector<std::string> structsText(const std::vector<rlTagStruct> &stru
       std::string ml = "member name=" + m.name;
       if(!m.at.empty()) ml += " at=" + quoteIfNeeded(m.at);
       ml += std::string(" type=") + rlTagList::typeName(m.type);
+      if(m.type == RLTAG_STRING || m.len > 0) ml += " len=" + itos(m.len);
       if(m.count > 1) ml += " count=" + itos(m.count);
       if(m.rw >= 0) ml += " rw=" + itos(m.rw);
       if(m.scale != 1.0) ml += " scale=" + dtos(m.scale);
@@ -1271,6 +1377,7 @@ int rlTagList::resolveStruct(rlTagStruct &s, int area, std::string &err) const
   {
     rlTagMember &m = s.members[i];
     if(!validName(m.name)) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: nombre de miembro invalido \"%2\""), s.name, m.name); return -1; }
+    if(m.name == "_all") { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: _all es el elemento entero (lo agrega pvdevelop); usar otro nombre de miembro"), s.name); return -1; }
     if(reservedName(m.name)) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: el miembro \"%2\" es un nombre reservado del lenguaje C (macro de los encabezados del sistema); usar otro"), s.name, m.name); return -1; }
     for(size_t j=0; j<i; j++) if(s.members[j].name == m.name) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1: miembro repetido %2"), s.name, m.name); return -1; }
     if(m.type == 0) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1.%2: falta el tipo"), s.name, m.name); return -1; }
@@ -1285,8 +1392,9 @@ int rlTagList::resolveStruct(rlTagStruct &s, int area, std::string &err) const
     }
     if(coils && m.type != RLTAG_BOOL) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1.%2: en coils o entradas discretas los miembros son bool"), s.name, m.name); return -1; }
     rlTagDef tmp;
-    tmp.type = m.type; tmp.area = area;
+    tmp.type = m.type; tmp.len = m.len; tmp.area = area;
     int eu = units(tmp);
+    if(m.type == RLTAG_STRING && eu < 1) { err = M(QT_TRANSLATE_NOOP("rlTagList", "%1.%2: un string necesita len=1..%3 (caracteres)"), s.name, m.name, itos(maxStringLen(protocol))); return -1; }
     bool bitMember = (m.type == RLTAG_BOOL && !coils);
     if(!m.at.empty())
     {
@@ -1339,6 +1447,7 @@ int rlTagList::expand()
 {
   std::string err;
   flat.clear();
+  elems.clear();
   for(size_t g=0; g<tags.size(); g++)
   {
     const rlTagDef &d = tags[g];
@@ -1352,6 +1461,18 @@ int rlTagList::expand()
     { errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: se llama igual que una estructura (en tags_TARGET serian el mismo nombre)"), d.name)); continue; }
     int n = (d.count > 1) ? d.count : 1;
     if(d.count < 0 || d.count > 65535) { errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: cantidad invalida"), who)); continue; }
+    // Nestor: el encabezado define TARGET_<arreglo>_N y _COUNT: un tag con ese nombre no compilaria
+    bool clash = false;
+    for(size_t j=0; j<tags.size() && !clash; j++)
+    {
+      if(n > 1 && (tags[j].name == d.name + "_N" || tags[j].name == d.name + "_COUNT"))
+      { errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: choca con la cantidad de elementos del arreglo %2 (%2_N, %2_COUNT); usar otro nombre"), tags[j].name, d.name)); clash = true; }
+      const rlTagStruct *cs = d.structName.empty() ? NULL : findStruct(d.structName);
+      for(size_t mi=0; cs && mi<cs->members.size() && !clash; mi++)
+        if(cs->members[mi].count > 1 && tags[j].name == cs->name + "_" + cs->members[mi].name + "_N")
+        { errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: choca con la cantidad de elementos del miembro %2.%3; usar otro nombre"), tags[j].name, cs->name, cs->members[mi].name)); clash = true; }
+    }
+    if(clash) continue;
     if(protocol == OPCUA && n > 1 && d.address.find("{i}") == std::string::npos)
     { errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: un arreglo OPC UA lleva {i} en el NodeId (p. ej. ns=2;s=Zona{i}.Temp)"), who)); continue; }
     if(protocol == MQTT && n > 1 && d.address.find("{i}") == std::string::npos)
@@ -1412,9 +1533,49 @@ int rlTagList::expand()
     rlTagStruct s = *ps;
     if(resolveStruct(s, a.area, err) < 0) { errors.push_back(who + ": " + err); continue; }
     int stride = (d.stride > 0) ? d.stride : s.units;
+    // Nestor: huecos del elemento (registros / bytes / coils sin ningun miembro): el mas largo decide si el
+    // elemento se lee en un bloque (no mas que max_gap); para escribirlo entero (setBlock, clear) no tiene
+    // que haber huecos ni bits sueltos (un registro con bits que no son miembros) ni miembros de solo lectura
+    int elemGap = 0;
+    bool elemOwned = true;
+    if(!textAddress())
+    {
+      bool coilArea = (protocol == MODBUS && (a.area == RLTAG_COIL || a.area == RLTAG_DISCRETE));
+      int bpu = (protocol == MODBUS) ? 16 : 8;
+      std::vector<int> used(s.units, 0), bits(s.units, 0);
+      for(size_t mi=0; mi<s.members.size(); mi++)
+      {
+        const rlTagMember &m = s.members[mi];
+        if((m.rw >= 0) ? !m.rw : !d.rw) elemOwned = false;
+        if(m.type == RLTAG_BOOL && !coilArea)
+        {
+          for(int k=0; k<m.count; k++) { int bp = m.bit + k, u = m.pos + bp / bpu; if(u < s.units) { used[u] = 1; bits[u]++; } }
+        }
+        else for(int u=m.pos; u<m.pos+m.units && u<s.units; u++) used[u] = bpu;
+      }
+      int run = 0;
+      for(int u=0; u<s.units; u++)
+      {
+        if(!used[u]) { run++; elemGap = (std::max)(elemGap, run); elemOwned = false; }
+        else run = 0;
+        if(used[u] == 1 && bits[u] < bpu) elemOwned = false;   // bits del registro que no son miembros
+      }
+    }
     for(int e=0; e<n; e++)
     {
       std::string prefix = (n > 1) ? d.name + "[" + itos(e) + "]" : d.name;
+      // Nestor: el elemento entero (miembro _all: setBlock / getBlock / clear)
+      rlTagDef el = d;
+      el.group = (int) g;
+      el.type = RLTAG_BLOCK; el.structName.clear(); el.stride = 0;
+      el.cname = el.name = prefix;
+      el.area = a.area; el.dbnum = a.dbnum;
+      el.addr = a.addr + e * stride; el.bit = -1;
+      el.count = textAddress() ? 0 : s.units;
+      el.rw = elemOwned ? 1 : 0;   // setBlock / clear solo si no pisa nada que no sea un miembro escribible
+      el.order = (d.order >= 0) ? d.order : order;
+      if(!textAddress()) { rlTagDef p = a; p.type = RLTAG_INT; p.bit = -1; p.addr = el.addr; el.address = formatAddress(p, notation); }
+      elems.push_back(el);
       for(size_t mi=0; mi<s.members.size(); mi++)
       {
         const rlTagMember &m = s.members[mi];
@@ -1424,6 +1585,8 @@ int rlTagList::expand()
           f.group = (int) g;
           f.count = 1; f.stride = 0; f.structName.clear();
           f.type = m.type;
+          f.len = m.len;
+          if(!textAddress()) { f.elemFirst = a.addr + e * stride; f.elemUnits = s.units; f.elemGap = elemGap; }
           f.cname = prefix + "." + m.name + ((m.count > 1) ? "[" + itos(k) + "]" : std::string());
           f.name = f.cname;
           if(m.rw >= 0) f.rw = m.rw;
@@ -1478,6 +1641,15 @@ int rlTagList::layout(int base)
 {
   std::string err;
   blocks.clear();
+  // Nestor: scan=<grupo>: los ms del grupo de lectura
+  for(size_t g=0; g<tags.size(); g++)
+  {
+    if(tags[g].scanGroup.empty()) continue;
+    int ms = scanGroupMs(tags[g].scanGroup);
+    if(ms < 0) errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "%1: grupo de lectura desconocido %2 (falta scan_group name=%2 ms=...)"), tags[g].name, tags[g].scanGroup));
+    else tags[g].scan = ms;
+  }
+  if(!errors.empty()) return -1;
   if(expand() < 0) return -1;
   for(size_t i=0; i<flat.size(); i++)
   {
@@ -1487,6 +1659,7 @@ int rlTagList::layout(int base)
 
   if(textAddress())
   {
+    for(size_t i=0; i<elems.size(); i++) { elems[i].offset = elems[i].status = -1; elems[i].size = 0; }
     for(size_t i=0; i<flat.size(); i++) { flat[i].offset = base; base += flat[i].size; }
     for(size_t i=0; i<flat.size(); i++) { flat[i].status = base++; }
     return base;
@@ -1530,6 +1703,12 @@ int rlTagList::layout(int base)
       rlTagDef &t = flat[idx[n]];
       int u = bits ? 1 : (protocol == MODBUS) ? (t.size + 1) / 2 : t.size;
       int first = t.addr, last = t.addr + u - 1;
+      // Nestor: el elemento entero de una estructura en un mismo bloque (si entra): getBlock coherente
+      if(t.elemFirst >= 0 && t.elemUnits > 0 && t.elemUnits <= maxb && t.elemGap <= gap && t.elemFirst <= first)
+      {
+        first = t.elemFirst;
+        last = (std::max)(last, t.elemFirst + t.elemUnits - 1);
+      }
       if(open && first <= b.start + b.count + gap && ((std::max)(last, b.start + b.count - 1) - b.start + 1) <= maxb)
       {
         b.count = (std::max)(last, b.start + b.count - 1) - b.start + 1;
@@ -1538,7 +1717,7 @@ int rlTagList::layout(int base)
       {
         if(open) blocks.push_back(b);
         b.slave = keys[g].slave; b.area = keys[g].area; b.dbnum = keys[g].dbnum; b.scan = keys[g].scan;
-        b.start = first; b.count = u; b.offset = b.nbytes = b.status = -1;
+        b.start = first; b.count = last - first + 1; b.offset = b.nbytes = b.status = -1;
         open = true;
       }
       t.block = (int) blocks.size();
@@ -1570,6 +1749,29 @@ int rlTagList::layout(int base)
     else if(protocol == MODBUS) t.offset = b.offset + (t.addr - b.start) * 2;
     else                        t.offset = b.offset + (t.addr - b.start);
     t.status = b.status;
+  }
+  // Nestor: donde quedo cada elemento entero (-1: repartido en varios bloques; getBlock no sirve)
+  for(size_t i=0; i<elems.size(); i++)
+  {
+    rlTagDef &el = elems[i];
+    el.offset = el.status = -1; el.size = 0; el.bit = -1;
+    for(size_t k=0; k<blocks.size(); k++)
+    {
+      const rlTagBlock &b = blocks[k];
+      if(b.slave != el.slave || b.area != el.area || b.dbnum != el.dbnum || b.scan != el.scan) continue;
+      if(el.addr < b.start || el.addr + el.count > b.start + b.count) continue;
+      bool bits = (protocol == MODBUS && (b.area == RLTAG_COIL || b.area == RLTAG_DISCRETE));
+      if(bits)
+      {
+        el.offset = b.offset + (el.addr - b.start) / 8;
+        el.bit = (el.addr - b.start) % 8;
+        el.size = (el.bit + el.count + 7) / 8;
+      }
+      else if(protocol == MODBUS) { el.offset = b.offset + (el.addr - b.start) * 2; el.size = el.count * 2; }
+      else                        { el.offset = b.offset + (el.addr - b.start);     el.size = el.count; }
+      el.status = b.status;
+      break;
+    }
   }
   return base;
 }
@@ -1648,7 +1850,8 @@ int rlTagList::layoutSys(int base, const std::vector<int> &plcs0)
     if(findSys(sysHist[k].first) == NULL)
       errors.push_back(M(QT_TRANSLATE_NOOP("rlTagList", "sys name=%1: no hay un tag de sistema con ese nombre"), sysHist[k].first));
   }
-  return base + pos;
+  // Nestor: al final, respuestas a los pedidos y contador de escrituras (rltag.h, RLTAG_TRAILER_SIZE)
+  return base + pos + RLTAG_TRAILER_SIZE;
 }
 
 const rlTagDef *rlTagList::findSys(const std::string &name) const
@@ -1682,7 +1885,8 @@ const char *rlTagList::consoleName(int level)
 // target.h
 
 static const char *typeConst[] = { "0", "RLTAG_BOOL", "RLTAG_BYTE", "RLTAG_INT", "RLTAG_UINT",
-                                   "RLTAG_DINT", "RLTAG_UDINT", "RLTAG_REAL", "RLTAG_LREAL" };
+                                   "RLTAG_DINT", "RLTAG_UDINT", "RLTAG_REAL", "RLTAG_LREAL",
+                                   "RLTAG_LINT", "RLTAG_ULINT", "RLTAG_STRING" };
 static const char *orderConst[] = { "RLTAG_ABCD", "RLTAG_CDAB", "RLTAG_BADC", "RLTAG_DCBA" };
 
 void rlTagList::writeHeader(FILE *fout, const char *target) const
@@ -1694,6 +1898,9 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
   }
   fprintf(fout, "\n// Tags (generado por pvdevelop; no editar: se regenera)\n");
   fprintf(fout, "// Uso: %s.getBool(%s_<tag>), getInt, getUInt, getReal, setBool, setInt, setReal, quality\n", target, target);
+  if(protocol == MODBUS)
+    fprintf(fout, "//      getString, setString, getLInt, setLInt, setBit, setMask, setBlock, getBlock, clear, refresh,\n"
+                  "//      set*Wait (con confirmacion), changed (ver rlmodbusclient.h)\n");
   fprintf(fout, "#include \"rltag.h\"\n");
   if(!textAddress())
   {
@@ -1718,6 +1925,7 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
     if(!used) continue;
     const rlTagStruct &s = structs[i];
     fprintf(fout, "struct %s_%s%s%s\n{\n", target, s.name.c_str(), s.description.empty() ? "" : " // ", commentText(s.description).c_str());
+    fprintf(fout, "  rlTag _all; // el elemento entero (setBlock, getBlock, clear)\n");
     for(size_t j=0; j<s.members.size(); j++)
     {
       const rlTagMember &m = s.members[j];
@@ -1725,10 +1933,12 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
       else            fprintf(fout, "  rlTag %s;\n", m.name.c_str());
     }
     fprintf(fout, "};\n");
+    for(size_t j=0; j<s.members.size(); j++)
+      if(s.members[j].count > 1) fprintf(fout, "#define %s_%s_%s_N %d\n", target, s.name.c_str(), s.members[j].name.c_str(), s.members[j].count);
   }
 
-  // variables: simples, arreglos y estructuras (en el orden de "flat")
-  size_t i = 0;
+  // variables: simples, arreglos y estructuras (en el orden de "flat"; los elementos en el de "elems")
+  size_t i = 0, ei = 0;
   for(size_t g=0; g<tags.size(); g++)
   {
     const rlTagDef &d = tags[g];
@@ -1742,6 +1952,14 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
     for(int e=0; e<n; e++)
     {
       if(s && n > 1) fprintf(fout, "  {\n");
+      if(s && ei < elems.size())
+      {
+        const rlTagDef &el = elems[ei++];
+        fprintf(fout, "%s{\"%s\", RLTAG_BLOCK, %d, %d, %d, %d, %d, %d, %d, %d, %d, %s, 1, 0, %d},%s\n",
+                (n > 1) ? "    " : "  ", el.cname.c_str(), el.offset, el.size, el.bit, el.status, el.rw,
+                el.slave, el.area, el.dbnum, el.addr, orderConst[el.order & 3], el.count,
+                (el.offset < 0 && !textAddress()) ? " // repartido en varios bloques de lectura: getBlock no sirve" : "");
+      }
       int members = s ? (int) s->members.size() : 1;
       for(int mi=0; mi<members; mi++)
       {
@@ -1757,7 +1975,7 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
           bool lastItem = (k + 1 == mc) && (!s || mi + 1 == members) && (e + 1 == n);
           bool lastInList = (mc > 1) ? (k + 1 == mc) : (s ? (mi + 1 == members) : (e + 1 == n));
           (void) lastItem;
-          fprintf(fout, "%s{\"%s\", %s, %d, %d, %d, %d, %d, %d, %d, %d, %d, %s, %s, %s}%s // %s\n",
+          fprintf(fout, "%s{\"%s\", %s, %d, %d, %d, %d, %d, %d, %d, %d, %d, %s, %s, %s, 0}%s // %s\n",
                   indent, t.cname.c_str(), typeConst[t.type], t.offset, t.size, t.bit, t.status, t.rw,
                   textAddress() ? (int) i : t.slave, t.area, t.dbnum, t.addr, orderConst[t.order & 3],
                   dtos(t.scale).c_str(), dtos(t.scale_offset).c_str(),
@@ -1768,7 +1986,7 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
       if(s && n > 1) fprintf(fout, "  }%s\n", (e + 1 == n) ? "" : ",");
     }
     if(n > 1 || s) fprintf(fout, "};\n");
-    if(n > 1) fprintf(fout, "#define %s_%s_COUNT %d\n", target, d.name.c_str(), n);
+    if(n > 1) fprintf(fout, "#define %s_%s_COUNT %d\n#define %s_%s_N %d\n", target, d.name.c_str(), n, target, d.name.c_str(), n);
   }
 
   fprintf(fout, "#define %s_TAG_COUNT %d\n", target, (int) flat.size());
@@ -1797,7 +2015,7 @@ void rlTagList::writeHeader(FILE *fout, const char *target) const
     if(n > 1)
     {
       fprintf(fout, "  static const %s (&%s)[%d] = %s_%s;\n", ctype.c_str(), d.name.c_str(), n, target, d.name.c_str());
-      fprintf(fout, "  const int %s_COUNT = %d;\n", d.name.c_str(), n);
+      fprintf(fout, "  const int %s_COUNT = %d;\n  const int %s_N = %d;\n", d.name.c_str(), n, d.name.c_str(), n);
     }
     else
     {
@@ -1828,7 +2046,7 @@ void rlTagList::writeSysHeader(FILE *fout, const char *target, bool include) con
   for(size_t i=0; i<sys.size(); i++)
   {
     const rlTagDef &t = sys[i];
-    fprintf(fout, "  {\"SYS.%s\", %s, %d, %d, %d, -1, 0, %d, 0, 0, 0, RLTAG_ABCD, 1, 0}%s // %s\n",
+    fprintf(fout, "  {\"SYS.%s\", %s, %d, %d, %d, -1, 0, %d, 0, 0, 0, RLTAG_ABCD, 1, 0, 0}%s // %s\n",
             t.name.c_str(), typeConst[t.type], t.offset, t.size, t.bit, t.slave,
             (i + 1 < sys.size()) ? "," : "", t.description.c_str());
   }

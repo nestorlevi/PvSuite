@@ -91,7 +91,8 @@ Cada variable puede cambiarlo en la columna Orden.</string>
             <property name="toolTip">
              <string>Cómo se escribe un bit de un holding register (p. ej. 40300.15).
 Leer-modificar-escribir: el daemon lee el registro, cambia el bit y lo escribe (sirve con cualquier PLC).
-Función 22: el PLC cambia el bit (Mask Write Register); no todos los PLC la tienen.</string>
+Función 22: el PLC cambia el bit (Mask Write Register); no todos los PLC la tienen.
+Automático: la función 22 y, si el PLC no la tiene, leer-modificar-escribir.</string>
             </property>
             <item>
              <property name="text">
@@ -101,6 +102,11 @@ Función 22: el PLC cambia el bit (Mask Write Register); no todos los PLC la tie
             <item>
              <property name="text">
               <string>Función 22 (Mask Write)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Automático (22 o leer-modificar-escribir)</string>
              </property>
             </item>
            </widget>
@@ -329,6 +335,16 @@ Las estructuras quedan siempre en el archivo del daemon.</string>
            </property>
            <property name="text">
             <string>Verificar</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonScanGroups">
+           <property name="toolTip">
+            <string>Grupos de lectura (scan_group): crear, renombrar, cambiar su ciclo y elegir qué variables se leen con cada uno</string>
+           </property>
+           <property name="text">
+            <string>Grupos de lectura...</string>
            </property>
           </widget>
          </item>

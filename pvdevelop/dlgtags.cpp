@@ -50,6 +50,7 @@ static QPoint mousePos(const QMouseEvent *e) { return e->pos(); }
 #include <QTabBar>
 #include "pvimages.h"   // pvbProjectName
 #include "pvtablesort.h"   // Nestor: clic en el titulo: ordenar
+#include "dlgscangroups.h"
 
 // Nestor: texto centrado en las tablas del editor de tags (tambien al editar) y tildes centrados
 void CenterDelegate::initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const
@@ -174,6 +175,22 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   // de un .mk hecho con la version completa se conservan al guardar
   form->table->setColumnHidden(C_HIST, true);
   form->tableMembers->setColumnHidden(M_HON, true);
+  if(protocol == rlTagList::MODBUS)
+  {
+    // Nestor: largo de un texto (type=string len=N), al lado del tipo
+    colLen = form->table->columnCount();
+    form->table->insertColumn(colLen);
+    form->table->setHorizontalHeaderItem(colLen, new QTableWidgetItem(tr("Largo")));
+    form->table->horizontalHeaderItem(colLen)->setToolTip(tr("Tipo string: cantidad de caracteres (1..246, dos por registro; no mas "
+                                                             "registros que el bloque maximo). Vacio con otros tipos.\n"
+                                                             "PLC1.getString / setString en el pvserver. Ayuda (F1): 9.3 Columnas"));
+    form->table->horizontalHeader()->moveSection(form->table->horizontalHeader()->visualIndex(colLen), form->table->horizontalHeader()->visualIndex(C_TYPE) + 1);
+    memberColLen = form->tableMembers->columnCount();
+    form->tableMembers->insertColumn(memberColLen);
+    form->tableMembers->setHorizontalHeaderItem(memberColLen, new QTableWidgetItem(tr("Largo")));
+    form->tableMembers->horizontalHeaderItem(memberColLen)->setToolTip(form->table->horizontalHeaderItem(colLen)->toolTip());
+    form->tableMembers->horizontalHeader()->moveSection(form->tableMembers->horizontalHeader()->visualIndex(memberColLen), form->tableMembers->horizontalHeader()->visualIndex(M_TYPE) + 1);
+  }
   if(protocol == rlTagList::MQTT)   // Nestor: opciones de cada tag MQTT (ver rltagdef.h)
   {
     const char *heads[] = { QT_TR_NOOP("Formato"), QT_TR_NOOP("Ruta JSON"), QT_TR_NOOP("Topico de comando"),
@@ -276,6 +293,7 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
     form->table->setColumnHidden(C_SLAVE, true);
     form->table->setColumnHidden(C_STRIDE, true);
     form->table->setColumnHidden(C_SCAN, true);
+    form->buttonScanGroups->hide();   // MQTT: llega cuando se publica, no se lee por ciclo
     form->labelGap->hide();   form->spinGap->hide();
     form->labelBlock->hide(); form->spinBlock->hide();
     form->tableMembers->horizontalHeaderItem(M_AT)->setText(tr("Sufijo del topico"));
@@ -358,12 +376,13 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
     form->editCsv->setText(QFileInfo(mkfile).completeBaseName() + "_tags.csv");
   }
   structs = list.structs;
+  scanGroups = list.scanGroups;   // Nestor: scan_group (se conservan al guardar)
 
   notation = list.notation;
   int ni = form->comboNotation->findData(notation);
   if(ni >= 0) form->comboNotation->setCurrentIndex(ni);
   form->comboOrder->setCurrentIndex(list.order & 3);
-  form->comboBitWrite->setCurrentIndex(list.bit_write_fc22 ? 1 : 0);
+  form->comboBitWrite->setCurrentIndex(list.bit_write_fc22);   // rmw, fc22, auto (rlTagList::BitWrite)
   form->spinGap->setValue(list.max_gap < 0 ? -1 : list.max_gap);
   form->spinBlock->setValue(list.max_block < 0 ? 0 : list.max_block);
   int ci = comboConsole->findData(list.console);
@@ -433,6 +452,7 @@ DlgTags::DlgTags(int _protocol, const QString &_mkfile, const QString &text, QWi
   connect(form->buttonImport,    &QPushButton::clicked, this, &DlgTags::slotImport);
   connect(form->buttonExport,    &QPushButton::clicked, this, &DlgTags::slotExport);
   connect(form->buttonCheck,     &QPushButton::clicked, this, &DlgTags::slotCheck);
+  connect(form->buttonScanGroups, &QPushButton::clicked, this, &DlgTags::slotScanGroups);
   // Nestor: Modbus: una direccion de entrada discreta o input register no se puede escribir: desmarca RW
   connect(form->table, &QTableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
     if(protocol != rlTagList::MODBUS || item->column() != C_ADDRESS) return;
@@ -500,8 +520,9 @@ QComboBox *DlgTags::typeCombo(QWidget *parent, bool withStructs) const
 {
   QComboBox *type = new QComboBox(parent);
   if(withStructs) type->addItem(tr("(auto)"), 0);
-  for(int ty=RLTAG_BOOL; ty<=RLTAG_LREAL; ty++)
+  for(int ty=RLTAG_BOOL; ty<=RLTAG_LAST_TYPE; ty++)
   {
+    if(ty == RLTAG_STRING && rlTagList::maxStringLen(protocol) == 0) continue;   // Nestor: texto solo en Modbus
     if(protocol == rlTagList::MODBUS && ty == RLTAG_BYTE) continue;
     type->addItem(rlTagList::typeName(ty), ty);
   }
@@ -554,7 +575,8 @@ void DlgTags::addRow(const rlTagDef &t)
   rw->setCheckState(t.rw ? Qt::Checked : Qt::Unchecked);
   tb->setItem(row, C_RW, rw);
   tb->setItem(row, C_SLAVE,  new QTableWidgetItem(QString::number(t.slave)));
-  tb->setItem(row, C_SCAN,   new QTableWidgetItem(QString::number(t.scan)));
+  tb->setItem(row, C_SCAN,   new QTableWidgetItem(t.scanGroup.empty() ? QString::number(t.scan) : QString::fromStdString(t.scanGroup)));
+  if(colLen >= 0) tb->setItem(row, colLen, new QTableWidgetItem((t.len > 0) ? QString::number(t.len) : QString()));
   tb->setItem(row, C_SCALE,  new QTableWidgetItem(QString::number(t.scale, 'g', 15)));
   tb->setItem(row, C_OFFSET, new QTableWidgetItem(QString::number(t.scale_offset, 'g', 15)));
   QComboBox *order = orderCombo(tb);
@@ -607,6 +629,8 @@ rlTagDef DlgTags::rowTag(int row) const
   t.rw = (tb->item(row, C_RW) && tb->item(row, C_RW)->checkState() == Qt::Checked) ? 1 : 0;
   int slave = text(C_SLAVE).toInt(&ok);   if(ok) t.slave = slave; else if(protocol == rlTagList::SIEMENS) t.slave = 0;
   int scan = text(C_SCAN).toInt(&ok);     if(ok) t.scan = scan;
+  else if(!text(C_SCAN).isEmpty()) t.scanGroup = text(C_SCAN).toStdString();   // Nestor: nombre de un scan_group
+  if(colLen >= 0) { int len = text(colLen).toInt(&ok); if(ok && len > 0) t.len = len; }
   double s = text(C_SCALE).toDouble(&ok); if(ok) t.scale = s;
   double o = text(C_OFFSET).toDouble(&ok);if(ok) t.scale_offset = o;
   QComboBox *order = qobject_cast<QComboBox *>(tb->cellWidget(row, C_ORDER));
@@ -639,6 +663,7 @@ void DlgTags::fillList(rlTagList &list)
   list.console_interval = spinConsoleInterval->value();
   list.sysHist = sysHist;
   list.structs = structs;
+  list.scanGroups = scanGroups;
   list.tags.clear();
   for(int r : pvbTableOrder(form->table)) list.tags.push_back(rowTag(r));   // el orden del archivo, no el que se ve
 }
@@ -808,6 +833,27 @@ bool DlgTags::check(QString *report)
   return true;
 }
 
+// Nestor: los scan_group y que variables se leen con cada uno (columna Scan: ms o nombre del grupo)
+void DlgTags::slotScanGroups()
+{
+  QTableWidget *tb = form->table;
+  QStringList names, scans;
+  for(int r=0; r<tb->rowCount(); r++)
+  {
+    names << (tb->item(r, C_NAME) ? tb->item(r, C_NAME)->text() : QString());
+    scans << (tb->item(r, C_SCAN) ? tb->item(r, C_SCAN)->text().trimmed() : QString());
+  }
+  DlgScanGroups dlg(scanGroups, names, scans, this);
+  if(dlg.exec() != QDialog::Accepted) return;
+  scanGroups = dlg.groups();
+  scans = dlg.scans();
+  for(int r=0; r<tb->rowCount() && r<scans.size(); r++)
+  {
+    if(tb->item(r, C_SCAN) == nullptr) tb->setItem(r, C_SCAN, new QTableWidgetItem());
+    tb->item(r, C_SCAN)->setText(scans[r]);
+  }
+}
+
 void DlgTags::slotCheck()
 {
   QString report;
@@ -916,7 +962,8 @@ bool DlgTags::buildResult()
   if(protocol == rlTagList::MODBUS)
   {
     out << QString("word_order=%1").arg(rlTagList::orderName(list.order));
-    out << QString("bit_write=%1").arg(list.bit_write_fc22 ? "fc22" : "rmw");
+    out << QString("bit_write=%1").arg(list.bit_write_fc22 == rlTagList::BIT_WRITE_FC22 ? "fc22" :
+                                       list.bit_write_fc22 == rlTagList::BIT_WRITE_AUTO ? "auto" : "rmw");
   }
   if(!textAddr())
   {
@@ -929,6 +976,7 @@ bool DlgTags::buildResult()
   {
     if(list.sysHist[i].second.used()) out << QString::fromStdString(list.sysLine(list.sysHist[i].first, list.sysHist[i].second));
   }
+  for(const std::string &g : list.scanGroupLines()) out << QString::fromStdString(g);   // Nestor: grupos de lectura
   std::vector<std::string> sl = list.structLines(); // las estructuras propias en el .mk
   for(size_t i=0; i<sl.size(); i++) out << QString::fromStdString(sl[i]);
   // Nestor: las compartidas en <proyecto>.mkstruct (las de otros daemons que no se tocaron aca, quedan)
@@ -1004,6 +1052,7 @@ void DlgTags::addMemberRow(const rlTagMember &m)
   tb->setCellWidget(row, M_TYPE, type);
   fitComboColumn(tb, M_TYPE, type);
   tb->setItem(row, M_COUNT, new QTableWidgetItem((m.count > 1) ? QString::number(m.count) : QString()));
+  if(memberColLen >= 0) tb->setItem(row, memberColLen, new QTableWidgetItem((m.len > 0) ? QString::number(m.len) : QString()));
   QTableWidgetItem *rw = new QTableWidgetItem();
   rw->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserTristate);
   rw->setCheckState(m.rw < 0 ? Qt::PartiallyChecked : (m.rw ? Qt::Checked : Qt::Unchecked));
@@ -1038,6 +1087,7 @@ rlTagMember DlgTags::memberRow(int row) const
   m.type = type ? type->currentData().toInt() : 0;
   bool ok;
   int count = text(M_COUNT).toInt(&ok);   if(ok && count > 0) m.count = count;
+  if(memberColLen >= 0) { int len = text(memberColLen).toInt(&ok); if(ok && len > 0) m.len = len; }
   QTableWidgetItem *rw = tb->item(row, M_RW);
   m.rw = (rw == nullptr || rw->checkState() == Qt::PartiallyChecked) ? -1 : (rw->checkState() == Qt::Checked ? 1 : 0);
   double s = text(M_SCALE).toDouble(&ok);  if(ok) m.scale = s;

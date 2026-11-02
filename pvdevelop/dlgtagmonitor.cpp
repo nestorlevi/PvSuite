@@ -329,6 +329,15 @@ void DlgTagMonitor::refresh()
     if(it.tag.type == RLTAG_BOOL) text = (v != 0) ? "1" : "0";
     else if(it.tag.type == RLTAG_REAL || it.tag.type == RLTAG_LREAL || it.tag.scale != 1.0 || it.tag.scale_offset != 0.0)
       text = QString::number(v, 'g', 7);
+    else if(it.tag.type == RLTAG_LINT) text = QString::number((qlonglong) rlTagGetInt64(shm, it.tag));
+    else if(it.tag.type == RLTAG_ULINT) text = QString::number((qulonglong) rlTagGetInt64(shm, it.tag));
+    else if(it.tag.type == RLTAG_STRING)
+    {
+      // Nestor: texto (type=string len=N)
+      QByteArray buf(it.tag.size + 1, 0);
+      int n = rlTagGetString(shm, it.tag, buf.data(), buf.size());
+      text = QString::fromUtf8(buf.constData(), n > 0 ? n : 0);
+    }
     else text = QString::number((qlonglong) llround(v));
     // horas de los tags de sistema (segundos desde 1970)
     if((it.name == "SYS.UltimaLecturaOk" || it.name == "SYS.Inicio") && v > 0)
@@ -401,7 +410,10 @@ bool DlgTagMonitor::writeItem(int index, double value)
   int r = -1;
   if(t.type == RLTAG_BOOL)
     r = modbus ? modbus->setBool(t, value != 0) : s7 ? s7->setBool(t, value != 0) : -1;
-  else if(t.type == RLTAG_REAL || t.type == RLTAG_LREAL)
+  else if(t.type == RLTAG_STRING) r = -1;   // Nestor: un texto no se escribe como numero
+  else if(t.type == RLTAG_LINT && modbus) r = modbus->setLInt(t, llround(value));
+  else if(t.type == RLTAG_ULINT && modbus) r = (value >= 0) ? modbus->setULInt(t, (unsigned long long) value) : -1;   // 2^63 y mas sin pasar por long long
+  else if(t.type == RLTAG_REAL || t.type == RLTAG_LREAL || t.type == RLTAG_LINT || t.type == RLTAG_ULINT)
     r = modbus ? modbus->setReal(t, value) : s7 ? s7->setReal(t, value) : -1;
   else
     r = modbus ? modbus->setInt(t, (int) lround(value)) : s7 ? s7->setInt(t, (int) lround(value)) : -1;

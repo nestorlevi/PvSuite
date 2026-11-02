@@ -450,7 +450,7 @@ QString pvbHelpTopicForClass(const char *cls)
     {"DlgCompiler", "compilar"},       {"DlgOpt", "pvdevelop"},           {"dlgDaemon", "daemons"},
     {"dlgInsertWidget", "s4-1"},       {"dlgProperty", "s4-2"},           {"dlgnewprj", "s3-1"},
     {"dlgInsertFunction", "programar"}, {"dlgPasteWidget", "s4-4"},       {"dlgsearchreplace", "pvdevelop"},
-    {"dlgeditlayout", "designer"},
+    {"dlgeditlayout", "designer"},     {"DlgScanGroups", "s9-6"},
   };
   for(const auto &t : table)
     if(strcmp(cls, t.cls) == 0) return QString::fromLatin1(t.topic);

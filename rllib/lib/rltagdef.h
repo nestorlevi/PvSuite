@@ -34,7 +34,9 @@ En el archivo .mk:
   address_notation=modicon     # modbus: modicon (40001) | offset (HR0) | plc (%MW0)
                                # siemens: german (E/A) | english (I/Q)
   word_order=CDAB              # modbus: orden por defecto de los valores de 32 bits
-  bit_write=rmw                # modbus: rmw (leer-modificar-escribir) | fc22 (Mask Write Register)
+  bit_write=auto               # modbus: bits sin pisar los demas (setBool de un bit, setBit, setMask):
+                               # auto (funcion 22 y, si el esclavo no la tiene, leer-modificar-escribir)
+                               # | fc22 (Mask Write Register) | rmw (leer-modificar-escribir)
   max_gap=8                    # registros (bytes en S7) que se leen de mas para unir bloques
   max_block=125                # tamanio maximo de un bloque (registros, coils o bytes)
   tags=PLC1_tags.csv           # tags en un .csv (relativo al .mk); se pueden combinar con "tag"
@@ -42,6 +44,17 @@ En el archivo .mk:
                                # verbose (cada bloque, con el numero de ciclo); al ejecutarlo: -q / -n / -v
   console_interval=10          # normal: segundos entre resumenes
   tag name=Motor address=40300.15 type=bool rw=1 slave=1 scan=0 desc="Marcha motor"
+
+Tipos: bool, byte (S7), int, uint, dint, udint, real, lreal, lint, ulint (64 bits) y string:
+  tag name=Botella address=40700 type=string len=16 rw=1     # 16 caracteres (8 registros)
+  En Modbus van dos caracteres por registro (len se redondea a par); con order=BADC o DCBA los dos
+  bytes de cada registro van invertidos. Hasta 246 caracteres (y no mas que max_block registros).
+  string solo en Modbus.
+
+Grupos de lectura (cada uno con su periodo; scan= de un tag acepta ms o el nombre del grupo):
+  scan_group name=rapido ms=200
+  scan_group name=lento  ms=5000
+  tag name=Nivel address=40010 type=int scan=rapido
 
 Arreglos (direcciones consecutivas, o cada "stride" registros / bytes / bits):
   tag name=Temp   address=40100   type=real count=10            # Temp[0..9]
@@ -72,7 +85,13 @@ Estructuras (como los UDT de los PLC): "at" es la posicion relativa del miembro
   tag name=Bombas address=40600 type=Motor count=4 stride=10    # 4 motores cada 10 registros
 
 En el pvserver:  PLC1.getReal(PLC1_Bomba1.Velocidad)   PLC1.getBool(PLC1_Bombas[2].Marcha)
-                 PLC1.getReal(PLC1_Temp[i])            (PLC1_Temp_COUNT = 10)
+                 PLC1.getReal(PLC1_Temp[i])            (PLC1_Temp_N = PLC1_Temp_COUNT = 10)
+El elemento entero de una estructura es el miembro _all (rlTag de tipo RLTAG_BLOCK):
+                 PLC1.setBlock(PLC1_Bombas[2], datos, n)   PLC1.clear(PLC1_Bombas[2])
+                 PLC1.getBlock(PLC1_Bombas[2], buf, max)   (rlModbusClient)
+Los miembros de un elemento se leen en un mismo bloque si el elemento entra en max_block y ningun hueco
+interno pasa max_gap. setBlock / clear del elemento entero: solo si todos sus registros son de miembros
+escribibles (sin huecos, sin registros con bits que no son miembros).
 Sin prefijo:     using namespace tags_PLC1;  PLC1.getReal(Bomba1.Velocidad)
 
 Columnas del .csv (separador ; o ,):
@@ -160,11 +179,13 @@ struct rlTagDef
   std::string description;
   std::string structName;   // tipo estructura (si no, "type" es un rlTagType)
   int    type;              // rlTagType (0 = segun la direccion)
+  int    len;               // Nestor: type=string: caracteres (0 = falta)
   int    count;             // > 1: arreglo
   int    stride;            // 0 = consecutivos; si no, registros / bytes (bits en arreglos de bits)
   int    rw;
   int    slave;
   int    scan;              // ms entre lecturas; 0 = en cada ciclo del daemon
+  std::string scanGroup;    // Nestor: scan=<grupo> (scan_group del archivo); scan queda en sus ms
   double scale;
   double scale_offset;
   int    order;             // rlTagOrder; -1 = el del archivo
@@ -180,6 +201,9 @@ struct rlTagDef
   // expansion (rlTagList::flat)
   std::string cname;        // "Bomba1.Velocidad", "Temp[3]", "Bombas[2].Marcha"
   int    group;             // indice en rlTagList::tags
+  int    elemFirst;         // Nestor: miembro de una estructura: direccion del elemento (-1 = no)
+  int    elemUnits;         // registros / bytes / coils del elemento (se lee en un bloque si entra)
+  int    elemGap;           // el hueco mas largo dentro del elemento (se junta solo si no pasa max_gap)
   // calculado por layout()
   int    size;
   int    offset;
@@ -195,6 +219,7 @@ struct rlTagMember
   std::string at;           // posicion relativa ("2", "0.3"; vacio = a continuacion) o sufijo del NodeId
   std::string description;
   int    type;
+  int    len;               // Nestor: type=string: caracteres
   int    count;             // > 1: arreglo dentro de la estructura
   int    rw;                // -1 = el de la variable
   double scale;
@@ -251,7 +276,8 @@ public:
   int order;          //!< rlTagOrder por defecto
   int max_gap;
   int max_block;
-  int bit_write_fc22; //!< modbus: 1 = escribir bits con la funcion 22
+  enum BitWrite { BIT_WRITE_RMW = 0, BIT_WRITE_FC22 = 1, BIT_WRITE_AUTO = 2 };
+  int bit_write_fc22; //!< modbus: BitWrite (bit_write=rmw | fc22 | auto; por defecto auto)
   int console;          //!< mensajes del daemon en la consola: CONSOLE_QUIET, CONSOLE_NORMAL o CONSOLE_VERBOSE
   int console_interval; //!< CONSOLE_NORMAL: segundos entre resumenes
   std::string csvfile;
@@ -262,6 +288,14 @@ public:
   std::vector<rlTagStruct> structs;  //!< estructuras definidas
   std::vector<rlTagDef>   tags;      //!< variables como se escribieron
   std::vector<rlTagDef>   flat;      //!< variables simples (las arma layout())
+  //! Nestor: cada elemento de una variable de tipo estructura ("Bombas[2]"), para el miembro _all:
+  //! type RLTAG_BLOCK, addr = primera direccion, count = registros / bytes / coils, offset -1 si el
+  //! elemento quedo repartido en varios bloques de lectura (lo arma layout()); rw = 1 solo si todos sus
+  //! registros son de miembros escribibles (sin huecos ni bits sueltos): setBlock / clear no pisan nada mas
+  std::vector<rlTagDef>   elems;
+  std::vector< std::pair<std::string, int> > scanGroups; //!< Nestor: scan_group name=... ms=...
+  int  scanGroupMs(const std::string &name) const;      //!< -1 si no existe
+  std::vector<std::string> scanGroupLines() const;      //!< "scan_group name=rapido ms=200" para el .mk
   std::vector<rlTagBlock> blocks;
   std::vector<std::string> errors;
 
@@ -311,6 +345,7 @@ public:
   static std::vector< std::pair<std::string, std::string> > splitPairs(const std::string &line, std::string &err);
 
   static int         typeFromString(const std::string &s);
+  static int         maxStringLen(int protocol);  //!< Nestor: largo maximo de un string (0 = el protocolo no los tiene)
   static const char *typeName(int type);
   static int         orderFromString(const std::string &s);
   static const char *orderName(int order);

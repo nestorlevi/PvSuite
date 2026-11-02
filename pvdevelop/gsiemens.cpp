@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <QFile>
 
 // Nestor: nombre de archivo (UTF-8) para fopen: en Windows fopen usa la pagina de codigos ANSI
@@ -301,7 +302,16 @@ static int generate(const char *name)
         fclose(fout);
         return fail(QCoreApplication::translate("gdaemon", "Error en el .mksiemens: ver los mensajes de la consola"));
       }
-      fprintf(fout,"rlSiemensTCP   slave%d(\"%s\",rlSiemensTCP::%s,%d,%d,%d);\n",slave,adr,plc_type,fetch_write,function,rack_slot);
+      // Nestor (revision A-16): la direccion escapada; el tipo tiene que ser un nombre (va como rlSiemensTCP::<tipo>)
+      for(const char *t = plc_type; *t; t++)
+        if(!isalnum((unsigned char) *t) && *t != '_')
+        {
+          printf("type=%s no es un tipo de PLC (S7_300, S7_400, S7_1200...)\n", plc_type);
+          fclose(fp);
+          fclose(fout);
+          return fail(QCoreApplication::translate("gdaemon", "Error en el .mksiemens: ver los mensajes de la consola"));
+        }
+      fprintf(fout,"rlSiemensTCP   slave%d(\"%s\",rlSiemensTCP::%s,%d,%d,%d);\n",slave,gdaemonCString(adr).c_str(),plc_type,fetch_write,function,rack_slot);
     }
   }
   fclose(fp);    
@@ -309,6 +319,9 @@ static int generate(const char *name)
   fprintf(fout,"rlSharedMemory shm(\"%s\",%d);\n",gdaemonCString(shared_memory).c_str(),shared_memory_size);
   fprintf(fout,"rlMailbox      mbx(\"%s\");\n",gdaemonCString(mailbox).c_str());
   fprintf(fout,"%s","rlThread       thread;\n");
+  // Nestor (revision A-4): un candado por PLC en lugar de thread.lock(): fetch/write conectan adentro (5 s si el PLC
+  // esta apagado) y con el candado de todos un PLC apagado frenaba las lecturas y escrituras de los demas
+  fprintf(fout,"%s","rlMutex        plcLock[256];   // uno por PLC: un PLC apagado no frena a los demas\n");
   fprintf(fout,"%s","rlSiemensTCP   *slave_array[256];\n");
   gdaemonWriteStatus(fout, tags, target, cycleLabels, "plc");
   fprintf(fout,"%s","\n");
@@ -320,19 +333,25 @@ static int generate(const char *name)
   fprintf(fout,"%s","  unsigned char buf[2048+8];\n");
   fprintf(fout,"%s","\n");
   fprintf(fout,"%s","  mbx.clear(); // clear old messages\n");
-  fprintf(fout,"%s","  while((buflen = mbx.read(buf,sizeof(buf))) > 0)\n");
+  // Nestor (revision 8 y A-10): un error de lectura del mailbox no termina el hilo (las escrituras dejaban de
+  // funcionar sin aviso) y un mensaje con menos datos que len se descarta (escribia bytes viejos del buffer)
+  fprintf(fout,"%s","  for(;;)\n");
   fprintf(fout,"%s","  {\n");
+  fprintf(fout,"%s","    buflen = mbx.read(buf,sizeof(buf));\n");
+  fprintf(fout,"%s","    if(buflen < 0) { rlsleep(10); continue; }\n");
+  fprintf(fout,"%s","    if(buflen < 9) continue;\n");
+  fprintf(fout,"%s","    len       = buf[6]*256 + buf[7];\n");
+  fprintf(fout,"%s","    if(len < 1 || 9 + len > buflen) { printf(\"mailbox: mensaje de %d bytes con len=%d: descartado\\n\", buflen, len); continue; }\n");
   fprintf(fout,"%s","    slave     = buf[0];\n");
   fprintf(fout,"%s","    org       = buf[1];\n");
   fprintf(fout,"%s","    dbnr      = buf[2]*256 + buf[3];\n");
   fprintf(fout,"%s","    start_adr = buf[4]*256 + buf[5];\n");
-  fprintf(fout,"%s","    len       = buf[6]*256 + buf[7];\n");
   fprintf(fout,"%s","    function  = buf[8];\n");
   fprintf(fout,"%s","    if(slave >= 0 && slave < 256 && slave_array[slave] != NULL)\n");
   fprintf(fout,"%s","    {\n");
-  fprintf(fout,"%s","      thread.lock();\n");
+  fprintf(fout,"%s","      plcLock[slave].lock();\n");
   fprintf(fout,"%s","      ret = slave_array[slave]->write(org,dbnr,start_adr,len,&buf[9],function);\n");
-  fprintf(fout,"%s","      thread.unlock();\n");
+  fprintf(fout,"%s","      plcLock[slave].unlock();\n");
   fprintf(fout,"%s","      sprintf(what, \"org=%d db=%d %d..%d\", org, dbnr, start_adr, start_adr + len - 1);\n");
   fprintf(fout,"%s","      status.write(slave, what, ret);\n");
   fprintf(fout,"%s","    }\n");
@@ -353,10 +372,10 @@ static int generate(const char *name)
   fprintf(fout,"%s","  long long t0;\n");
   fprintf(fout,"%s","\n");
   fprintf(fout,"%s","  if(slave_array[slave] == NULL) return len;\n");
-  fprintf(fout,"%s","  thread.lock();\n");
+  fprintf(fout,"%s","  plcLock[slave].lock();\n");
   fprintf(fout,"%s","  t0 = rlDaemonStatus::now();\n");
   fprintf(fout,"%s","  ret = slave_array[slave]->fetch(org,dbnr,start_adr,len,data);\n");
-  fprintf(fout,"%s","  thread.unlock();\n");
+  fprintf(fout,"%s","  plcLock[slave].unlock();\n");
   if(eventport != -1)
   {
     fprintf(fout,"%s","  if(ret < 0) { rlEvent(rlWarning,\"fetch ret=%d slave=%d\",ret,slave); rlsleep(5000); }\n");
@@ -400,9 +419,9 @@ static int generate(const char *name)
     fprintf(fout,"    ret = -1;\n");
     fprintf(fout,"    if(b->slave >= 0 && b->slave < 256 && slave_array[b->slave] != NULL)\n");
     fprintf(fout,"    {\n");
-    fprintf(fout,"      thread.lock();\n");
+    fprintf(fout,"      plcLock[b->slave].lock();\n");
     fprintf(fout,"      ret = slave_array[b->slave]->fetch(b->org, b->dbnum, b->start, b->len, data);\n");
-    fprintf(fout,"      thread.unlock();\n");
+    fprintf(fout,"      plcLock[b->slave].unlock();\n");
     fprintf(fout,"    }\n");
     fprintf(fout,"    status.block(NUM_CYCLES + i, b->slave, tagBlockLabel[i], ret, msNow() - now);\n");
     fprintf(fout,"    if(ret > 0) shm.write(b->offset, data, ret);\n");
@@ -424,6 +443,9 @@ static int generate(const char *name)
   }    
   
   // write slaves array
+  // Nestor (revision A-12): sin la memoria compartida (otra de distinto tamanio en uso) el daemon no publica nada:
+  // sale con error para que pvlauncher lo muestre caido y lo reintente
+  fprintf(fout,"%s","  if(shm.status != rlSharedMemory::OK) { printf(\"ERROR: no se pudo abrir la memoria compartida (status=%d): cerrar los programas que usan la anterior\\n\", shm.status); return 1; }\n");
   fprintf(fout,"%s","  for(i=0; i<256; i++) slave_array[i] = NULL;\n");
   fp = fopen(nativeName(name),"r");
   if(fp == NULL)

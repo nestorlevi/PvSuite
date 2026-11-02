@@ -235,12 +235,23 @@ struct Gen
   bool isBool(const PvbTag &t) const { return t.type == "bool"; }
   bool isInt(const PvbTag &t) const { return t.type == "int" || t.type == "byte" || t.type == "dint"; }
   bool isUInt(const PvbTag &t) const { return t.type == "uint" || t.type == "udint"; }
+  bool isInt64(const PvbTag &t) const { return t.type == "lint" || t.type == "ulint"; }   // Nestor: 64 bits
+  static bool isString(const PvbTag &t) { return t.type == "string"; }                    // Nestor: texto
+  // Nestor: "PLC1:Botella" es un tag de texto (para text=; sin avisar si no existe: lo avisa source)
+  bool stringTag(const QString &spec, PvbTag *t) const
+  {
+    for(const PvbTag &x : tags) if(isString(x) && x.source + ":" + x.name == spec.trimmed()) { *t = x; return true; }
+    return false;
+  }
   static bool isBit(const PvbTag &t) { return t.bit >= 0; }
   // el tag como rlTag: el bit de un entero es un rlTag bool armado al vuelo (rllib/lib/rltag.h)
   QString rtag(const PvbTag &t) const { return isBit(t) ? QString("rlTagBitOf(%1, %2)").arg(cid(t)).arg(t.bit) : cid(t); }
   QString get(const PvbTag &t) const
   {
-    QString f = (isBool(t) || isBit(t)) ? "getBool" : isInt(t) ? "getInt" : isUInt(t) ? "getUInt" : "getReal";
+    QString f = (isBool(t) || isBit(t)) ? "getBool" : isInt(t) ? "getInt" : isUInt(t) ? "getUInt" :
+                (isInt64(t) && t.protocol == "modbus") ? (t.type == "lint" ? "getLInt" : "getULInt") : "getReal";
+    if(isString(t))
+      const_cast<Gen *>(this)->errors << QString("%1:%2 es un texto (string): solo se muestra con text= (no es un numero)").arg(t.source, t.name);
     return QString("(double) %1.%2(%3)").arg(src(t), f, rtag(t));
   }
   QString set(const PvbTag &t, const QString &v) const
@@ -249,6 +260,10 @@ struct Gen
     // Nestor: llround (long es de 32 bits en Windows) y uint/udint por unsigned: 3000000000 no desborda
     if(isUInt(t)) return QString("%1.setInt(%2, (int) (unsigned int) llround(%3));").arg(src(t), cid(t), v);
     if(isInt(t))  return QString("%1.setInt(%2, (int) llround(%3));").arg(src(t), cid(t), v);
+    // Nestor: 64 bits sin cortar a int (Modbus; los demas por setReal, exacto hasta 2^53)
+    if(isInt64(t) && t.protocol == "modbus")
+      return (t.type == "lint") ? QString("%1.setLInt(%2, llround(%3));").arg(src(t), cid(t), v)
+                                : QString("%1.setULInt(%2, (unsigned long long) (%3));").arg(src(t), cid(t), v);
     return QString("%1.setReal(%2, %3);").arg(src(t), cid(t), v);
   }
   // escritura de un tag (los enteros se redondean, los bool y los bits valen 0 o 1)
@@ -262,7 +277,7 @@ struct Gen
       errors << QString("%1:%2.%3: escribir un bit solo se puede en enteros de 8 o 16 bits (leerlo, si)")
                 .arg(t.source, t.name).arg(t.bit);
     QString nv = (isBool(t) || isBit(t)) ? QString("(((%1) != 0) ? 1.0 : 0.0)").arg(v)
-               : (isInt(t) || isUInt(t)) ? QString("(double) llround(%1)").arg(v) : QString("(double) (%1)").arg(v);
+               : (isInt(t) || isUInt(t) || isInt64(t)) ? QString("(double) llround(%1)").arg(v) : QString("(double) (%1)").arg(v);
     return QString("{ double pvbNew = %1; %2 }").arg(nv, set(t, "pvbNew"));
   }
   bool hasSys(const QString &source) const
@@ -483,7 +498,14 @@ void genBindings(Gen &g, const QList<QWidget *> &bound, QString &actions, QStrin
     PvbTag t;
     QString vx;          // Nestor: el valor: la lectura del tag o una constante (sin calidad)
     bool isTag = false;
-    if(!kv.value("text").isEmpty() && g.source(kv.value("text"), &t, &vx, &isTag))
+    if(!kv.value("text").isEmpty() && g.stringTag(kv.value("text"), &t))
+    {
+      // Nestor: tag de texto (type=string): getString
+      qExpr = useQ ? g.quality(t) : QString();
+      const QString q = qExpr.isEmpty() ? QString("1") : qExpr;
+      an << QString("  pvbSetText(p, mask, %1, (%2) ? %3.getString(%4).c_str() : \"---\");\n").arg(id, q, t.source, g.cid(t));
+    }
+    else if(!kv.value("text").isEmpty() && g.source(kv.value("text"), &t, &vx, &isTag))
     {
       QString fmt = kv.value("fmt");
       if(!pvbValidTextFormat(fmt))
@@ -493,6 +515,10 @@ void genBindings(Gen &g, const QList<QWidget *> &bound, QString &actions, QStrin
       if(fmt.contains('|') && !fmt.contains('%'))
         an << QString("  { int q = %1; pvbSetText(p, mask, %2, q ? pvbChoice(%3, %4).c_str() : \"---\"); }\n")
               .arg(q, id, Gen::cstr(fmt), vx);
+      else if(isTag && g.isInt64(t) && t.protocol == "modbus" && (fmt.isEmpty() || fmt == "%.0f") && t.bit < 0)
+        // Nestor: lint/ulint sin escala se muestran con todos sus digitos (por double: 1.23457e+12 o el ultimo digito mal)
+        an << QString("  pvbSetText(p, mask, %1, (%2) ? std::to_string(%3.%4(%5)).c_str() : \"---\");\n")
+              .arg(id, q, t.source, t.type == "lint" ? "getLInt" : "getULInt", g.cid(t));
       else
         an << QString("  pvbText(p, mask, %1, %2, %3, %4);\n").arg(id, Gen::cstr(fmt), vx, q);
     }
